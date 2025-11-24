@@ -1,0 +1,2 @@
+# Placeholder so the 'models' directory exists even before training.
+# The training script will save cleaning_fee_rf.pkl here.
