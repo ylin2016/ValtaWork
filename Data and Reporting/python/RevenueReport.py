@@ -159,7 +159,8 @@ def cal_occupancy(data):
             Revenue_occ_accom=("AvgDailyRate","sum"),
             minADR = ("AvgDailyRate","min"),
             maxADR = ("AvgDailyRate","max"),
-            avgADR = ("AvgDailyRate","mean")
+            avgADR = ("AvgDailyRate","mean"),
+            medADR = ("AvgDailyRate","median")
         )
     )
     occ["OccRt"] = occ["yearmonth"].map(lambda ym: occ.loc[occ["yearmonth"].eq(ym), "occdays"].iloc[0])  # placeholder
@@ -216,7 +217,6 @@ data = import_data()
 excl = {"Bellevue 4551","Bothell 21833","NorthBend 44406","Ashford 137","Auburn 29123","Hoquiam 21"}
 data = data[~data["Listing"].isin(excl)].copy()
 data = data[~((data["booking_source"]=="owner")|(data["accommodation_fare"]==0))].copy()
-data = data[~((data["total_revenue"]==48.5)&(data["month"].isin(["2024-10","2024-11"])))] # remove testing rent
 data.loc[data["Listing"].eq("Seattle 3617 Origin"), "Listing"] = "Seattle 3617"
 data.loc[data["Listing"].eq("Seattle 906"), "Listing"] = "Seattle 906 Lower"
 idx = (data['checkin_date']>=pd.to_datetime('2023-01-01')) & (data['checkin_date']<=pd.to_datetime('2025-12-31'))
@@ -231,7 +231,7 @@ monthly_STR =(data[data["Term"]=="STR"]
               .assign(yearmonth=data["checkin_date"].astype(str).str[:7])
               .groupby(["Listing","yearmonth"],as_index=False)
               .agg(Revenue=("total_revenue","sum"))
-              .merge(occupancy[["Listing","yearmonth","occdays","OccRt","Revenue_occ","Revenue_occ_accom","minADR","maxADR","avgADR"]],
+              .merge(occupancy[["Listing","yearmonth","occdays","OccRt","Revenue_occ","Revenue_occ_accom","minADR","maxADR","avgADR","medADR"]],
                      on=["Listing","yearmonth"],how="outer")              
               )
 
@@ -244,7 +244,8 @@ monthly_LTR = (daily[daily["Term"]=="LTR"]
                      Revenue_defer=("DailyListingPrice","sum"),
                      minADR = ("AvgDailyRate",'min'),
                      maxADR=("AvgDailyRate","max"),
-                     avgADR = ("AvgDailyRate","mean"))
+                     avgADR = ("AvgDailyRate","mean"),
+                     medADR = ("AvgDailyRate","median"))
                )
 monthly_LTR["OccRt"] = monthly_LTR["occdays"] / monthly_LTR["yearmonth"].apply(days_in_month_from_yearmonth)
 
@@ -290,8 +291,13 @@ yearly = monthly.groupby(["Listing","Year"],as_index=False).agg(
 yearly["OccRt"] = yearly["nights"] / yearly["Year"].apply(lambda y: 366 if int(y)%4==0 else 365)    
 yearly = safe_round(yearly, ndigits=2)
 
-rangeADR =monthly[monthly["Year"].isin(['2024','2025'])].groupby(["Listing"],as_index=False).agg(
-    minADR=("minADR","min"),maxADR=("minADR","max"),avgADR=("avgADR","mean"))
+mask =(data["total_revenue"]==48.5)&(data["month"].isin(["2024-10","2024-11"]))|\
+    (data["Confirmation.Code"].isin(["HMBE2E392M","HMQAWPFBSZ","HM5ZZBP4NK"]))
+ # remove testing rent)].copy()
+
+rangeADR =data[(~mask) & (data["checkin_date"]>=pd.to_datetime('2024-01-01'))].groupby(["Listing"],as_index=False).agg(
+    minADR=("AvgDailyRate","min"),maxADR=("AvgDailyRate","max"),avgADR=("AvgDailyRate","mean"),medADR=("AvgDailyRate","median"))
+rangeADR = safe_round(rangeADR, ndigits=2)
 
 tmp = pd.MultiIndex.from_product([["Revenue","ADR","OccRt"], [2024,2025]]).tolist()
 cols = [f"{m[0]}_{m[1]}" for m in tmp]
@@ -484,7 +490,7 @@ years_cols = ['Listing', 'Type', 'Revenue_2024', 'ADR_2024','OccRt_2024',
        '2025.0_Booking.com', '2025.0_VRBO', 'Current_weighted_rating',
        'Current_rating_Airbnb', 'Current_rating_VRBO','Current_rating_Booking','Nreview', 
        'Revenue_ratio_today', 'Revenue_hlt_today','flag',
-       'minADR', 'maxADR', 'avgADR','OwnerDist_2024', 'OwnerDist_2025']
+       'minADR', 'maxADR', 'avgADR','medADR','OwnerDist_2024', 'OwnerDist_2025']
 yearly_tab = yearly_tab[years_cols]
 
 payout_cols =['Property', 'Type', 'Revenue_2024', 'OwnerDist_2024',
