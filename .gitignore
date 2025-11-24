@@ -1,4 +1,67 @@
+# --- macOS ---
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Icon files
+Icon?
+
+# Thumbnails
+._*
+
+# --- Python ---
 __pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environments
+.env
+.venv/
+env/
+venv/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# PyCharm / VSCode
+.idea/
+.vscode/
+
+# Distribution / Packaging
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Logs
 *.log
-.DS_Store
-.DS_Store
+
+# Cache
+.cache/
+
+# Unit test / coverage
+htmlcov/
+.tox/
+.coverage
+.coverage.*
+.pytest_cache/
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# --- System backups ---
+*.orig
+*.backup
+
+# --- Project specific ---
+# Ignore model files if they are large or don’t belong in repo
+*.pkl
+*.h5
+*.sav
+
+# Ignore local development files
+*.local
