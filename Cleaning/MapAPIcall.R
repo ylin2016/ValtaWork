@@ -3,7 +3,7 @@ library(jsonlite)
 setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/05-Cleaning/")
 load("DispatchCardData.Rdata")
 # ====== CONFIGURATION ======
-api_key <- "AIzaSyDRrJHA0mm_hLS0To9Hczg1Yv6rFrR-4Ec"
+
 
 # Replace with your actual addresses
 
