@@ -1,0 +1,361 @@
+---
+title: "Cleaning Fee Model"
+author: "Yi Lin"
+date: "2025-10-21"
+knit: (function(input, encoding) {
+  out_dir <-"../";
+  rmarkdown::render(input, 
+  	encoding=encoding,
+   output_dir=file.path(dirname(input), out_dir))})
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+library(knitr)
+library(kableExtra)
+library(gridExtra)
+library(pdp)
+library(ggplot2)
+library(randomForest) # basic implementation
+library(caret) # an aggregator package for performing many machine learning models
+library(plotly)
+#setwd("/Users/ylin/My Drive/Cohost/Data and Reporting/05-Cleaning/CleaningFeeModel/")
+load("Cleaningfee_RF.Rdata")
+descriptions <- c(
+  "OCCUPANCY" = "Maximum guest capacity — higher capacity increases laundry, trash, and surface cleaning load.",
+  "SqFt" = "Total property size — larger homes require more cleaning time and labor.",
+  "BEDROOMS" = "Number of bedrooms — more rooms to tidy and more linens to handle.",
+  "BEDS" = "Total beds — adds linen work but less impact than full bedrooms.",
+  "BATHROOMS" = "Number of bathrooms — major driver due to scrubbing and sanitizing effort.",
+  "hottub" = "Presence of hot tub — adds specialty cleaning time.",
+  "PropertyType" = "Type of property — e.g., condo vs. house affects access and complexity.",
+  "med_guest" = "Median guest count — proxy for how heavily the space is used per stay.",
+  "avg_bookings_per_month" = "Turnover frequency — more cleans per month increase total workload.",
+  "avg_rate" = "Average nightly rate — higher-end homes imply more detailed cleaning standards.",
+  "avg_rate_per_guest" = "Average rate per guest — weak signal of luxury intensity.",
+  "Group" = "In town or Remote"
+)
+Feature = c("OCCUPANCY","SqFt","BEDROOMS","BEDS","BATHROOMS","hottub",
+"PropertyType","med_guest","Group","avg_bookings_per_month","avg_rate","avg_rate_per_guest")
+
+```
+
+## Key finding
+```{r,echo=F}
+pdp_summary <- data.frame(
+  Feature = c("SqFt", "Bathrooms", "Avg Rate", "Group", "Bedrooms"),
+  EffectShape = c(
+    "Nonlinear rise, plateaus >3000",
+    "Steady increase, flattens >3",
+    "Flat <180, sharp rise 180–250, plateau",
+    "Flat",
+    "Flat ≤2, jump at 3, slight climb"
+  ),
+  KeyInflection = c(
+    "700–2000 sq ft",
+    "1 → 2",
+    "180–250",
+    "None",
+    "3"
+  ),
+  PracticalMeaning = c(
+    "Core size driver — cleaning fee increases rapidly for mid-sized homes, then levels off for very large properties.",
+    "Major cleaning intensity jump from first to second bathroom; diminishing returns afterward.",
+    "Captures property 'luxury tier' — higher-end listings require more detailed cleaning and presentation.",
+    "Location type (In town vs Remote) doesn’t significantly change cleaning cost once size and features are controlled.",
+    "Marks transition from compact to family-size units — more rooms, beds, and staging effort."
+  )
+)
+
+# --- Step 2: Render Markdown table in console ---
+kable(pdp_summary, format = "markdown",
+      col.names = c("Feature", "Effect Shape", "Key Inflection", "Practical Meaning"))
+```
+
+## Operational Insight
+
+Three strong cost dimensions were discovered by the model:
+
+- Size (SqFt) — the base cleaning load.
+
+- Complexity (Bathrooms, Bedrooms) — extra cleaning zones and linens.
+
+- Quality (Avg Rate) — detail level and expectations.
+
+- "In Town/Remote" and minor amenities (e.g., hot tub, beds) barely move the needle.
+
+
+## Cleaning Fee potential factors
+
+We have 80 properties and 12 potential factors are used to train the cleaning fee model. 
+
+For numeric feature, the mean [min, max] is shown in the Summary. For categorical feature, the numbers in each category is presented.
+
+
+```{r,echo=F,message=F}
+sum_cont=apply(data[,setdiff(Feature,c("Group","PropertyType","hottub"))],2,function(x)
+  paste0(round(mean(x),2)," [",round(min(x),2),", ",round(max(x),2),"]"))
+sum_categ = apply(data[,c("Group","PropertyType","hottub")],2,function(x)
+  {y=table(x); paste0(paste(names(y),collapse = "/ "),": ",paste(unlist(y),collapse = "/"))})
+
+desc = data.frame(Feature,Summary=NA,Description = descriptions[Feature])
+desc[names(sum_cont),'Summary'] = sum_cont
+desc[names(sum_categ),'Summary'] = sum_categ
+rownames(desc) = NULL
+kbl(desc, booktabs = T,caption = "Potential Feature descriptions") %>% 
+  kable_styling(full_width = F) %>% 
+  column_spec(1, bold = T) %>% 
+  column_spec(3, width = "30em")
+```
+
+## Fit Random Forest model
+
+Instead of linear model, I applied random forest model for feature selection to better capture the non-linear trends in the features and find important factors for cleaning fee estimates. The results are shown as  
+
+
+```{r,echo=F,message=F}
+varImpPlot(rf_cv$finalModel)
+```
+
+**%IncMSE** (left panel) measures how much the model’s prediction error increases when a variable is randomly permuted (its values are shuffled). The higher the % increase in Mean Squared Error, the more the model depends on that variable for accuracy.
+
+**IncNodePurity** (right panel) measures how much each variable reduces impurity (variance) across all decision splits in all trees. Larger values mean the variable contributes strongly to splitting data in the forest, though it can be biased toward variables with more unique values (e.g., continuous ones like SqFt).
+
+```{r,echo=F}
+interpretations <- data.frame(
+  Feature = c("SqFt","avg_rate","BATHROOMS","Group","BEDROOMS",
+              "PropertyType","BEDS","avg_rate_per_guest",
+              "OCCUPANCY","avg_bookings_per_month","med_guest","hottub"),
+  IncMSE=  varImp(rf_cv$finalModel) %>% arrange(desc(Overall)),
+  Importance = c("★★★★★","★★★★☆","★★★★☆","★★★★☆","★★★☆☆",
+                 "★★☆☆☆","★★☆☆☆","★☆☆☆☆","★☆☆☆☆","★☆☆☆☆","★☆☆☆☆","★☆☆☆☆"),
+  Explanation = c(
+    "Strongest predictor — cleaning time scales with total area. Bigger homes take longer regardless of guest count or rate.",
+    "Higher nightly rate signals more upscale properties requiring more detailed cleans and higher presentation standards.",
+    "Each additional bathroom adds intensive work (scrubbing, fixtures, floors). A top-tier cost driver after size.",
+    "Represents location or operational grouping — may reflect staffing and access differences that influence cleaning cost.",
+    "More bedrooms mean more surfaces, beds, and linens to manage; moderate but consistent impact.",
+    "Houses vs. condos differ in layout and accessibility, moderately influencing cleaning effort.",
+    "Each bed adds linen and staging work but less than a full bedroom — minor additional cost.",
+    "Weak signal; overlaps with average rate and occupancy effects.",
+    "Maximum guest capacity — slightly increases workload (laundry, trash) but overlaps with size and bedrooms.",
+    "Higher booking frequency increases total workload but not necessarily per-clean effort.",
+    "Typical guest group size — small influence once property size is known.",
+    "Adds small specialized work for properties with hot tubs; relatively rare factor."
+  )
+)
+rownames(interpretations)=NULL
+kbl(interpretations, booktabs = T,caption = "Ranked Interpretation of features") %>% 
+  kable_styling(full_width = F) %>% 
+  column_spec(1, bold = T) %>% 
+  column_spec(4, width = "30em")
+```
+
+Next, let us check how the top 5 features influences the predicted cleaning fee while averaging over other features. Partial Dependence plots are: 
+
+```{r,echo=F}
+# PDP for Square Footage
+p1 <- partial(rf_cv, pred.var = "SqFt", train = data)
+p1<-autoplot(p1, train = data,main = "SqFt", rug = TRUE)
+
+# PDP for Bathrooms
+p2 <- partial(rf_cv, pred.var = "avg_rate", train = data)
+p2<-autoplot(p2, train = data,main = "Bathrooms", rug = TRUE)
+
+# PDP for Average Rate
+p3 <- partial(rf_cv, pred.var = "BATHROOMS", train = data)
+p3<- autoplot(p3, train = data,main = "Avg Rate", rug = TRUE)
+
+p4 <- partial(rf_cv, pred.var = "Group", train = data,type = "regression")
+p4<-ggplot(p4, aes(x = Group, y = yhat)) +
+  geom_col(width = 0.7) +
+  labs(title = "In town vs. Remote",
+       x = "Group", y = "Predicted cleaning fee (partial)")
+
+p5 <- partial(rf_cv, pred.var = "BEDROOMS", train = data)
+p5<-autoplot(p5, train = data,main = "BEDROOMS", rug = TRUE)
+
+grid.arrange(p1,p2,p3,p4,p5,nrow=2)
+
+```
+
+- **Square Footage (SqFt)**: Size drives cleaning cost most strongly up to mid-size homes; very large homes add only marginal time.
+
+Gently rising until ~700 sq ft, then steep increases around 1000–2000 sq ft, and plateaus near 3000+. Cleaning fee climbs nonlinearly with property size. 
+
+Below ~700 sq ft (studios and small 1BRs), fees are stable — cleaning overhead is mostly fixed (setup, travel). Between 800–2000 sq ft, costs jump rapidly — new rooms, bigger kitchens, and additional surfaces add real time. Beyond 2500–3000 sq ft, growth slows: economies of scale (teams, workflows) flatten the curve.
+
+- **Bathrooms**: a major cost driver, second only to square footage, but with diminishing returns after three.
+
+Almost linear increase, then plateaus near 3–4 bathrooms. Each additional bathroom adds significant cleaning effort (scrubbing fixtures, floors, mirrors).
+
+The biggest jump is between 1 and 2 bathrooms, confirming a large marginal cost for the second bath. After 3 bathrooms, the increase tapers — cleaners likely hit efficiency limits or parallel tasks.
+
+- **Average Nightly Rate (avg_rate)**: Rate captures quality tier, not size. Cleaning standards rise sharply once a property enters premium pricing.
+
+Flat below ~\$150/night, then a steep rise between \$180–\$250, and plateau after \$300. This is the "luxury effect". 
+
+Low/mid-rate properties have similar cleaning standards. Around \$200/night, cleaning expectations jump — more décor, amenities, and staging work. Above \$300, effort plateaus; ultra-luxury units don’t keep scaling linearly.
+
+-  **Group (In town vs Remote)**: Location type (in-town vs remote) doesn’t materially affect cleaning cost in your data.
+
+The Plot show both bars nearly identical. The model finds no meaningful difference in cleaning fee between “In town” and “Remote” properties, once size and features are controlled.
+
+- **Bedrooms**: The 3-bedroom threshold marks a distinct operational jump in cleaning complexity.
+
+Flat from 0–2 bedrooms, then a sharp jump at 3, and gentle climb thereafter. 
+
+Small units (≤2BR) share the same basic cleaning footprint. At 3 bedrooms, workload expands sharply — more bedding, more tidying, more rooms to stage. After that, costs rise more slowly; teams may clean extra bedrooms efficiently once onsite.
+
+### Formular to calculate cleaning fee
+
+Based on the partial dependence plots, we found cleaning fee rises steeply up to ~2000 sq ft, then levels off; Each additional bathroom adds ~10–15 units (roughly 10 USD if your target is in dollars); Strong avg_rate increases between \$180–\$250, suggesting a “luxury premium” effect.
+
+Let’s assume a base cleaning fee of $75 for a small studio. Then add adjustments for size, bathrooms, and property quality (via avg_rate):
+
+$$ CleaningFee=75+(SqFt/100) \times 4.5+(Bathrooms−1) \times 12+BedAdj+LuxuryAdj $$
+
+Where:
+
+$$
+\text{BedAdj} =
+\begin{cases}
+0, & \text{if } \text{Bedrooms} \le 2 \\[6pt]
+10, & \text{if } \text{Bedrooms} = 3 \\[6pt]
+15, & \text{if } \text{Bedrooms} = 4 \\[6pt]
+18, & \text{if } \text{Bedrooms} \ge 5
+\end{cases}
+$$
+and
+
+$$\text{LuxuryAdj} =
+\begin{cases}
+0, & \text{if } \text{avg_rate} < 180 \\[8pt]
+0.10 \times (\text{avg_rate} - 180), & \text{if } 180 \leq \text{avg_rate} \leq 250 \\[8pt]
+7, & \text{if } \text{avg_rate} > 250
+\end{cases}
+$$
+
+
+```{r,echo=F,warning=F,message=F}
+calc_cleaning_fee <- function(base,SqFt, Bathrooms, Bedrooms, avg_rate) {
+  #base <- 70 #75
+  size_adj <- (SqFt / 100) * 4.5
+  bath_adj <- (Bathrooms - 1) * 12
+  bed_adj <- ifelse(Bedrooms<=2,0,ifelse(Bedrooms==3,10,ifelse(Bedrooms==4,15,18)))
+  luxury_adj <- ifelse(avg_rate < 180, 0,
+                       ifelse(avg_rate <= 250, (avg_rate - 180) * 0.10, 7))
+  
+  fee <- base + size_adj + bath_adj + bed_adj + luxury_adj
+  return(round(fee, 2))
+}
+
+data = data %>% mutate(cleaning_fee_base75 = calc_cleaning_fee(75,SqFt,BATHROOMS,BEDROOMS,avg_rate),
+                       cleaning_fee_base70 = calc_cleaning_fee(70,SqFt,BATHROOMS,BEDROOMS,avg_rate),
+ cleaning_fee_fitted=predict(rf_cv, data),
+ cleaning_fee_pred5=predict(rf_cv, data)*1.05 ) %>%
+  mutate(base = ifelse(SqFt<=600,ifelse(BEDROOMS %in% 0,70,85),85),
+         added = 20*(BEDS-1)+ 15*(BATHROOMS-1),
+         laundry = 12*ifelse(BEDROOMS<=1,1,BEDROOMS),
+         estimated.cleaning = base+added+laundry)
+load("Cleaningfee_MarketingModel.Rdata")
+data = merge(data,newdata %>% select(Listing,cleaning_fee_pred_market=pred),
+             by="Listing",all.x=T)
+data = data %>% 
+  mutate(cleaning_fee_pred_market_perc = (cleaning_fee_pred_market-Cleaning.fee)/Cleaning.fee,
+   cleaning_fee_fitted_perc = (cleaning_fee_fitted-Cleaning.fee)/Cleaning.fee) %>%
+  mutate_at(c("cleaning_fee_fitted","cleaning_fee_pred_market"),round,2)
+
+output = list(Estimates = data %>% select(Listing,Cleaning.fee,cleaning_fee_base75,cleaning_fee_base70,cleaning_fee_fitted,cleaning_fee_fitted_perc,cleaning_fee_pred_market,cleaning_fee_pred_market_perc),
+              Input= data[,1:16])
+
+write.xlsx(output,"../Cleaning_fee_report.xlsx")
+
+p<-ggplot(data,aes(Cleaning.fee,cleaning_fee_base75)) + 
+  geom_point(aes(color='base75',text = Listing)) + geom_abline(slope=1) +
+  geom_point(aes(y=cleaning_fee_base70,text=Listing,
+                 color='base70')) + geom_abline(slope=1) +
+  geom_point(aes(y=cleaning_fee_fitted,text = Listing,color='Fitted')) +
+  geom_point(aes(y=cleaning_fee_pred_market,text = Listing,color='pred_market')) +
+  scale_color_manual(values = c("base75" = "darkgreen", 
+                                "base70" = "lightblue3", 
+                                "Fitted" = "salmon",
+                                "pred_market" = "red")) +
+  labs(title="Current vs. estimated/fitted cleaning fees",
+       color="",y='Predicted cleaning fee')
+ggplotly(p)
+```
+The plot above showed that the estimated cleaning fee based on the formula is higher than the current ones in general. The fitted values are close to current ones, which is expected. See the results [Cleaning_fee_report.xlsx](https://docs.google.com/spreadsheets/d/1Giidyc1CsaAMSZ2NMBxa9Tpqxqe09C9K/edit?gid=1363475281#gid=1363475281)
+
+The different estimates of cleaning fee by various segments:
+
+```{r,echo=F,warning=F,message=F}
+data %>% mutate(sqft = ifelse(SqFt<=700,"<700",
+                    ifelse(SqFt<=2000,"700-2000","2000+"))) %>%
+  select(Listing,sqft,Cleaning.fee,
+         cleaning_fee_fitted,cleaning_fee_pred_market) %>%
+  pivot_longer(cols = c("Cleaning.fee",
+         "cleaning_fee_fitted","cleaning_fee_pred_market"),
+               values_to = "fee") %>%
+  mutate(name = relevel(factor(name),ref="Cleaning.fee"),
+         sqft = factor(sqft,levels =c("<700","700-2000","2000+"))) %>%
+ggplot(aes(sqft,fee,fill=name)) + 
+  geom_boxplot() + 
+  labs(title ="Cleaning fee estimates by SqFt",fill="") +
+  theme(legend.position = 'top')
+
+data %>% mutate(daily_rate = ifelse(avg_rate<=180,"<180",
+                    ifelse(avg_rate<=250,"180-250","250+"))) %>%
+  select(Listing,daily_rate,Cleaning.fee,
+         cleaning_fee_fitted,cleaning_fee_pred_market) %>%
+  pivot_longer(cols = c("Cleaning.fee",
+         "cleaning_fee_fitted","cleaning_fee_pred_market"),
+               values_to = "fee") %>%
+  mutate(name = relevel(factor(name),ref="Cleaning.fee")) %>%
+ggplot(aes(daily_rate,fee,fill=name)) + 
+  geom_boxplot()+
+  labs(title ="Cleaning fee estimates by average rates",fill="")+
+  theme(legend.position = 'top')
+
+data %>% 
+  select(Listing,PropertyType,Cleaning.fee,
+         cleaning_fee_fitted,cleaning_fee_pred_market) %>%
+  pivot_longer(cols = c("Cleaning.fee",
+         "cleaning_fee_fitted","cleaning_fee_pred_market"),
+               values_to = "fee") %>%
+mutate(name = relevel(factor(name),ref="Cleaning.fee")) %>%
+ggplot(aes(PropertyType,fee,fill=name)) + 
+  geom_boxplot() +
+  labs(title ="Cleaning fee estimates by property type",fill="")+
+  theme(legend.position = 'top')
+
+data %>% mutate(bathrooms = ifelse(BATHROOMS<=1,1,ifelse(BATHROOMS<=2,2,"2+"))) %>%
+  select(Listing,bathrooms,Cleaning.fee,
+         cleaning_fee_fitted,cleaning_fee_pred_market) %>%
+  pivot_longer(cols = c("Cleaning.fee",
+         "cleaning_fee_fitted","cleaning_fee_pred_market"),
+               values_to = "fee") %>%
+  mutate(name = relevel(factor(name),ref="Cleaning.fee")) %>%
+ggplot(aes(bathrooms,fee,fill=name)) + 
+  geom_boxplot() +
+  labs(title ="Cleaning fee estimates by # bathroom",fill="")+
+  theme(legend.position = 'top')
+
+data %>% mutate(bedrooms = ifelse(BEDROOMS<=2,"<=2",">2")) %>%
+  select(Listing,bedrooms,Cleaning.fee,
+         cleaning_fee_fitted,cleaning_fee_pred_market) %>%
+  pivot_longer(cols = c("Cleaning.fee",
+         "cleaning_fee_fitted","cleaning_fee_pred_market"),
+               values_to = "fee") %>%
+  mutate(name = relevel(factor(name),ref="Cleaning.fee")) %>%
+ggplot(aes(bedrooms,fee,fill=name)) + 
+  geom_boxplot() +
+  labs(title ="Cleaning fee estimates by # bedrooms",fill="")+
+  theme(legend.position = 'top')
+```
+

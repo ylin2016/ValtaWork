@@ -1,0 +1,329 @@
+---
+title: "Reconciling Maria's Cleaning Cost"
+author: "Yi Lin"
+date: "2025-09-21"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning = F,message = F)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+library(lubridate)
+library(reshape2)
+library(scales)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(ggbreak)
+library(slider)
+library(plotly)
+library(DT)
+library(gridExtra)
+
+# Set working directory
+setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/05-Cleaning/")
+```
+
+# Executive Summary
+
+This report analyzes Maria's cleaning service operations for our property management business, focusing on reconciling three key data sources:
+
+- **Guesty checkout data**: Property management platform records
+- **Maria's cleaning payout records**: Individual cleaner payment tracking
+- **Maria's car schedule**: Service scheduling and logistics
+
+The analysis covers the period from June to August 2025, examining both Short-Term Rental (STR) and Long-Term Residential (LTR) cleaning services to ensure accurate payment reconciliation and identify operational insights.
+
+# Data Import and Processing
+
+## Monthly Payout Data Collection
+
+We collected payout data from Maria's cleaning payment spreadsheet across multiple months [Maria cleaning payment process.xlsx](https://docs.google.com/spreadsheets/d/1DYndAEzV1V4vLXVcGs8IVoZY-jrIYGuPBpZpH68DDKQ/edit?gid=1399659903#gid=1399659903)
+
+```{r monthly-payout,echo = F,warning = F,message = F}
+# Initialize list to store monthly payout data
+payout = vector('list', 12)
+
+# Read payout data for months 1-10
+for(i in 1:10) {
+  tmp = read.xlsx("./Data/Maria cleaning payment process_copied20250916.xlsx",
+                  sheet = paste0("2025-", i))
+  
+  # Find the starting row for property data
+  idx = grep("Property name", tmp[,1])[1] + 1
+  idx = ifelse(is.na(idx), 1, idx)
+  
+  # Extract relevant payout information
+  indv = tmp[c(idx:(grep("Total payment", tmp[,1])[1]),
+               grep("payout", tmp[,1]), grep("Due", tmp[,1])), 1:5]
+  colnames(indv) = c("Listing", "Cleaning.fee", "Times", "Total", "PayDate")
+  payout[[i]] = indv
+}
+
+cleanerpay = read.xlsx("./Data/Maria cleaning payment process_copied20250916.xlsx",
+                  sheet = "Payment",startRow = 2) %>%
+  mutate(Date = as.Date(Day, origin = '1899-12-30'),
+         PayDate = as.Date(as.integer(Payment.date),origin = '1899-12-30'),
+         Month = substr(Date,1,7))
+cleanerpay %>% group_by(Month) %>% reframe(Cost= sum(Rate,na.rm=T))
+
+```
+
+```{r property-data,echo = F,warning = F,message = F}
+# Load property information
+property = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx')
+
+# Load cleaner information with updated cleaning fees
+cleaner = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx', 
+                   sheet = 'Cleaning') %>%
+  mutate(Cleaning.fee = ifelse(is.na(New.cleaning.fee), 
+                               Current.clg.fee, New.cleaning.fee))
+```
+
+- **STR Cleaning Data (Guesty)**: we collect Short-Term Rental cleaning data from Guesty checkout records.
+- **LTR Cleaning Data (Residential)**: we also process Long-Term Residential cleaning services.
+- **Payment Schedule Data**, we load the actual payment schedule to Maria:
+
+```{r str-cleanings,echo = F,warning = F,message = F}
+# Compile STR cleaning data from multiple months
+cleanings = NULL
+for(k in paste0(20250, 1:8)) {
+  cleanings = rbind.fill(cleanings,
+                        read.xlsx("../01- Compensation Calculation/Cohost's reservation sheets/CleaningSheet_PayOut.xlsx", 
+                                 sheet = k))
+}
+
+# Clean and standardize STR data
+cleanings = cleanings %>% 
+  mutate(CheckIn = as.Date(CheckIn, origin = '1899-12-30'),
+         CheckOut = as.Date(CheckOut, origin = '1899-12-30'),
+         Month = ifelse(Month == 45658, "2025-01", Month))
+
+# Merge with cleaner payment information
+cleanings = merge(cleanings, cleaner %>% select(Cleaner.lead, Listing, Maria.pay),
+                  by = c('Cleaner.lead', 'Listing'), all.x = T)
+
+# Load LTR cleaning data
+LRTs = read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx") %>%
+  select(Service.Date, Name, Address, `Maria.(.80.of.Column.K)`)
+
+colnames(LRTs) = c("CheckOut", "GuestName", "Listing", "Maria.pay")
+
+# Clean and standardize LTR data
+LRTs = LRTs %>% 
+  filter(!is.na(CheckOut) & !grepl("Total|TOTAL", CheckOut)) %>%
+  mutate(CheckOut = as.Date(as.integer(CheckOut), origin = '1899-12-30'),
+         Month = substr(CheckOut, 1, 7),
+         Cleaner.lead = "Maria",
+         Cleaning.fee = Maria.pay / 0.8)  # LTR: Maria gets 80% of cleaning fee
+
+# Combine STR and LTR cleaning data
+allcleanings = rbind.fill(cleanings, LRTs)
+
+# Load cleaner payment records
+payCleaner = read.xlsx("./Data/Maria cleaning payment process_copied20250916.xlsx",
+                       sheet = "Payment", startRow = 3) %>%
+  filter(!grepl("Maria", Payment.date)) 
+
+# Standardize payment dates
+payCleaner = payCleaner %>%
+  mutate(Week = as.Date(`Week.(Fri)`, origin = '1899-12-30'),
+         Day = as.Date(Day, origin = '1899-12-30'),
+         PayDay = as.Date(as.integer(Payment.date), origin = '1899-12-30'))
+```
+
+# Data Analysis
+
+We create a comprehensive daily summary of Maria's cleaning activities. Note that the payment_ratio = CleanerPayout/CleaningFee.
+
+```{r daily-summary}
+# Generate daily cleaning summary for Maria from June 2025 onwards
+daily = allcleanings %>% 
+  filter(Cleaner.lead %in% "Maria" & 
+           CheckOut >= '2025-06-01' & CheckOut <='2025-08-31') %>% 
+  group_by(CheckOut) %>%
+  reframe(units = n(),
+          units_residential = sum(is.na(Earnings)),
+          CleaningFee = sum(Maria.pay, na.rm = T),
+          CleaningFee.STR = sum(Maria.pay[!is.na(Earnings)], na.rm = T),
+          CleaningFee.LTR = sum(Maria.pay[is.na(Earnings)], na.rm = T),
+          revenue = sum(Cleaning.fee, na.rm = T)) 
+
+# Create weekly groupings (Friday-ending weeks)
+fridays = weekdays(daily$CheckOut)
+fridays = daily$CheckOut[fridays %in% "Friday"]
+fridays = c(fridays[1] - 7, fridays, fridays[length(fridays)] + 7)
+daily$Week = cut(daily$CheckOut, breaks = fridays, right = T)
+levels(daily$Week) = fridays[-1]
+
+# Merge with actual payment data
+daily = merge(daily, payCleaner %>% 
+                group_by(Week, Day) %>% 
+                reframe(PayCleaner = sum(Rate)),
+              by.x = 'CheckOut', by.y = 'Day', suffix = c("", ".pay")) %>%
+  mutate(Month = substr(CheckOut, 1, 7),
+         PayCleaner_cumsum = unlist(tapply(PayCleaner, Month, cumsum)),
+         CleaningFee_cumsum = unlist(tapply(CleaningFee, Month, cumsum)),
+         CleaningFee_STR_cum = unlist(tapply(CleaningFee.STR, Month, cumsum)),
+         CleaningFee_LTR_cum = unlist(tapply(CleaningFee.LTR, Month, cumsum)))
+
+# Calculate summary statistics
+summary_stats = daily %>%
+    reframe(
+    total_days = n(),
+    total_cleanings = sum(units, na.rm = TRUE),
+    avg_cleanings_per_day = mean(units, na.rm = TRUE),
+    total_cleaning_fees = sum(CleaningFee, na.rm = TRUE),
+    total_payments = sum(PayCleaner, na.rm = TRUE),
+    payment_ratio = total_payments / total_cleaning_fees,
+    str_cleanings = sum(units - units_residential, na.rm = TRUE),
+    ltr_cleanings = sum(units_residential, na.rm = TRUE)
+  )
+# Display KPIs
+outable = data.frame(Feature = colnames(summary_stats),
+                     Value = round(t(summary_stats),2))
+flextable(outable) %>% autofit() %>% 
+  set_caption("Key Performance Indicators")
+```
+
+## Monthly Breakdown
+
+```{r monthly-breakdown}
+monthly_summary = daily %>%
+  group_by(Month) %>%
+  reframe(
+    Days = n(),
+    Total_Units = sum(units, na.rm = TRUE),
+    STR_Units = sum(units - units_residential, na.rm = TRUE),
+    LTR_Units = sum(units_residential, na.rm = TRUE),
+    Cleaning_Fees = sum(CleaningFee, na.rm = TRUE),
+    Payments_Made = sum(PayCleaner, na.rm = TRUE),
+    Payment_Ratio = round(Payments_Made / Cleaning_Fees,2)) %>%
+  mutate(Avg_cleanings_per_day = round(Total_Units/Days))
+
+outable = data.frame(Features = colnames(monthly_summary),
+                     t(monthly_summary))
+colnames(outable) = outable[1,]
+outable = outable[-1,]
+flextable(outable)%>% autofit() %>% 
+  set_caption("Monthly Performance Summary")
+```
+
+```{r plot-data-prep}
+# Prepare data for plotting
+dataplot = daily %>% 
+  filter(CheckOut >= '2025-06-01' & CheckOut <='2025-08-31') %>%
+  select(CheckOut, CleaningFee, CleaningFee.STR, CleaningFee.LTR, PayCleaner,
+         PayCleaner_cumsum, CleaningFee_cumsum, CleaningFee_STR_cum, CleaningFee_LTR_cum) %>% 
+  pivot_longer(!CheckOut, values_to = 'Amount') %>%
+  mutate(checkout = as.POSIXct(CheckOut),
+         Month = substr(CheckOut, 1, 7)) 
+
+# Weekly summary for plotting
+weekplot = daily %>% 
+  group_by(Week) %>%
+  reframe(CleaningFee = sum(CleaningFee),
+          CleaningFee.STR = sum(CleaningFee.STR, na.rm = T),
+          CleaningFee.LTR = sum(CleaningFee.LTR, na.rm = T),
+          PayCleaner = sum(PayCleaner, na.rm = T)) %>%
+  pivot_longer(!Week, values_to = 'Amount') %>%
+  mutate(Month = substr(Week, 1, 7),
+         week = as.POSIXct(Week))
+```
+
+```{r daily-plot,fig.height=7}
+dataplot %>% 
+  filter(checkout <= "2025-08-31" & name %in% c("CleaningFee", "PayCleaner")) %>%
+  ggplot(aes(checkout, Amount, group = name, color = name)) +
+  geom_point(size = 1) +
+  geom_line() +
+  facet_wrap(~Month, ncol = 1, scales = "free_x") +
+  labs(x = "Checkout Date", 
+       y = "Amount ($)", 
+       color = "",
+       title = "Comparison of cleaning fees earned vs payments made") +
+  theme_minimal() +
+  theme(legend.position = 'top')
+```
+
+
+```{r cumulative-plot, fig.height=7}
+dataplot %>% 
+  filter(checkout <= "2025-08-31" & 
+         name %in% c("CleaningFee_cumsum", "PayCleaner_cumsum")) %>%
+  ggplot(aes(checkout, Amount, group = name, color = name)) +
+  geom_point(size = 1) +
+  geom_line() +
+  facet_wrap(~Month, ncol = 1, scales = "free") +
+  labs(x = "Checkout Date", 
+       y = "Cumulative Amount ($)", 
+       color = "",
+       title = "Cumulative Daily cleaning fees vs payments") +
+  theme_minimal() +
+  theme(legend.position = 'top') 
+```
+
+```{r weekly-plot}
+weekplot %>% 
+  filter(week <= "2025-08-31" & name %in% c("CleaningFee", "PayCleaner")) %>%
+  ggplot(aes(week, Amount, group = name, color = name)) +
+  geom_point() +
+  geom_line() +	
+  scale_x_datetime(date_breaks = '7 day', labels = date_format("%m-%d")) +
+  labs(x = "Week Ending (Friday)", 
+       y = "Weekly Amount ($)", 
+       color = "",
+       title = "Aggregated weekly comparison of cleaning fees vs payments") +
+  theme_minimal() +
+  theme(legend.position = 'top',
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r service-breakdown,fig.height=3}
+service_summary = daily %>%
+  summarise(
+    STR_Cleanings = sum(units - units_residential, na.rm = TRUE),
+    LTR_Cleanings = sum(units_residential, na.rm = TRUE),
+    STR_Revenue = sum(CleaningFee.STR, na.rm = TRUE),
+    LTR_Revenue = sum(CleaningFee.LTR, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = c("Service_Type", "Metric"), 
+               names_pattern = "(.*)_(.*)", values_to = "Value")
+
+ggplot(service_summary, aes(x = Service_Type, y = Value, fill = Service_Type)) +
+  geom_col(alpha = 0.8) +
+  facet_wrap(~Metric, scales = "free_y") +
+  labs(title = "Comparison of STR (Short-Term Rental) vs LTR (Long-Term Residential) services",
+       x = "Service Type", y = "Value", fill = "Service Type") +
+  theme_minimal() +
+  theme(legend.position = 'none') +
+  scale_fill_manual(values = c("STR" = "#F18F01", "LTR" = "#C73E1D"))
+```
+
+# Findings and Recommendations
+
+## Key Findings
+
+Based on our analysis of the cleaning service operations from June to August 2025:
+
+### Financial Performance
+- **Total cleanings performed**: `r sum(daily$units, na.rm = TRUE)` units
+- **Average daily payment ratio**: `r round(mean(daily$PayCleaner / daily$CleaningFee * 100, na.rm = TRUE), 1)`%
+- **Service distribution**: 
+  - STR cleanings: `r sum(daily$units - daily$units_residential, na.rm = TRUE)` units
+  - LTR cleanings: `r sum(daily$units_residential, na.rm = TRUE)` units
+
+### Operational Insights
+
+1. **Payment Consistency**: The cumulative charts show generally consistent payment patterns, with payments tracking closely to cleaning fees earned.
+
+2. **Service Diversification**: Maria handles both vacation rental turnovers (STR) and residential cleaning services (LTR), providing revenue diversification.
+
+3. **Weekly Patterns**: Friday-ending weekly analysis reveals predictable payment cycles aligned with service delivery.
+
+## Conclusion
+
+The analysis demonstrates a well-managed cleaning service operation with consistent payment practices and diverse service offerings. The reconciliation between cleaning fees and payments shows good financial control, with opportunities for automation and enhanced analytics to improve operational efficiency.

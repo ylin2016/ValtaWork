@@ -1,0 +1,828 @@
+---
+title: "Reconciling Maria's Cleaning Cost"
+author: "Yi Lin"
+date: "2025-09-21"
+knit: (function(input, encoding) {
+  out_dir <-"../";
+  rmarkdown::render(input, 
+  	encoding=encoding,
+   output_dir=file.path(dirname(input), out_dir))})
+output: 
+  html_document:
+    toc: true # table of content true
+    toc_float: true
+    toc_depth: 3  # upto three depths of headings (specified by #, ## and ###)
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning = F,message = F)
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+library(lubridate)
+library(reshape2)
+library(scales)
+library(ggplot2)
+library(knitr)
+library(kableExtra)
+library(ggbreak)
+library(slider)
+library(plotly)
+library(DT)
+library(gridExtra)
+options(knitr.kable.NA = "")
+setwd("/Users/ylin/ValtaWork/Valta_BookingManagement/")
+source('./Codes/DataProcess.R')
+guesty_bookings = import_data() %>% 
+  filter(!Listing %in% c("Bellevue 4551","Bothell 21833","NorthBend 44406",
+                         "Ashford 137","Auburn 29123","Hoquiam 21")) %>%
+  mutate(Listing = ifelse(Listing %in% "Ocean Spray 3","Cottage 3",Listing))
+# Set working directory
+setwd("/Users/ylin/My Drive/Cohost/Data and Reporting/05-Cleaning/MariaCleaningCost")
+```
+
+# Executive Summary
+
+This report analyzes Maria's cleaning service operations for our property management business. The analysis covers the period from January to August 2025, examining both Short-Term Rental (STR) and Residential cleaning services to ensure accurate payment reconciliation and identify operational insights.
+
+It focuses on reconciling key data sources as follows:
+
+-   **Cleaning Income data**: we collect Short-Term Rental cleaning fee from Guesty checkout records and Residential cleaning services.
+-   **Cleaner Payout records**: Individual cleaner payment tracking
+-   **Maria's dispatch cards**: Service scheduling and logistics
+-   **Valta payout records**: Valta payment records from Maria's cleaning payment spreadsheet across multiple months [Maria cleaning payment process.xlsx](https://docs.google.com/spreadsheets/d/1DYndAEzV1V4vLXVcGs8IVoZY-jrIYGuPBpZpH68DDKQ/edit?gid=1399659903#gid=1399659903)
+
+```{r monthly-payout,echo = F,warning = F,message = F}
+# Initialize list to store monthly payout data
+payout = vector('list', 12)
+
+# Read payout data for months 1-10
+for(i in 1:11) {
+  tmp = read.xlsx("../Data/Maria cleaning payment process_copied20250916.xlsx",
+                  sheet = paste0("2025-", i))
+  
+  # Find the starting row for property data
+  idx = grep("Property name", tmp[,1])[1] + 1
+  idx = ifelse(is.na(idx), 1, idx)
+  
+  # Extract relevant payout information
+  indv = tmp[c(idx:(grep("Total payment", tmp[,1])[1]),
+               grep("payout", tmp[,1]), grep("Due", tmp[,1])), 1:5]
+  colnames(indv) = c("Listing", "Cleaning.fee", "Times", "Total", "PayDate")
+  payout[[i]] = indv
+}
+
+cleanerpay = read.xlsx("../Data/Maria cleaning payment process_copied20250916.xlsx",
+                  sheet = "Payment",startRow = 2) %>%
+  mutate(Week = as.Date(`Week.(Fri)`, origin = '1899-12-30'),
+         Day = as.Date(Day, origin = '1899-12-30'),
+         PayDay = as.Date(as.integer(Payment.date), origin = '1899-12-30'),
+         Cleaner = ifelse(Cleaner %in% "Hilda G ","Hilda",Cleaner),
+         Month = substr(Day,1,7))
+```
+
+
+```{r dispatch,echo = F,warning = F,message = F}
+load("DispatchCardData.Rdata")
+months = c("2025-06","2025-07","2025-08","2025-09")
+start_date = '2025-06-01'
+end_date = '2025-09-30'
+data = data %>% filter(Cleaning.Date>=start_date & Cleaning.Date<=end_date)
+cleaner_paids = data %>% group_by(Cleaning.Date,cleaner,Rate) %>% 
+      reframe(Units=n(),nSTR=length(unique(Listing[Type %in% "STR"])),
+              income=sum(cleaner_income,na.rm=T),
+              missing = sum(is.na(cleaner_income)))
+
+property_costs = data %>% group_by(Cleaning.Date,Listing,CleaningIncome,Cleaning.fee) %>% 
+  reframe(ncleaner=n(),cleaningcost=sum(cleaner_paid,na.rm=T),
+          missing = sum(is.na(cleaner_paid)))
+
+car_arrange = data %>% mutate(Car=substr(Car.arrange,1,4)) %>%
+        group_by(Cleaning.Date,Car) %>%
+        reframe(ncleaner = length(unique(cleaner)),
+                #nUnits = length(unique(Listing)),
+                Income=sum(cleaner_income,na.rm=T),
+                Cost=sum(cleaner_paid,na.rm=T))
+```
+
+```{r str-cleanings,echo = F,warning = F,message = F}
+
+# Compile STR cleaning data from multiple months
+# guesty_cleanings = NULL
+# for(k in paste0(20250, 1:9)) {
+#   guesty_cleanings = rbind.fill(guesty_cleanings,
+# read.xlsx("../../01- Compensation Calculation/Cohost's reservation sheets/CleaningSheet_PayOut.xlsx", sheet = k))
+# }
+guesty_cleanings = guesty_bookings %>% filter(checkout_date>='2025-01-01')
+
+# # Clean and standardize STR data
+# guesty_cleanings = guesty_cleanings %>% 
+#       select(Month,Listing,CheckIn,CheckOut,Guests,Nights,
+#               GuestName,Earnings,Cleaner.lead) %>%
+#   mutate(CheckIn = as.Date(CheckIn, origin = '1899-12-30'),
+#          CheckOut = as.Date(CheckOut, origin = '1899-12-30'),
+#          Month = ifelse(Month == 45658, "2025-01", Month)) %>%
+#   filter(Cleaner.lead %in% "Maria")
+
+# Merge with cleaner payment information
+guesty_cleanings = merge(guesty_cleanings, 
+                  cleaning.rate %>% filter(Cleaner.lead %in% "Maria") %>%
+                  select(Listing, Cleaning.fee,Maria.pay),
+                  by = 'Listing') %>%
+                  filter(Term %in% "STR") %>%
+                  mutate(Type="STR",Cleaning.fee=Maria.pay)
+         
+guesty_cleanings = merge(guesty_cleanings,
+        property %>% select(Listing,BEDS,sheets.wt,blanket.wt) %>%
+        filter(!is.na(BEDS)) %>%
+        mutate(Listing = sub("Seattle 906 Lower","Seattle 906",Listing)),
+        by="Listing",all.x=T) %>%
+        mutate(sheets = ifelse(guests > BEDS, BEDS, guests),
+               towelset = guests,
+               blanket = ifelse(!pet_fee %in% c(NA,0), 1, 0),
+               totalweight = sheets * sheets.wt + towelset * 1.7 + blanket*blanket.wt) 
+
+# Clean and standardize LTR data
+LRTs = Residential.cleanings %>% 
+  filter(!is.na(Service.Date)) %>%
+  mutate(Cleaning.Date = Service.Date,
+         Month = substr(Service.Date, 1, 7),
+         Cleaner.lead = "Maria",
+         Cleaning.fee = residential.fee)  # LTR: Maria gets 80% of cleaning fee
+
+# Combine STR and LTR cleaning data
+cleanings_guesty_residential = 
+  rbind.fill(guesty_cleanings %>% mutate(Cleaning.Date=checkout_date), LRTs) 
+
+#residentials = c("Elektra 609","Elektra 1514","Elektra 1314","Elektra 909")
+#allcleanings$Type[allcleanings$Listing %in% residentials] = "Residential"
+
+```
+
+# Monthly Payout Summary
+
+```{r monthly-summary,echo = F,warning = F,message = F}
+## Maria STR
+STR_payout = data.frame(yearmonth = c(paste0('2025-0',1:9),paste0('2025-',10:11)),
+                        STR = unlist(lapply(payout,function(x)
+                        {
+                          y= as.numeric(x[x$Listing %in% 'Total payment','Total'])
+                         ltr = as.numeric(x[grepl('Residential',x$Listing),'Total'])
+                         y = y-ifelse(length(ltr)==0,0,ltr)
+                         })))
+## LTR
+residential_payout = Residential.cleanings %>% 
+  group_by(yearmonth) %>% reframe(Residential = sum(residential.fee,na.rm=T))
+
+## pay cleaners
+paid = cleanerpay %>% group_by(Month) %>% reframe(payCleaner= sum(Rate,na.rm=T))
+
+## Valta payout
+Valtapay = data.frame(yearmonth = c(paste0('2025-0',1:9),paste0('2025-',10:12)),
+                 ValtaPaid = unlist(lapply(payout,function(x)
+                        -sum(as.numeric(x[grep('payout',x$Listing),'Total']),na.rm=T))))
+monthly = merge(STR_payout,residential_payout,by='yearmonth') %>% 
+  mutate(Income = STR+Residential)
+monthly = merge(monthly,paid,by.x='yearmonth',by.y="Month",all.x=T)
+monthly = merge(monthly,Valtapay,by='yearmonth',all=T)
+
+total_row <- monthly %>%
+  summarise(
+    yearmonth = "Total", # Label for the total row
+    across(where(is.numeric), sum,na.rm=T) # Sum all numeric columns
+  )
+
+monthly = rbind(monthly,total_row)
+monthly %>% 
+  kable(digits = 2,caption="") %>%
+  kable_styling(full_width =F, position = "left") %>%
+  row_spec(nrow(monthly), bold = TRUE,hline_after = T)
+```
+
+We create a comprehensive daily summary of Maria's cleaning activities. Note that the payment_ratio = CleanerPayout/CleaningFee.
+
+```{r daily-summary}
+# Generate daily cleaning summary via Guesty records for Maria from June 2025 onwards
+daily = cleanings_guesty_residential %>% 
+  filter(#Cleaner.lead %in% "Maria"& 
+          (Cleaning.Date >= start_date & Cleaning.Date <= end_date)) %>% 
+  group_by(Cleaning.Date) %>%
+  reframe(units = n(),
+          units_residential = sum(Type %in% "Residential"),
+          CleaningIncome = sum(Cleaning.fee, na.rm = T),
+          CleaningFee.STR = sum(Cleaning.fee[!Type %in% "Residential"], na.rm = T),
+          CleaningFee.LTR = sum(residential.fee, na.rm = T),
+          revenue = sum(Cleaning.fee, na.rm = T),
+          totalweight.STR = sum(totalweight,na.rm=T)) 
+
+# Create weekly groupings (Friday-ending weeks)
+fridays = weekdays(daily$Cleaning.Date)
+fridays = daily$Cleaning.Date[fridays %in% "Friday"]
+fridays = c(fridays[1] - 7, fridays, fridays[length(fridays)] + 7)
+daily$Week = cut(daily$Cleaning.Date, breaks = fridays, right = T)
+levels(daily$Week) = fridays[-1]
+
+# Merge with actual payment data
+daily = merge(daily, cleanerpay %>% 
+                group_by(Week, Day) %>% 
+                reframe(CleaningCost = sum(Rate,na.rm=T)),
+              by.x = 'Cleaning.Date', by.y = 'Day', suffix = c("", ".pay")) %>%
+  mutate(yearmonth= substr(Cleaning.Date, 1, 7),
+         CleaningCost_cumsum = unlist(tapply(CleaningCost, yearmonth, cumsum)),
+         CleaningIncome_cumsum = unlist(tapply(CleaningIncome, yearmonth, cumsum)),
+         CleaningFee_STR_cum = unlist(tapply(CleaningFee.STR, yearmonth, cumsum)),
+         CleaningFee_LTR_cum = unlist(tapply(CleaningFee.LTR, yearmonth, cumsum)))
+
+# Calculate summary statistics
+summary_stats = daily %>% 
+    reframe(
+    Days = n(),
+    Total_Units = sum(units, na.rm = TRUE),
+    STR_Units = sum(units - units_residential, na.rm = TRUE),
+    Residential_Units = sum(units_residential, na.rm = TRUE),
+    CleaningIncome = sum(CleaningIncome, na.rm = TRUE),
+    CleaningCost = sum(CleaningCost, na.rm = TRUE),
+    Loads_15lb.STR = sum(totalweight.STR,na.rm=T)/15,
+    delta_income_cost = round(CleaningIncome -CleaningCost,2),
+    Cost_perc = paste0(round(CleaningCost/CleaningIncome*100,2),"%"),
+    AvgCleaningCost_perUnit = round(CleaningCost/Total_Units,2)) %>%
+  mutate(Avg_cleanings_per_day = round(Total_Units/Days))
+```
+
+Monthly comparison: using Maria's payout records, which is adjusted Guesty records. 
+
+Note that laundry weights for short term rental cleaning is calculated as following:
+
+Sheets (variable by bed type) + Towels (1.7 lbs/guest) + Pet blankets (all quilts in the room variable by bed type) 
+
+and assume 1 load = 15 lbs
+
+```{r monthly-breakdown}
+
+monthly_load = daily %>% group_by(yearmonth,Cleaning.Date) %>%
+    reframe(Loads_15lb.STR = sum(totalweight.STR,na.rm=T)/15) %>%
+  group_by(yearmonth) %>%
+  reframe(Loads_total_15lb.STR = round(sum(Loads_15lb.STR)),
+          Load_daily_range.STR = paste0(round(mean(Loads_15lb.STR))," [",
+                                  round(min(Loads_15lb.STR)),", ",
+                                  round(max(Loads_15lb.STR)),"]"))
+
+monthly_guesty_adj_units = NULL
+for(k in 1:9)
+{
+  x=payout[[k]]
+  monthly_guesty_adj_units = rbind(monthly_guesty_adj_units,
+        data.frame(yearmonth=paste0("2025-0",k),
+                x[!is.na(x$Times) & !x$Listing %in% "Total payment",
+                  c("Listing","Times","Cleaning.fee","Total")]))
+ }
+
+monthly_guesty_adj_units$Listing = sub("#|Island ","",monthly_guesty_adj_units$Listing) 
+txt = c("Redmond Gull val 7(Redmond 7579)","Bellevue C19","Bellevue D303","Bellevue E205")
+chg = c("Redmond 7579","Microsoft 14645-C19","Microsoft 14615-D303","Microsoft 14620-E205")
+for(k in 1:length(txt)) 
+  monthly_guesty_adj_units$Listing[monthly_guesty_adj_units$Listing %in% txt[k]]= chg[k]
+monthly_guesty_adj_units$CleaningFee = monthly_guesty_adj_units$Total
+monthly_guesty_adj_units$Type = "STR"
+
+monthly_residential_units = 
+                        Residential.cleanings %>% 
+                              group_by(yearmonth,Listing) %>% 
+                        reframe(Times=n(),CleaningFee=sum(residential.fee,na.rm=T))
+monthly_residential_units$Type = "Residential"
+monthly_summary = merge(monthly_guesty_adj_units,monthly_residential_units,
+                        by=c("yearmonth","Listing"),all=T,suffixes = c(".s",".r")) %>%
+           mutate_at(c( "Times.s","CleaningFee.s","Times.r","CleaningFee.r"),as.numeric) %>%
+  group_by(yearmonth) %>%
+  reframe(
+    Total_Units = sum(Times.s,na.rm=T) +sum(Times.r, na.rm = TRUE),
+    STR_Units = sum(Times.s,na.rm=T),
+    Residential_Units = sum(Times.r,na.rm=T),
+    CleaningIncome = sum(CleaningFee.s, na.rm = TRUE) + sum(CleaningFee.r, na.rm = TRUE))
+
+monthly_summary = merge(monthly_summary,cleanerpay %>% 
+                group_by(Month) %>% 
+                reframe(Days =length(unique(Day)),
+                        CleaningCost= sum(Rate,na.rm=T)),
+                        by.x="yearmonth",by.y="Month") %>%
+    mutate(delta_income_cost = round(CleaningIncome -CleaningCost,2),
+           Cost_perc = paste0(round(CleaningCost/CleaningIncome*100,2),"%"))%>%
+    mutate(Avg_cleanings_per_day = round(Total_Units/Days),
+            AvgCleaningCost_perUnit = round(CleaningCost/Total_Units,2))
+
+monthly_summary = monthly_summary %>% 
+            filter(!yearmonth %in% c("2025-05")) %>%
+            select(yearmonth,Days,Total_Units,STR_Units,Residential_Units,
+                   CleaningIncome,CleaningCost,delta_income_cost,Cost_perc,
+                   Avg_cleanings_per_day,AvgCleaningCost_perUnit)
+monthly_summary= merge(monthly_summary,monthly_load,by='yearmonth')
+
+total_row <- monthly_summary %>%
+  summarise(
+    yearmonth = "Total", # Label for the total row
+    Load_daily_range.STR ="",
+    across(where(is.numeric), sum,na.rm=T) # Sum all numeric columns
+  ) %>%
+mutate(Cost_perc = paste0(round(CleaningCost/CleaningIncome*100,2),"%"),
+       AvgCleaningCost_perUnit = round(CleaningCost/Total_Units,2))
+
+monthly_summary = rbind(monthly_summary,total_row)
+
+outable = cbind(data.frame(Features = colnames(monthly_summary),
+                     t(monthly_summary)))
+colnames(outable) = outable[1,]
+outable = outable[-1,]
+outable[,-1] %>%
+  kable(digits = 2,caption="Key Performance Summary",align = "lrrrrrr") %>%
+  kable_styling(full_width =F, position = "left")
+```
+
+
+```{r plot-data-prep}
+summary_stats_daily = daily %>% group_by(yearmonth) %>%
+    reframe(
+    Days = n(),
+    Total_Units = sum(units, na.rm = TRUE),
+    STR_Units = sum(units - units_residential, na.rm = TRUE),
+    Residential_Units = sum(units_residential, na.rm = TRUE),
+    CleaningIncome = sum(CleaningIncome, na.rm = TRUE),
+    CleaningCost = sum(CleaningCost, na.rm = TRUE),
+    Loads_15lb.STR = sum(totalweight.STR,na.rm=T)/15,
+    delta_income_cost = round(CleaningIncome -CleaningCost,2),
+    Cost_perc = paste0(round(CleaningCost/CleaningIncome*100,2),"%"),
+    AvgCleaningCost_perUnit = round(CleaningCost/Total_Units,2)) %>%
+  mutate(Avg_cleanings_per_day = round(Total_Units/Days))
+# Prepare data for plotting
+dataplot = daily %>% 
+  filter(Cleaning.Date >= start_date & Cleaning.Date <=end_date) %>%
+  select(Cleaning.Date, CleaningIncome, CleaningFee.STR, 
+         CleaningFee.LTR, CleaningCost,
+         CleaningCost_cumsum, CleaningIncome_cumsum, 
+         CleaningFee_STR_cum, CleaningFee_LTR_cum) %>% 
+  pivot_longer(!Cleaning.Date, values_to = 'Amount') %>%
+  mutate(cleaning_date = as.POSIXct(Cleaning.Date),
+         Month = substr(Cleaning.Date, 1, 7)) 
+
+# Weekly summary for plotting
+weekplot = daily %>% 
+  group_by(Week) %>%
+  reframe(CleaningIncome = sum(CleaningIncome),
+          CleaningFee.STR = sum(CleaningFee.STR, na.rm = T),
+          CleaningFee.LTR = sum(CleaningFee.LTR, na.rm = T),
+          CleaningCost = sum(CleaningCost, na.rm = T)) %>%
+  pivot_longer(!Week, values_to = 'Amount') %>%
+  mutate(Month = substr(Week, 1, 7),
+         week = as.POSIXct(Week))
+```
+
+```{r daily-plot,fig.height=7}
+dataplot %>% 
+  filter(cleaning_date <= end_date & name %in% c("CleaningIncome", "CleaningCost")) %>%
+  ggplot(aes(cleaning_date, Amount, group = name, color = name)) +
+  geom_point(size = 1) +
+  geom_line() +
+  facet_wrap(~Month, ncol = 1, scales = "free_x") +
+  labs(x = "Cleaning Date", 
+       y = "Amount ($)", 
+       color = "",
+       title = "Comparison of CleaningIncome (cleaning fee) vs CleaningCost (pay cleaner)") +
+  theme_minimal() +
+  theme(legend.position = 'top')
+```
+
+```{r cumulative-plot, fig.height=7}
+dataplot %>% 
+  filter(cleaning_date <= end_date & 
+         name %in% c("CleaningIncome_cumsum", "CleaningCost_cumsum")) %>%
+  ggplot(aes(cleaning_date, Amount, group = name, color = name)) +
+  geom_point(size = 1) +
+  geom_line() +
+  facet_wrap(~Month, ncol = 1, scales = "free") +
+  labs(x = "Cleaning Date", 
+       y = "Cumulative Amount ($)", 
+       color = "",
+       title = "Cumulative Daily CleaningIncome vs CleaningCost") +
+  theme_minimal() +
+  theme(legend.position = 'top') 
+```
+
+```{r weekly-plot}
+weekplot %>% 
+  filter(week <= end_date & name %in% c("CleaningIncome", "CleaningCost")) %>%
+  ggplot(aes(week, Amount, group = name, color = name)) +
+  geom_point() +
+  geom_line() +	
+  scale_x_datetime(date_breaks = '7 day', labels = date_format("%m-%d")) +
+  labs(x = "Week Ending (Friday)", 
+       y = "Weekly Amount ($)", 
+       color = "",
+       title = "Aggregated weekly comparison of CleaningIncome (cleaning fee) vs CleaningCost (pay cleaner)") +
+  theme_minimal() +
+  theme(legend.position = 'top',
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r service-breakdown,fig.height=3}
+service_summary = daily %>%
+  summarise(
+    STR_Cleanings = sum(units - units_residential, na.rm = TRUE),
+    LTR_Cleanings = sum(units_residential, na.rm = TRUE),
+    STR_Revenue = sum(CleaningFee.STR, na.rm = TRUE),
+    LTR_Revenue = sum(CleaningFee.LTR, na.rm = TRUE)
+  ) %>%
+  pivot_longer(everything(), names_to = c("Service_Type", "Metric"), 
+               names_pattern = "(.*)_(.*)", values_to = "Value")
+
+# ggplot(service_summary, aes(x = Service_Type, y = Value, fill = Service_Type)) +
+#   geom_col(alpha = 0.8) +
+#   facet_wrap(~Metric, scales = "free_y") +
+#   labs(title = "Comparison of STR (Short-Term Rental) vs LTR (Long-Term Residential) services",
+#        x = "Service Type", y = "Value", fill = "Service Type") +
+#   theme_minimal() +
+#   theme(legend.position = 'none') +
+#   scale_fill_manual(values = c("STR" = "#F18F01", "LTR" = "#C73E1D"))
+
+```
+
+# Jun-Sept Analysis
+
+With dispatch data, we are able to compare cleaner pay rate and income, and property cleaning cost and income.
+
+```{r August-comparison}
+#check numbers between paid vs dispatch card numbers
+both = merge(cleanings_guesty_residential %>% 
+               filter(Cleaner.lead %in% "Maria") %>%  
+               select(Cleaning.Date,Listing,Type) %>%
+               mutate(guesty=1),
+            data %>% select(Cleaning.Date,Listing,Type) %>%
+            mutate(dispatch=1),
+          by=c("Cleaning.Date","Listing"),all=T) %>%
+        filter(substr(Cleaning.Date,1,7) %in% months)
+
+monthly_guesty_units = cleanings_guesty_residential %>% 
+     filter(Cleaner.lead %in% "Maria" & substr(Cleaning.Date,1,7) %in% months) %>%  
+     select(Cleaning.Date,Listing,Type) %>%
+     group_by(Listing) %>% 
+      reframe(Times=n(),
+              nSTR=sum(Type %in% "STR"))
+
+monthly_dispatch_units = data %>% 
+  select(Cleaning.Date,Listing,Type) %>% distinct() %>%
+  group_by(Listing) %>% 
+      reframe(Times=n(),
+              nSTR=sum(Type %in% "STR"))
+
+both = merge(monthly_guesty_units,monthly_dispatch_units,
+             by="Listing",all=T,suffixes = c(".g",".d"))
+
+both = merge(monthly_dispatch_units,monthly_guesty_adj_units %>% 
+               filter(yearmonth %in% months) %>% 
+               select(Listing,Times),by="Listing",all=T)
+```
+
+## Cleaner payout
+
+For each cleaner, their incomes from each property are the total income divided by the number of cleaners. The solid line is current pay rate for the cleaner.
+
+#### Cleaning Incomes vs Cost
+```{r,fig.height=10,fig.width=9,results='asis'}
+cleaner_all_sum = cleaner_paids %>% 
+  mutate(yearmonth = format(Cleaning.Date,"%y-%m"),
+         Units = as.integer(Units),
+         unit_income=income/Units) %>% 
+  group_by(cleaner,Rate) %>% 
+  reframe(Total_Units = sum(Units),
+          Income = sum(income),
+          Cost = sum(Rate),
+          delta_Income_Cost = Income-Cost,
+          Income_per_unit=round(Income/Total_Units,2),
+          Cost_per_unit = round(Cost/Total_Units,2)) %>%
+  arrange(delta_Income_Cost)
+
+cleaner_monthly_sum = cleaner_paids %>% 
+  mutate(cleaner = format(Cleaning.Date,"%Y-%m"),
+         Units = as.integer(Units),
+         unit_income=income/Units) %>% 
+  group_by(cleaner) %>% 
+  reframe(Total_Units = sum(Units),
+          Income = sum(income),
+          Cost = sum(Rate),
+          delta_Income_Cost = Income-Cost,
+          Income_per_unit=round(Income/Total_Units,2),
+          Cost_per_unit = round(Cost/Total_Units,2),
+          Rate=round(mean(Rate))) 
+
+total_row <- cleaner_all_sum %>%
+  summarise(
+    cleaner = "Summary", # Label for the total row
+    across(where(is.numeric), sum,na.rm=T) # Sum all numeric columns
+  ) %>% mutate(Rate=round(Rate/nrow(cleaner_all_sum)),
+               Income_per_unit = Income/Total_Units,
+               Cost_per_unit = Cost/Total_Units)
+cleaner_all_sum = rbind.fill(total_row,cleaner_monthly_sum,cleaner_all_sum) 
+
+cleaner_all_sum %>%
+    mutate(delta_Income_Cost = round(delta_Income_Cost,2)) %>%
+     mutate(delta_Income_Cost = cell_spec(delta_Income_Cost, 
+                           color = ifelse(delta_Income_Cost < 0, "red", "green"))) %>%
+    kable(escape = FALSE, format = "html",digits = 2,align = "lrrrrrrr") %>%
+    kable_styling("striped",full_width =F, position = "left") %>%
+    row_spec(1:(length(months)+1),hline=T,bold=T,background = 'lightgrey') 
+
+
+# DT::datatable(options = list(pageLength = nrow(cleaner_all_sum), 
+#                                scrollX = T),rownames = F) %>%
+#   DT::formatCurrency(c("Income","Cost","delta_Income_Cost",
+#                        "Income_per_unit","Cost_per_unit")) %>%
+#   formatStyle(
+#     columns = 0,
+#     fontWeight = styleInterval(9, c('bold', 'weight')))
+
+cleaner_paids %>%
+  filter(Cleaning.Date >= start_date & Cleaning.Date <=end_date) %>%
+  ggplot(aes(Cleaning.Date,income,color=cleaner)) +
+  geom_line()+
+  geom_point()+
+  geom_hline(aes(yintercept = Rate)) +
+  facet_wrap(~cleaner,ncol=2,axes="all_x",scale='free') +
+  labs(x="Cleaning Date",y='Income') +
+  theme(legend.position = "none")
+```
+
+#### Cleaning Incomes vs Cost by Month
+
+```{r}
+cleaner_sum = cleaner_paids %>% 
+  mutate(yearmonth = format(Cleaning.Date,"%Y-%m"),
+         Units = as.integer(Units),
+         unit_income=income/Units) %>% 
+  group_by(yearmonth,cleaner,Rate) %>% 
+  reframe(Total_Units = sum(Units),
+          Income = sum(income),
+          Cost = sum(Rate),
+          delta_Income_Cost = Income-Cost,
+          Income_per_unit=round(Income/Total_Units,2),
+          Cost_per_unit = round(Cost/Total_Units,2)) 
+
+cleaner_sum %>% 
+  DT::datatable(options = list(pageLength = 12, scrollX = T),rownames = F) %>%
+  DT::formatCurrency(c("Income","Cost","delta_Income_Cost",
+                       "Income_per_unit","Cost_per_unit")) %>%
+  formatStyle(7, color = styleInterval(0, c("red", "black")))
+
+
+#  mutate_at(c("Paid","income","avg_income_unit","median_income_unit"),round,2) %>%
+ # kable(digits = 2,caption="Cleaner Incomes vs Pay Rate") %>%
+  #kable_styling(full_width =F, position = "left")
+```
+
+## Property cleaning cost
+
+For each property, I set a cleaning weigth according to its square feet, numbers of bedroom and bathrooms
+
+Standardize STR cleaning rate (estimated_cleaning_cost) as:
+
+-   Base rate: \$70 for studio (no bedroom,1 bathroom, \< 600sqft), otherwise \$85
+-   Additional Bedroom: +\$20 each
+-   Additional Bathroom: +\$15 each
+-   Laundry (per load, wash & dry): +\$12 per bedroom.
+
+Residential cleaning rates use cleaning payout directly. Then, calculate weights for the property depending on the total properties cleaned in that day. For example, yesterday we cleaned unit 1 and unit 2, the total cleaner payout are \$400. The estimated cleaning costs are \$100 and \$150 for unit 1 and 2. Their weigths are 100/(100+150) = 0.4 and 150/(100+150) = 0.6, so cleaning costs are 400x0.4 for unit 1 and 400x0.6 for unit 2.
+
+The solid line is current cleaning rate for the property.
+
+#### Property Cleaning Income vs Cost 
+
+The following table is also available at **[property_all_sum.xlsx](https://docs.google.com/spreadsheets/d/1i3dDEFnpvk1xaj3RczEU2nNs-0eu1UZ5/edit?usp=drive_web&ouid=106182578085098601729&rtpof=true)**. Note that Income_per_cleaning and Cost_per_cleaning for overall and monthly summary are averages among properties.
+
+```{r,fig.height=9,fig.width=9}
+property_all_sum = property_costs %>% 
+  group_by(Listing,Cleaning.fee) %>% 
+  reframe(Times = n(),
+          Income = sum(CleaningIncome),
+          Cost = sum(cleaningcost),
+          delta_Income_Cost = Income-Cost,
+          Income_per_cleaning = Income/Times,
+          Cost_per_cleaning = Cost/Times) %>%
+  arrange(delta_Income_Cost)
+
+property_monthly_sum = property_costs %>%
+  mutate(yearmonth = format(Cleaning.Date,"%Y-%m")) %>% 
+  group_by(yearmonth,Listing) %>% 
+  reframe(Times = n(),
+          Income = sum(CleaningIncome,na.rm=T),
+          Cost = sum(cleaningcost,na.rm=T),
+          delta_Income_Cost = Income-Cost,
+          Income_per_cleaning = Income/Times,
+          Cost_per_cleaning = Cost/Times) %>%
+  group_by(Listing=yearmonth) %>% 
+  reframe(Times = sum(Times,na.rm=T),
+          Income = sum(Income,na.rm=T),
+          Cost = sum(Cost,na.rm=T),
+          delta_Income_Cost = Income-Cost,
+          Income_per_cleaning = mean(Income_per_cleaning,na.rm=T),
+          Cost_per_cleaning = mean(Cost_per_cleaning,na.rm=T))
+
+property_all_sum$Type = ifelse(property_all_sum$Listing %in% Residential.cleanings$Listing, 'Residential',"STR")
+
+idx =property_all_sum$Type %in% "Residential" & 
+  property_all_sum$Listing %in% unique(monthly_guesty_adj_units$Listing)
+property_all_sum$Type[idx] = paste0(property_all_sum$Type[idx] ,"/STR")
+
+total_row <- property_all_sum %>%
+  summarise(
+    Listing = "Overall", 
+    across(c(Times,Income,Cost,delta_Income_Cost), sum,na.rm=T),
+    across(c(Income_per_cleaning,Cost_per_cleaning), mean,na.rm=T)
+  ) 
+
+property_all_sum = rbind.fill(total_row,
+                              property_monthly_sum,
+                              property_all_sum) 
+write.xlsx(property_all_sum,"property_all_sum.xlsx",
+           na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+
+property_all_sum %>%
+    mutate(delta_Income_Cost = round(delta_Income_Cost,2)) %>%
+    mutate(delta_Income_Cost = cell_spec(delta_Income_Cost, 
+            color = ifelse(!is.na(delta_Income_Cost) & delta_Income_Cost < 0,
+            "red", "green"))) %>%
+    kable(escape = FALSE, format = "html",digits = 2,align = "lrrrrrrrr") %>%
+    kable_styling("striped",full_width =F, position = "left") %>%
+    row_spec(1:(length(months)+1),hline=T,bold=T,background = 'lightgrey') 
+
+properties = sort(unique(property_costs$Listing))
+chuck_size = 6 
+split_vector <- split(properties, ceiling(seq_along(properties)/chuck_size))
+
+for(i in split_vector)
+print(property_costs %>% filter(Listing %in% i) %>%
+   filter(Cleaning.Date >= start_date & Cleaning.Date <=end_date) %>%
+ggplot(aes(Cleaning.Date,cleaningcost,color=Listing)) +
+  geom_line()+
+  geom_point()+
+  geom_hline(aes(yintercept = CleaningIncome)) +
+  facet_wrap(~Listing,ncol=2,axes="all_x",scale='free') +
+  labs(x="Cleaning Date",y='Cleaning Cost')+
+  theme(legend.position = "none"))
+
+property_sum = property_costs %>%
+  mutate(yearmonth = format(Cleaning.Date,"%Y-%m")) %>% 
+  group_by(yearmonth,Listing) %>% 
+  reframe(Times = n(),
+          Income = sum(CleaningIncome),
+          Cost = sum(cleaningcost),
+          delta_Income_Cost = Income-Cost,
+          IncomePerClean = Income/Times,
+          CostPerClean = Cost/Times) 
+
+```
+
+#### Property cleaning Income vs Cost by month
+
+```{r,fig.height=9,fig.width=9}
+property_sum %>% 
+  DT::datatable(options = list(pageLength = 12, scrollX = T),rownames = F) %>%
+  DT::formatCurrency(c("Income","Cost","delta_Income_Cost","IncomePerClean",
+                       "CostPerClean")) %>%
+  formatStyle(6, color = styleInterval(0, c("red", "black")))
+#  kable(digits = 2,caption="Property cleaning Incomes vs Cost",) %>%
+#  kable_styling(full_width =F, position = "left")
+```
+
+## Car efficiency
+```{r}
+load("routes-20251023_16pm.Rdata")
+results$nUnits = sapply(results$legs,function(x) nrow(x)-1)
+results = results %>% mutate(drive_miles= round(totalMeters/1000/1.6,1),
+                   drive_hours=round(totalduration/3600,2),
+                   cleaning_date = as.POSIXct(Cleaning.Date)) %>%
+        select(cleaning_date,Car,nUnits,drive_miles,drive_hours) %>%
+        mutate(miles_per_unit = drive_miles/nUnits)
+results = merge(results %>% mutate(Cleaning.Date = as.character(cleaning_date)),
+                car_arrange %>% mutate(Cleaning.Date = as.character(Cleaning.Date)),
+                by=c("Cleaning.Date","Car"),all.x=T)
+```
+
+To measure of travel efficiency:
+
+Travel data are collected based on traffic on 12pm, 2025/10/24 (Tues).
+
+- **Miles per Unit** : the overall average is 
+**`r round(mean(results$drive_miles/results$nUnits),2)`** miles (shown as horizontal dash line in the plots).
+
+- **Miles per Car**: the overall average is **`r round(mean(results$drive_miles),2)`** miles. 
+
+```{r}
+results %>% mutate(yearmonth = substr(Cleaning.Date,1,7)) %>% 
+  group_by(yearmonth) %>%
+  reframe(miles_per_unit_avg = mean(drive_miles/nUnits),
+          miles_per_car_avg = mean(drive_miles),
+          income_per_unit_avg = mean(Income/nUnits)) %>%
+  kable(digits = 2,caption="Travel efficiency by month") %>%
+  kable_styling(full_width =F, position = "left")
+
+avg=mean(results$drive_miles/results$nUnits)
+```
+
+### People per Car
+
+```{r}
+results %>% mutate(yearmonth = substr(Cleaning.Date,1,7)) %>% 
+  group_by(yearmonth,ncleaner) %>% 
+  reframe(nUnits_avg = mean(nUnits),
+    miles_per_unit_avg = mean(miles_per_unit),
+    miles_per_car_avg = mean(drive_miles)) %>%
+  kable(digits = 2,caption="Summary for monthly People per Car") %>%
+  kable_styling(full_width =F, position = "left")
+
+results %>%
+  ggplot(aes(ncleaner,miles_per_unit,group=ncleaner)) +
+  geom_boxplot() +
+  geom_hline(yintercept = avg,linetype=2) +
+  labs(x="People per Car",
+       title="Distribution of mile_per_unit by People per Car") 
+
+results %>% group_by(ncleaner,nUnits) %>% reframe(Times=n()) %>%
+  ggplot(aes(ncleaner,Times,group=ncleaner,fill=as.factor(nUnits))) +
+  geom_bar(stat="identity",position=position_dodge2()) +
+  labs(x="People per Car",fill="nUnits",
+       title="Distribution of number of units cleaned by People per Car") 
+```
+
+
+### Trends over time
+
+Vertical dash lines present **Sunday**; horizontal dash line presents **overall average of mile_per_unit.**
+
+```{r,fig.width=9}
+time_scales = unique(results$cleaning_date)[weekdays(unique(results$cleaning_date)) %in% "Sunday"]
+ 
+results %>%
+  ggplot(aes(cleaning_date,miles_per_unit,color=Car,size=nUnits)) +
+  geom_line(linewidth=1) +
+  geom_point() +
+  geom_hline(yintercept = avg,linetype=2) +
+  geom_vline(xintercept = as.POSIXct(time_scales),linetype=4) +
+  scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d\n(%a)") + 
+  labs(x="",color="") +
+  theme(legend.position = 'top')
+
+daily_results = results %>% group_by(cleaning_date) %>% 
+        reframe(nCar=n(),
+                nUnits=sum(nUnits),drive_miles = sum(drive_miles),
+                drive_hours = sum(drive_hours)) %>%
+        mutate(miles_per_unit = drive_miles/nUnits)
+
+daily_results %>%
+  ggplot(aes(cleaning_date,miles_per_unit,size=nUnits)) +
+  geom_line(linewidth=1,color='salmon') +
+  geom_point(color='salmon')+
+  geom_hline(yintercept = avg,linetype=2) +
+  geom_vline(xintercept = as.POSIXct(time_scales),linetype=4) +
+  scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d\n(%a)") + 
+  labs(x="",color="",title = "mile per unit across cars") +
+  theme(legend.position = 'top')
+
+daily_results %>%
+        mutate(nUnits= nUnits*20) %>%
+  select(cleaning_date,drive_miles,nUnits,nCar) %>%
+  pivot_longer(-c(cleaning_date,nCar),values_to = 'Value') %>%
+  ggplot(aes(cleaning_date,Value,color=name)) +
+  geom_line() +
+  geom_point(aes(size=nCar))+
+  geom_vline(xintercept = as.POSIXct(time_scales),linetype=4) +
+  scale_x_datetime(date_breaks = "7 days", date_labels = "%m/%d\n(%a)") + 
+  scale_y_continuous(name = "drive miles",
+    sec.axis = sec_axis(~./20,name = "# Units") ) +
+  labs(x="",color="",title = "Daily Driving miles vs. # Units") +
+  theme(legend.position = 'top')
+```
+
+
+<!-- # Findings and Recommendations -->
+
+<!-- ## Key Findings -->
+
+<!-- Based on our analysis of the cleaning service operations from June to August 2025: -->
+
+<!-- ### Financial Performance -->
+
+<!-- -   **Total cleanings performed**: `r sum(daily$units, na.rm = TRUE)` units -->
+<!-- -   **Average daily payment ratio**: `r round(mean(daily$PayCleaner / daily$CleaningFee * 100, na.rm = TRUE), 1)`% -->
+<!-- -   **Service distribution**: -->
+<!--     -   STR cleanings: `r sum(daily$units - daily$units_residential, na.rm = TRUE)` units -->
+<!--     -   LTR cleanings: `r sum(daily$units_residential, na.rm = TRUE)` units -->
+
+<!-- ### Operational Insights -->
+
+<!-- 1.  **Payment Consistency**: The cumulative charts show generally consistent payment patterns, with payments tracking closely to cleaning fees earned. -->
+
+<!-- 2.  **Service Diversification**: Maria handles both vacation rental turnovers (STR) and residential cleaning services (LTR), providing revenue diversification. -->
+
+<!-- 3.  **Weekly Patterns**: Friday-ending weekly analysis reveals predictable payment cycles aligned with service delivery. -->
+
+<!-- ## Conclusion -->
+
+<!-- The analysis demonstrates a well-managed cleaning service operation with consistent payment practices and diverse service offerings. The reconciliation between cleaning fees and payments shows good financial control, with opportunities for automation and enhanced analytics to improve operational efficiency. -->

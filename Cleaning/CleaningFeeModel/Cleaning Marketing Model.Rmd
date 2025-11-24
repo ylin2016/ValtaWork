@@ -1,0 +1,190 @@
+---
+title: "Cleaning Fee based on Marketing data"
+author: "Yi Lin"
+date: "2025-10-21"
+knit: (function(input, encoding) {
+  out_dir <-"../";
+  rmarkdown::render(input, 
+  	encoding=encoding,
+   output_dir=file.path(dirname(input), out_dir))})
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(plyr)
+library(dplyr)
+library(openxlsx)
+library(knitr)
+library(kableExtra)
+library(gridExtra)
+library(pdp)
+library(ggplot2)
+library(randomForest) # basic implementation
+library(caret) # an aggregator package for performing many machine learning models
+library(plotly)
+
+setwd("/Users/ylin/My Drive/Cohost/Data and Reporting/05-Cleaning/CleaningFeeModel/")
+load("../Codes/Cleaningfee_MarketingModel.Rdata")
+descriptions <- c(
+  "Sleeps" = "Maximum guest capacity — higher capacity increases laundry, trash, and surface cleaning load.",
+  "Bedrooms" = "Number of bedrooms — more rooms to tidy and more linens to handle.",
+  "Beds" = "Total beds — adds linen work but less impact than full bedrooms.",
+  "Baths" = "Number of bathrooms — major driver due to scrubbing and sanitizing effort.",
+  "Type" = "Type of property — e.g., condo vs. house affects access and complexity.",
+  "avg_rate" = "Average nightly rate — higher-end homes imply more detailed cleaning standards."
+)
+Feature = c("Sleeps","Bedrooms","Beds","Baths","Type","avg_rate")
+
+```
+
+## Key finding
+```{r,echo=F}
+pdp_summary <- data.frame(
+  Feature = c("avg_rate","Sleeps","Baths","Bedrooms"),
+  EffectShape = c(
+    "Increase steadily, rate >$300 costs ~$250–270",
+    "Steep jump occurs around 8–10 guests",
+    "Steady increase, flattens >4",
+    "Steady increase, flattens >6"
+  ),
+  PracticalMeaning = c(
+    "Captures property 'luxury tier' — Cleaning fee scales with property luxury and guest expectations — higher-end listings justify higher cleaning fees",
+    'Once a property accommodates large groups, the cleaning cost rises significantly due to linen volume and space but plateaus after ~10–12 guests',
+    "Each additional bathroom increases cleaning time, but returns diminish beyond a certain point (perhaps due to economies of scale)",
+    "Bedrooms are a consistent driver of cleaning cost — more rooms mean more linens and surfaces to clean."
+  )
+)
+
+# --- Step 2: Render Markdown table in console ---
+kable(pdp_summary, format = "markdown",
+      col.names = c("Feature", "Effect Shape", "Practical Meaning"))
+```
+
+## Operational Insight
+
+Three strong cost dimensions were discovered by the model:
+
+- Quality (Avg Rate) — detail level and expectations.
+
+- Maximum guest capacity (Sleeps) - increases laundry, trash, and surface cleaning load.
+
+- Complexity (Bathrooms, Bedrooms) — extra cleaning zones and linens.
+
+## Cleaning Fee potential factors
+
+We have 268 properties and 6 potential factors are used to train the cleaning fee model. 
+
+For numeric feature, the mean [min, max] is shown in the Summary. For categorical feature, the numbers in each category is presented.
+
+
+```{r,echo=F,message=F}
+sum_cont=apply(marketDat[,setdiff(Feature,"Type")],2,function(x)
+  paste0(round(mean(x),2)," [",round(min(x),2),", ",round(max(x),2),"]"))
+sum_categ = apply(marketDat[,c("Type"),drop=F],2,function(x)
+  {y=table(x); paste0(paste(names(y),collapse = "/ "),": ",paste(unlist(y),collapse = "/"))})
+
+desc = data.frame(Feature,Summary=NA,Description = descriptions[Feature])
+desc[names(sum_cont),'Summary'] = sum_cont
+desc[names(sum_categ),'Summary'] = sum_categ
+rownames(desc) = NULL
+kbl(desc, booktabs = T,caption = "Potential Feature descriptions") %>% 
+  kable_styling(full_width = F) %>% 
+  column_spec(1, bold = T) %>% 
+  column_spec(3, width = "30em")
+```
+
+## Fit Random Forest model
+
+Instead of linear model, I applied random forest model for feature selection to better capture the non-linear trends in the features and find important factors for cleaning fee estimates. The results are shown as  
+
+
+```{r,echo=F,message=F}
+varImpPlot(finalmd)
+```
+
+**%IncMSE** (left panel) measures how much the model’s prediction error increases when a variable is randomly permuted (its values are shuffled). The higher the % increase in Mean Squared Error, the more the model depends on that variable for accuracy.
+
+**IncNodePurity** (right panel) measures how much each variable reduces impurity (variance) across all decision splits in all trees. Larger values mean the variable contributes strongly to splitting data in the forest, though it can be biased toward variables with more unique values (e.g., continuous ones like SqFt).
+
+```{r,echo=F}
+interpretations <- data.frame(
+  Feature = c("avg_rate","Sleeps","Baths","Bedrooms","Beds","Type"),
+  IncMSE=  varImp(finalmd) %>% arrange(desc(Overall)),
+  Importance = c("★★★★★","★★★★☆","★★★☆☆", "★☆☆☆☆","★☆☆☆☆","☆☆☆☆☆"),
+  Explanation = c(
+    "Higher nightly rate signals more upscale properties requiring more detailed cleans and higher presentation standards.",
+    "Maximum guest capacity — slightly increases workload (laundry, trash) but overlaps with size and bedrooms.",
+    "Each additional bathroom adds intensive work (scrubbing, fixtures, floors). A top-tier cost driver after size.",
+    "More bedrooms mean more surfaces, beds, and linens to manage; moderate but consistent impact.",
+    "Each bed adds linen and staging work but less than a full bedroom — minor additional cost.",
+    "Houses vs. condos differ in layout and accessibility no different cleaning efforts.")
+)
+rownames(interpretations)=NULL
+kbl(interpretations, booktabs = T,caption = "Ranked Interpretation of features") %>% 
+  kable_styling(full_width = F) %>% 
+  column_spec(1, bold = T) %>% 
+  column_spec(4, width = "30em")
+```
+
+Next, let us check how the top 5 features influences the predicted cleaning fee while averaging over other features. Partial Dependence plots are: 
+
+```{r,echo=F}
+# PDP for Square Footage
+p2 <- partial(finalmd, pred.var = "Sleeps", train = marketDat)
+p2<-autoplot(p2, train = marketDat,main = "Sleeps", rug = TRUE)
+
+p1 <- partial(finalmd, pred.var = "avg_rate", train = marketDat)
+p1<-autoplot(p1, train = marketDat,main = "avg_rate", rug = TRUE)
+
+p3 <- partial(finalmd, pred.var = "Baths", train = marketDat)
+p3<-autoplot(p3, train = marketDat,main = "Bathrooms", rug = TRUE)
+
+p4 <- partial(finalmd, pred.var = "Bedrooms", train = marketDat)
+p4<-autoplot(p4, train = marketDat,main = "BEDROOMS", rug = TRUE)
+
+p5 <- partial(finalmd, pred.var = "Beds", train = marketDat)
+p5<-autoplot(p5, train = marketDat,main = "BEDS", rug = TRUE)
+
+p6 <- partial(finalmd, pred.var = "Type", train = marketDat,type = "regression")
+p6<-ggplot(p6, aes(x = Type, y = yhat)) +
+  geom_col(width = 0.7) +
+  labs(title = "Type", x = "", y = "Predicted cleaning fee (partial)")
+
+grid.arrange(p1,p2,p3,p4,p5,p6,nrow=2)
+
+```
+
+- **Average Nightly Rate (avg_rate)**: Cleaning fees increase steadily with the average nightly rate. Properties charging higher nightly rates (above ~$300) tend to have much higher cleaning costs (~$250–270 predicted).
+
+Cleaning fee scales with property luxury and guest expectations — higher-end listings justify higher cleaning fees.
+
+- **Sleeps (maximum occupancy)**: A steep jump occurs around 8–10 guests, then levels off.
+
+Once a property accommodates large groups, the cleaning cost rises significantly due to linen volume and space but plateaus after ~10–12 guests.
+
+- **Baths**:Costs rise rapidly up to ~4 bathrooms, then stabilize or slightly drop.
+
+Each additional bathroom increases cleaning time, but returns diminish beyond a certain point (perhaps due to economies of scale).
+
+- **Bedrooms**: A near-linear increase until about 6 bedrooms (~$200 cleaning cost).
+
+Bedrooms are a consistent driver of cleaning cost — more rooms mean more linens and surfaces to clean.
+
+### Predict our property with the market model
+
+```{r,echo=F,warning=F,message=F}
+pred.var = c("Bedrooms","Baths","Sleeps","Type","Beds","avg_rate")
+# newdata = data %>% 
+#   select(Listing,Cleaning.fee,BEDROOMS, BATHROOMS,OCCUPANCY,PropertyType,BEDS,avg_rate)
+# colnames(newdata) = c("Listing","Cleaning.fee",pred.var)
+# newdata$Type = factor(newdata$Type)
+# levels(newdata$Type) = c("apartment","other",'cabin','apartment','other','house','house')
+# newdata$Type = as.character(newdata$Type)
+# newdata$pred <-predict(finalmd,newdata[,pred.var])
+# newdata = newdata %>% mutate(pred = round(pred,2))
+p<-ggplot(newdata,aes(Cleaning.fee,pred)) + geom_point(aes(text = Listing)) + 
+  geom_abline(slope = 1)
+ggplotly(p)
+
+```

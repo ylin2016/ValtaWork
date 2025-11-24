@@ -1,0 +1,386 @@
+---
+title: "OSBR Laundry Cost Analysis"
+author: "Yi Lin"
+date: "2025-09-21"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning = F,message = F)
+# Load required libraries
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+library(lubridate)
+library(reshape2)
+library(scales)
+library(ggplot2)
+library(flextable)
+library(ggbreak)
+library(plotly)
+library(DT)
+# Set working directory
+setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/05-Cleaning/")
+```
+
+```{r data_loading, echo=F,warning = F,message = F}
+# Set file paths (adjust as needed)
+filepath <- "/Users/ylin/Google Drive/My Drive/Cohost/Cohost Cleaner Compensation/"
+
+# Read property data
+property <- read.xlsx(paste0(filepath,'Working/Data/Property_Cohost.xlsx'))
+
+# Read cleaning data with fee calculations
+cleaner <- read.xlsx(paste0(filepath,'Working/Data/Property_Cohost.xlsx'),
+                     sheet='Cleaning') %>%
+  mutate(Cleaning.fee = ifelse(is.na(New.cleaning.fee), 
+                  Current.clg.fee, New.cleaning.fee))
+
+# Read pet fee data
+pets <- read.csv(paste0(filepath,'Working/Data/2025/PetFee_202501-08.csv')) %>%
+  mutate(CheckIn = as.Date(CHECK.IN, "%m/%d/%y"),
+         CheckOut = as.Date(CHECK.OUT, "%m/%d/%y"))
+
+# Read cleaning sheets data
+cleanings = siren_laundry=NULL
+for(k in paste0(20250,1:8))
+{  cleanings = rbind.fill(cleanings,
+   read.xlsx(paste0(filepath,"Cohost's reservation sheets/CleaningSheet_PayOut.xlsx"),
+                    sheet = k))
+   siren_laundry= rbind.fill(siren_laundry,
+       read.xlsx(paste0(filepath,"Cohost's reservation sheets/Cl2024-12gSheet_Siren.xlsx"),
+                 sheet = k) %>%
+      filter(Category %in% "Laundry"))
+}
+
+# Process cleaning data
+cleanings <- cleanings %>% 
+  mutate(CheckIn = as.Date(CheckIn, origin = '1899-12-30'),
+         CheckOut = as.Date(CheckOut, origin = '1899-12-30'),
+         Month = ifelse(Month == 45658, "2025-01", Month))
+
+# Merge all datasets
+cleanings <- merge(cleanings, property %>% 
+            select(Listing, OCCUPANCY, BEDROOMS, BEDS, BATHROOMS, Nqueen, Nfull, Ntwin),
+                  by = 'Listing', all.x = T)
+
+cleanings <- merge(cleanings, cleaner %>% select(Cleaner.lead, Listing, Maria.pay),
+            by = c('Cleaner.lead', 'Listing'), all.x = T)
+
+cleanings <- merge(cleanings, pets %>% 
+           select(LISTING.S.NICKNAME, GUEST.S.NAME, CONFIRMATION.CODE, PET.FEE),
+        by.x = c("Listing", "GuestName"), 
+        by.y = c("LISTING.S.NICKNAME", "GUEST.S.NAME"), all.x = T)
+
+# Filter out problematic records
+cleanings <- cleanings %>% 
+  filter(!(GuestName %in% "Toni Wheeler" & 
+           ((CheckOut %in% "2025-05-05" & CONFIRMATION.CODE %in% 'HM5J29SYTP')|
+            (CheckOut %in% "2025-02-17" & CONFIRMATION.CODE %in% 'HME3CYTJRY'))))
+
+# Calculate laundry requirements
+laundry <- cleanings %>% 
+        mutate(sheets = ifelse(Guests > BEDS, BEDS, Guests),
+               towelset = Guests,
+               blanket = ifelse(!is.na(PET.FEE), 1, 0)) %>%
+        select(Cleaner.lead, Cleaning.fee, Maria.pay,
+               Listing, Month, CheckIn, CheckOut, Guests, OCCUPANCY,
+               BEDS, PET.FEE, Nqueen, Nfull, Ntwin,
+               sheets, towelset, blanket)
+
+# Load laundry weights and calculate final metrics
+osbr_wt <- read.csv('./Data/OSBR_laundry_weights.csv')
+
+osbr_laundry_vol <- laundry %>% filter(grepl("Cottage", Listing)) %>%
+  mutate(sheets.wt = (osbr_wt$Sheets[osbr_wt$Type %in% 'Queen'] * Nqueen +
+                     osbr_wt$Sheets[osbr_wt$Type %in% 'Full'] * Nfull +
+                     osbr_wt$Sheets[osbr_wt$Type %in% 'Twin'] * Ntwin) / BEDS) %>%
+  mutate(totalweight = sheets * sheets.wt + towelset * 1.7 + blanket)
+
+# Create monthly summary
+osbr_monthly_vol <- osbr_laundry_vol %>% group_by(Month) %>%
+          reframe(bookings = n(),
+                  ncheckout = length(unique(CheckOut)),
+                  guests = sum(Guests),
+                  sheets = sum(sheets),
+                  towelset = sum(towelset),
+                  blanket = sum(blanket),
+                  total_weight = sum(totalweight))
+
+# Create daily summary
+osbr_daily_vol = osbr_laundry_vol %>% group_by(Month,CheckOut) %>%
+  reframe(bookings = n(),
+          guests = sum(Guests,na.rm=T),
+          sheets = sum(sheets,na.rm=T),
+          towelset=sum(towelset,na.rm=T),
+          blanket = sum(blanket,na.rm=T),
+          total_weight = sum(totalweight,na.rm=T))
+
+## Siren laundry service
+osbr_laundry_costs = siren_laundry %>%  
+  mutate(laundry.cost = as.numeric(ifelse(!is.na(`Siren's.Fee`),`Siren's.Fee`,`Siren's.fee`)),
+         Date=as.Date(as.integer(Month),origin='1899-12-30')) %>%
+  mutate(Month.update = ifelse(is.na(Date),Month,substr(Date,1,7))) %>%
+  select(Month,Month.update,Date,laundry.cost,Comment)
+
+osbr_monthlty_costs = osbr_laundry_costs %>% group_by(Month.update) %>%
+  reframe(ncleaning=n(),
+          total_laundry_cost=sum(laundry.cost,na.rm=T),
+          avg_laundry_cost = mean(laundry.cost,na.rm=T))
+
+monthly_costs = merge(osbr_monthly_vol,osbr_monthlty_costs, 
+                      by.x="Month",by.y="Month.update") %>% 
+                mutate(cost_per_pound = total_laundry_cost/total_weight,
+                       checkout_clean_ratio = ncheckout/ncleaning)
+
+## August only
+August = merge(osbr_laundry_costs%>% filter(Date>='2025-08-01'),
+               osbr_daily_vol %>% filter(CheckOut>='2025-08-01'),
+               by.x="Date",by.y="CheckOut",all=T)
+August$laundry.cost.lead=c(August$laundry.cost[-1],NA)
+August$cost_per_pound = August$laundry.cost.lead/August$total_weight
+
+```
+
+# Project Purpose
+
+This project analyzes laundry costs for OSBR (likely a vacation rental business) by tracking cleaning expenses, guest occupancy, and laundry weights across different properties. The goal is to understand the relationship between guest stays, laundry requirements, and cleaning costs to optimize pricing and operations.
+
+# Executive Summary
+
+This report analyzes laundry costs for OSBR cottage properties from January to August 2025. The analysis focuses on cost per pound metrics, operational efficiency, and identifies opportunities for cost optimization across different properties, cleaners, and booking patterns.
+
+```{r data_summary, echo=FALSE}
+cat("Dataset Summary:\n")
+cat(paste("- Total bookings:", nrow(osbr_laundry_vol), "\n"))
+cat(paste("- Date range:", min(osbr_laundry_vol$CheckOut, na.rm = TRUE), "to", max(osbr_laundry_vol$CheckOut, na.rm = TRUE), "\n"))
+cat(paste("- Properties analyzed:", length(unique(osbr_laundry_vol$Listing)), "\n"))
+```
+
+---
+
+**Key Findings:**
+```{r, echo=FALSE}
+cat(paste("- Average cost per pound:",round(mean(monthly_costs$cost_per_pound, na.rm = TRUE), 2)))
+cat(paste("- Total revenue analyzed:",format(sum(osbr_laundry_vol$Cleaning.fee, na.rm = TRUE), big.mark = ",")))
+cat(paste("- Total laundry weight processed:",round(sum(osbr_laundry_vol$totalweight, na.rm = TRUE), 1),"lbs"))
+cat(paste("- Number of bookings analyzed:",nrow(osbr_laundry_vol)))
+```
+
+---
+
+## Methodology Notes
+
+- **Cost per Pound Calculation:** Total laundry cost divided by total laundry weight
+- **Laundry Weight Components:** Sheets (variable by bed type) + Towels (1.7 lbs/guest) + Pet blankets (1 lb when applicable)
+- **Outlier Detection:** Using IQR method (1.5 * IQR beyond Q1/Q3)
+- **Efficiency Benchmark:** Median cost per pound used as target performance
+- **Data Period:** January - August 2025 bookings
+
+---
+
+## Summary Statistics
+
+```{r cost_summary, echo=F}
+# Calculate overall cost metrics
+cost_summary <- monthly_costs %>%
+  summarise(
+    total_bookings = sum(bookings),
+    avg_cost_per_pound = mean(cost_per_pound, na.rm = TRUE),
+    median_cost_per_pound = median(cost_per_pound, na.rm = TRUE),
+    min_cost_per_pound = min(cost_per_pound, na.rm = TRUE),
+    max_cost_per_pound = max(cost_per_pound, na.rm = TRUE),
+    std_cost_per_pound = sd(cost_per_pound, na.rm = TRUE),
+    total_weight = sum(total_weight, na.rm = TRUE),
+    total_laundry_cost = sum(total_laundry_cost,na.rm=T)
+  )
+cost_summary = cost_summary %>% t() %>% as.data.frame() 
+cost_summary$Feature = rownames(cost_summary)
+cost_summary$Value = round(cost_summary$V1,2)
+cost_summary%>% select(Feature,Value) %>% flextable() %>% autofit() %>% 
+  set_caption("Overall Cost Per Pound Monthly Statistics")
+```
+
+# Overall Cost Analysis
+
+## Monthly Trends
+
+```{r monthly_analysis, echo=F}
+monthly_costs %>% 
+  select(Month,bookings,ncheckout,ncleaning,checkout_clean_ratio,
+         total_weight,total_laundry_cost,avg_laundry_cost,
+          cost_per_pound) %>%
+  mutate_at(c("checkout_clean_ratio","total_weight","total_laundry_cost",
+  "avg_laundry_cost","cost_per_pound"),round,digit=2) %>%
+flextable() %>% autofit() %>% 
+  set_caption("Monthly Cost summary")
+```
+
+
+```{r cost_distribution, echo=F,fig.height=4}
+# Clean times
+ggplot(monthly_costs, aes(Month,ncleaning)) +
+  geom_bar(stat = 'identity',fill = "skyblue") +
+  geom_text(aes(label = ncleaning), vjust = -0.5) +
+  geom_text(aes(y=ncleaning/2,label = paste0("AvgCost  \n$",round(avg_laundry_cost,2))),  
+            vjust = -0.5, size = 3) +
+  labs(title = "Laundry Frequency",  y = "Laundary Times", x = "") 
+
+# Create histogram of cost per pound
+ggplot(osbr_laundry_costs, aes(Month.update,laundry.cost)) +
+  geom_boxplot() +
+  scale_y_cut(breaks=c(140), which=c(1), scales=c(0.3)) + # cut axis 
+  labs(title = "Distribution of Laundry Cost over time",
+       y = "Laundry Cost ($)", x = "") 
+
+
+```
+
+###  Laundry Volume Distribution
+```{r volume_distribution, echo=F,fig.height=3.5}
+osbr_laundry_vol$Listing = factor(osbr_laundry_vol$Listing,
+               levels=unique(osbr_laundry_vol$Listing)[c(1,5:12,2:4)])
+osbr_sum = osbr_laundry_vol %>% group_by(Month,Listing) %>%
+  reframe(weight = sum(totalweight)) 
+
+osbr_sum %>%
+ggplot(aes(Month,weight,group=Listing,fill=Listing)) +
+  geom_bar(stat='identity') +
+  labs(title = "Laundry weight per Listing", y = "Laundry Weight", x = "") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+osbr_sum %>%
+ggplot(aes(Month,weight,group=Listing,fill=Listing)) +
+  geom_bar(stat='identity', position = "fill") +
+  scale_y_continuous (labels = scales::percent) + 
+  labs(title = "Laundry weight per Listing (percentage)", y = "% Weight", x = "")+
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+```{r,echo=F}
+# Create daily weight
+ggplot(osbr_daily_vol, aes(Month,total_weight)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Daily Laundry Weights",
+       y = "Laundry Weight", x = "")
+
+```
+
+### Temporal Analysis
+
+```{r cost_per_pround, echo=F}
+# Create Trend of cost per pound
+ggplot(monthly_costs, aes(Month,cost_per_pound,group=1)) +
+  geom_point(color = "steelblue", size = 3) +
+  geom_line(color = "steelblue", size = 1) +
+  geom_text(aes(label = paste0("$", round(cost_per_pound, 2))), 
+            vjust = -0.5, size = 3) +
+ labs(title = "Monthly Cost per pround",
+       subtitle = "Cost per Pround = totalweight_per_month / total_laundry_cost_per_month",
+       y = "Cost per Pround ($)", x = "") 
+```
+---
+  
+# Guest Impact Analysis
+  
+## Cost by Guest Count
+  
+```{r guest_analysis, echo=F}
+# Analyze impact of guest count on costs
+guest_impact <- osbr_laundry_vol %>%
+  mutate(guest_category = case_when(
+    Guests <= 2 ~ "1-2 Guests",
+    Guests <= 4 ~ "3-4 Guests",
+    Guests <= 6 ~ "5-6 Guests",
+    TRUE ~ "7+ Guests"
+  )) %>%
+  group_by(guest_category) %>%
+  summarise(
+    bookings = n(),
+    #avg_cost_per_pound = mean(fee_per_pound, na.rm = TRUE),
+    avg_weight = round(mean(totalweight, na.rm = TRUE),2),
+    #avg_cleaning_fee = mean(Cleaning.fee, na.rm = TRUE),
+    .groups = 'drop'
+  )
+
+flextable(guest_impact) %>% autofit() %>% 
+  set_caption("Cost Analysis by Guest Count")
+```
+
+# Outlier Detection and Analysis
+
+## Cost Outliers
+
+```{r outlier_analysis, echo=F}
+# Detect cost outliers using IQR method
+Q1 <- quantile(monthly_costs$cost_per_pound, 0.25, na.rm = TRUE)
+Q3 <- quantile(monthly_costs$cost_per_pound, 0.75, na.rm = TRUE)
+IQR <- Q3 - Q1
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+outliers <- monthly_costs %>%
+  filter(cost_per_pound < lower_bound | cost_per_pound > upper_bound) %>%
+  arrange(desc(cost_per_pound))
+
+cat(paste("Outlier Detection Results:\n"))
+cat(paste("- Normal range: $", round(lower_bound, 2), " - $", round(upper_bound, 2), "\n"))
+cat(paste("- Number of outliers:", nrow(outliers), "(", 
+          round(nrow(outliers)/nrow(osbr_laundry_vol)*100, 1), "% of total bookings)\n"))
+
+if(nrow(outliers) > 0) {
+  datatable(outliers, 
+            caption = "Cost Per Pound Outliers",
+            options = list(pageLength = 10, scrollX = TRUE)) %>%
+    formatRound(columns = c("totalweight", "fee_per_pound"), digits = 2) %>%
+    formatCurrency(columns = "Cleaning.fee", currency = "$")
+}
+```
+
+---
+  
+# Efficiency Benchmarking
+
+## Performance Categories
+  
+```{r efficiency_analysis, echo=F}
+# Create efficiency benchmarks
+target_cost <- median(monthly_costs$cost_per_pound, na.rm = TRUE)
+
+efficiency_analysis <- monthly_costs %>%
+  mutate(
+    efficiency_rating = case_when(
+      cost_per_pound <= target_cost * 0.8 ~ "Highly Efficient",
+      cost_per_pound <= target_cost * 1.2 ~ "Efficient",
+      cost_per_pound <= target_cost * 1.5 ~ "Average",
+      TRUE ~ "Needs Improvement"
+    ),
+    efficiency_rating = factor(efficiency_rating, 
+                               levels = c("Highly Efficient", "Efficient", "Average", "Needs Improvement"))
+  ) %>%
+  count(efficiency_rating, .drop = FALSE) %>%
+  mutate(percentage = round(n/sum(n)*100, 1))
+
+colnames(efficiency_analysis) = c("Efficiency Rating", "#Month", "Percentage (%)")
+cat(paste("Efficiency Benchmark: $", round(target_cost, 2), "per pound (median)\n\n"))
+
+flextable(efficiency_analysis) %>% autofit() %>% 
+  set_caption( "Efficiency Distribution")
+```
+
+```{r efficiency_viz, echo=F, fig.cap="Efficiency Distribution"}
+# Visualize efficiency distribution
+colnames(efficiency_analysis) = c("efficiency_rating", "n", "percentage")
+efficiency_analysis %>%
+  ggplot(aes(x = efficiency_rating, y = percentage, fill = efficiency_rating)) +
+  geom_col(alpha = 0.8) +
+  geom_text(aes(label = paste0(percentage, "%")), vjust = -0.5) +
+  scale_fill_manual(values = c("darkgreen", "lightgreen", "orange", "red")) +
+  labs(title = "Month Efficiency Distribution",
+       x = "Efficiency Rating",
+       y = "Percentage of months") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1))
+```

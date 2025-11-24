@@ -1,0 +1,882 @@
+---
+title: "Short-Term Rental Review Analysis Report"
+author: "Property Management Team"
+date: "`r Sys.Date()`"
+knit: (function(input, encoding) {
+  out_dir <-"../";
+  rmarkdown::render(input, 
+  	encoding=encoding,
+   output_dir=file.path(dirname(input), out_dir))})
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: cosmo
+    highlight: tango
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = F,warning = F,message = F)
+library(plyr)
+library(dplyr)
+library(openxlsx)
+library(lubridate)
+library(ggplot2)
+library(stringr)
+library(tidyr)
+library(knitr)
+library(kableExtra)
+library(jsonlite)
+library(gridExtra)
+library(plotly)
+htmltools::tagList(ggplotly(ggplot()))
+```
+
+```{r load_data, echo=F,warning = F,message = F}
+# Load your data here
+reviews <- read.xlsx("/Users/ylin/My Drive/Cohost/Data and Reporting/06-Reviews/Data/PropertyReviews.xlsx")
+
+load("/Users/ylin/My Drive/Cohost/Data and Reporting/06-Reviews/Data/negative_results.Rdata")
+source("/Users/ylin/My Drive/Cohost/Data and Reporting/06-Reviews/Codes/Function_issue_detection.R")
+
+```
+
+```{r define_functions, echo=FALSE}
+# Function to extract positives from review text
+extract_positives <- function(review_text) {
+  if (is.na(review_text)) return(character(0))
+  review_lower <- tolower(review_text)
+  positives <- c()
+  
+  if (str_detect(review_lower, "view|water|location")) 
+    positives <- c(positives, "Excellent location/views")
+  if (str_detect(review_lower, "clean")) 
+    positives <- c(positives, "Clean property")
+  if (str_detect(review_lower, "responsive|helpful")) 
+    positives <- c(positives, "Responsive host")
+  if (str_detect(review_lower, "cozy|comfortable")) 
+    positives <- c(positives, "Comfortable and cozy")
+  if (str_detect(review_lower, "kitchen|equipped")) 
+    positives <- c(positives, "Well-equipped kitchen")
+  
+  return(positives)
+}
+
+# Function to extract negatives from review text
+extract_negatives <- function(review_text) {
+  if (is.na(review_text)) return(character(0))
+  review_lower <- tolower(review_text)
+  negatives <- c()
+  
+  if (str_detect(review_lower, "lockbox|key")) 
+    negatives <- c(negatives, "Lockbox/check-in issues")
+  if (str_detect(review_lower, "dirty|dust|musty")) 
+    negatives <- c(negatives, "Cleanliness issues")
+  if (str_detect(review_lower, "broken|toilet")) 
+    negatives <- c(negatives, "Broken fixtures")
+  if (str_detect(review_lower, "no ac|noisy")) 
+    negatives <- c(negatives, "AC/noise issues")
+  if (str_detect(review_lower, "couch|furniture")) 
+    negatives <- c(negatives, "Furniture needs improvement")
+  if (str_detect(review_lower, "refund|did not reply")) 
+    negatives <- c(negatives, "Unresolved issues/refund")
+  
+  return(negatives)
+}
+
+extract_negatives_details <- function(property,results)
+{
+  issues <- results$issues_by_property[[property]]
+  negative_detail = NULL
+  if(length(issues)>0)
+  {
+      issue_names <- names(issues)
+      counts <- unlist(issues)
+      sorted_idx <- order(counts, decreasing = TRUE)
+
+      for (idx in sorted_idx) {
+          issue_name <- issue_names[idx]
+          count <- counts[idx]
+          severity <- issue_categories[[issue_name]]$severity
+    
+          negative_detail = c(negative_detail,
+                        sprintf('%s: %d mention(s) [%s]', 
+                                gsub('_', ' ', issue_name), 
+                                count,
+                                paste(rep('★', severity), collapse='')))
+  }}
+  negative_detail
+}
+
+reviews = reviews %>% 
+  mutate(bedroom_cat = ifelse(BEDROOMS < 2, "0-1BR", 
+                           ifelse(BEDROOMS %in% 2, "2BR", "3BR+")))
+```
+
+# Executive Summary
+
+Reviews
+
+- Date range: reviews created between Jan 2023 and Sept 2025
+
+- Listing: currently active listings
+
+
+```{r executive_summary, echo=FALSE, results='asis'}
+property = read.xlsx(paste0('/Users/ylin/Google Drive/My Drive/Cohost/',
+              'Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx')) %>%
+ mutate(Region = ifelse(grepl("Burien",Listing),"Seattle",Region)) 
+
+reviews = reviews %>% filter(!Listing %in% "Keaau 15-1542") %>% 
+  filter(createdAt>='2023-01-01' & 
+           Listing %in% property$Listing[property$Status %in% "Active"])
+
+total_reviews <- nrow(reviews)
+avg_rating <- mean(reviews$Overall, na.rm = TRUE)
+total_properties <- length(unique(reviews$Listing))
+critical_issues <- sum(reviews$Overall <= 2, na.rm = TRUE)
+
+reviews_count = reviews %>% mutate(year = year(createdAt)) %>% 
+  filter(Overall<5 & !Listing %in% "Keaau 15-1542") %>% 
+  group_by(year,Listing) %>% reframe(count=n()) %>%
+  join(property %>% select(Listing, Region)) 
+ 
+cat(sprintf("
+<div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px; margin: 20px 0;'>
+  <table style='width: 100%%; border-collapse: collapse;'>
+    <tr>
+      <td style='width: 25%%; text-align: center; padding: 15px; border: none;'>
+        <div style='font-size: 36px; font-weight: bold; color: #007bff;'>%d</div>
+        <div style='color: #6c757d; font-size: 14px;'>Total Reviews</div>
+      </td>
+      <td style='width: 25%%; text-align: center; padding: 15px; border: none;'>
+        <div style='font-size: 36px; font-weight: bold; color: #28a745;'>%.1f</div>
+        <div style='color: #6c757d; font-size: 14px;'>Avg Rating</div>
+      </td>
+      <td style='width: 25%%; text-align: center; padding: 15px; border: none;'>
+        <div style='font-size: 36px; font-weight: bold; color: #17a2b8;'>%d</div>
+        <div style='color: #6c757d; font-size: 14px;'>Properties</div>
+      </td>
+      <td style='width: 25%%; text-align: center; padding: 15px; border: none;'>
+        <div style='font-size: 36px; font-weight: bold; color: #dc3545;'>%d</div>
+        <div style='color: #6c757d; font-size: 14px;'>Critical Issues</div>
+      </td>
+    </tr>
+  </table>
+</div>", 
+total_reviews, avg_rating, total_properties, critical_issues))
+```
+
+
+```{r, echo=FALSE,fig.height=4,fig.width=5}
+reviews_count %>% 
+    group_by(year,Region) %>%
+  reframe(count=sum(count))%>% 
+  ggplot(aes(year,count, fill=Region)) + 
+  geom_bar(stat="identity",position=position_stack()) + 
+  geom_text(aes(label=count),position = position_stack(vjust = 0.5)) +
+  labs(y="Number of Reviews", title="Rating <5 over time")
+
+```
+ 
+---
+
+# 1. Property-Level Summary {.tabset}
+
+## Overall Rating <5 
+
+```{r, echo=FALSE,fig.height=7,fig.width=8}
+p <- ggplot(reviews_count, aes(x = year, y = Listing, fill = count)) +
+          geom_tile() +
+          scale_fill_gradient(low = "lightblue", high = "darkblue") +
+          theme_minimal() +
+          facet_wrap(~Region,nrow=2,scale="free") +
+          labs(title = "Overall Rating < 5", 
+               x = "", y = "", fill = "# Reviews <5") 
+ggplotly(p)
+```
+
+## Summary Table
+
+```{r property_table, echo=FALSE}
+property_summary <- reviews %>%
+  group_by(Listing, PropertyType, Region) %>%
+  summarise(
+    avg_rating = mean(Overall, na.rm = TRUE),
+    review_count = n(),
+    bedrooms = first(BEDROOMS),
+    .groups = 'drop'
+  ) %>%
+  mutate(bedrooms = ifelse(is.na(bedrooms), "N/A", as.character(bedrooms))) %>%
+  arrange(desc(avg_rating))
+
+property_summary %>%
+  mutate(avg_rating = round(avg_rating, 2)) %>%
+  rename(
+    Property = Listing,
+    Type = PropertyType,
+    Region = Region,
+    `Avg Rating` = avg_rating,
+    `Reviews` = review_count,
+    `Bedrooms` = bedrooms
+  ) %>%
+  kable(format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, background = "#007bff", color = "white")
+```
+
+## Detailed Analysis
+
+Note that star (★) presents issue severity categories in the review evaluations. The more stars, the issue is more sever. They are Critical, High/Medium/Low Priority, and Enhancement.
+
+```{r property_details, echo=FALSE, results='asis'}
+for (i in 1:nrow(property_summary)) {
+  prop <- property_summary[i, ]
+  prop_reviews <- reviews %>% filter(Listing == prop$Listing)
+  
+  # Extract positives and negatives
+  all_reviews <- paste(prop_reviews$Public.Review, collapse = " ")
+  positives <- unique(extract_positives(all_reviews))
+  negatives <- unique(extract_negatives(all_reviews))
+  negatives_detail <- extract_negatives_details(property=prop$Listing,results)
+  
+  cat(sprintf("\n### %s\n\n", prop$Listing))
+  cat(sprintf("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>"))
+  cat(sprintf("<strong>%s</strong> | %s | %s BR<br>", prop$PropertyType, prop$Region, prop$bedrooms))
+  cat(sprintf("<span style='font-size: 24px; color: #007bff; font-weight: bold;'>%.1f</span> ", prop$avg_rating))
+  cat(sprintf("<span style='color: #6c757d;'>(%d reviews)</span>\n\n", prop$review_count))
+  
+  cat("<div style='display: flex; gap: 20px; margin-top: 15px;'>")
+  
+  # Positives
+  cat("<div style='flex: 1;'>")
+  cat("<h4 style='color: #28a745;'>✓ Strengths</h4>")
+  if (length(positives) > 0) {
+    cat("<ul>")
+    for (p in positives) {
+      cat(sprintf("<li>%s</li>", p))
+    }
+    cat("</ul>")
+  } else {
+    cat("<p style='color: #6c757d;'>No specific strengths identified</p>")
+  }
+  cat("</div>")
+  
+  # Negatives
+  cat("<div style='flex: 1;'>")
+  cat("<h4 style='color: #dc3545;'>✗ Issues</h4>")
+  if (length(negatives_detail) > 0) {
+    cat("<ul>")
+    for (n in negatives_detail) {
+      cat(sprintf("<li>%s</li>", n))
+    }
+    cat("</ul>")
+  } else {
+    cat("<p style='color: #6c757d;'>No issues reported</p>")
+  }
+  cat("</div>")
+  
+  cat("</div></div>\n\n")
+}
+```
+
+---
+
+# 2. Common Issues Analysis {.tabset}
+
+## Issue Frequency Chart
+
+```{r issues_chart, echo=FALSE, fig.height=5}
+if (nrow(issue_summary) > 0) {
+  levels_def = issue_summary %>% group_by(severity,category) %>% reframe(n())
+  issue_summary$category = factor(issue_summary$category,levels = rev(levels_def$category))
+    
+  ggplot(issue_summary, aes(x = reorder(issue_type, count), 
+                              y = count,fill=category)) +
+      geom_col() +
+      geom_text(aes(label=count)) +
+      coord_flip() +
+      labs(title = "Common Issues Across Properties", 
+           x = "", y = "Number of Mentions",fill="Severity") +
+      theme_minimal() +
+      theme(
+        plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+        axis.text = element_text(size = 12),
+        axis.title = element_text(size = 12, face = "bold")
+      )
+    
+} else {
+  cat("No significant issues detected in the reviews.")
+}
+
+
+```
+
+## Recommendations
+
+```{r recommendations, echo=FALSE, results='asis'}
+if (nrow(issue_summary) > 0) {
+  for (i in 1:nrow(issue_summary)) {
+    issue <- issue_summary[i, ]
+    cat(sprintf("\n<div style='border-left: 4px solid #ff8c00; padding-left: 15px; margin: 15px 0;'>"))
+    cat(sprintf("<h4>%s</h4>", issue$issue_type))
+    cat(sprintf("<p><strong>Frequency:</strong> %d mention(s)</p>", issue$count))
+    cat(sprintf("<p><strong>Recommendation:</strong> %s</p>", issue$recommended_action))
+    cat("</div>\n\n")
+  }
+}
+```
+
+---
+
+# Heatmap for Rating<5 Counts {.tabset}
+
+## Overall
+
+```{r, echo=FALSE, fig.height=15,fig.width=9}
+heatmap_data <-function(results){
+    counts = NULL
+    for(k in names(results$issues_by_property))
+     { 
+      tmp = unlist(results$issues_by_property[k])
+      if(length(tmp)>0) 
+        {
+          names(tmp) = sub(paste0(k,"."),"",names(tmp),fixed=T)
+          counts = rbind.fill(counts,data.frame(Listing=k,issue=names(tmp),count=tmp))
+      }
+      }
+  counts = counts %>% filter(Listing %in% property$Listing[property$Status %in% "Active"])
+}
+
+heatmaps<- function(counts,titles)
+  {
+    p <- ggplot(counts, aes(x = issue, y = Listing, fill = count)) +
+          geom_tile() +
+          scale_fill_viridis_c(limits = c(1, 25),direction = -1) +
+          #scale_fill_gradient(colours = terrain.colors(10)) +
+    #low = "lightblue", high = "darkblue") +
+          theme_minimal() +
+          labs(title = titles, 
+               x = "", y = "", fill = "# Review") +
+          theme(axis.text.x = element_text(angle = 45, hjust = 1))
+}
+
+#counts<-heatmap_data(results)
+#p<-heatmaps(counts,"Issue Heatmap: Overall rate")
+#ggplotly(p)
+```
+
+```{r, echo=FALSE,fig.height=21,results='asis'}
+counts<-heatmap_data(results_lt5)
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T) %>%
+  filter(!Listing %in% "Keaau 15-1542")
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+## Accuracy 
+
+```{r, echo=FALSE, fig.height=15,results='asis'}
+counts<-heatmap_data(results_accuracy_lt5) %>%
+  filter(!Listing %in% "Keaau 15-1542")
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T)
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+## Check in score
+
+```{r, echo=FALSE,fig.height=15,results='asis'}
+counts<-heatmap_data(results_checkin_lt5)%>%
+  filter(!Listing %in% "Keaau 15-1542")
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T)
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+## Cleaningness
+
+```{r, echo=FALSE, fig.height=15,results='asis'}
+counts<-heatmap_data(results_cleaning_lt5)%>%
+  filter(!Listing %in% "Keaau 15-1542")
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T)
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+## Communication
+
+```{r, echo=FALSE, fig.height=15,results='asis'}
+counts<-heatmap_data(results_communication_lt5)%>%
+  filter(!Listing %in% "Keaau 15-1542")
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T)
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+## Location
+
+```{r, echo=FALSE, fig.height=15,results='asis'}
+counts<-heatmap_data(results_location_lt5)%>%
+  filter(!Listing %in% "Keaau 15-1542")
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T)
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+## Value
+
+```{r, echo=FALSE, fig.height=11,fig.width=9}
+counts<-heatmap_data(results_Value_lt5)%>%
+  filter(!Listing %in% "Keaau 15-1542")
+counts = merge(property %>% select(Listing, Region),
+               counts,by="Listing",all.y=T)
+
+for(k in unique(counts$Region))
+{
+  counts_sub = counts %>% filter(Region %in% k) 
+  
+  categ= counts_sub %>%
+    group_by(issue) %>% reframe(freq=sum(count)) %>%
+    arrange(desc(freq))
+  counts_sub$issue = factor(counts_sub$issue,levels=categ$issue)
+  p<-heatmaps(counts_sub,k)
+  print(htmltools::tagList(ggplotly(p)))
+}
+```
+
+---
+
+# 3. Segment Comparison {.tabset}
+
+## By Property Type
+
+```{r segment_type, echo=FALSE,results='asis'}
+by_type_yr <- reviews %>% mutate(year=year(createdAt)) %>%
+  group_by(year,PropertyType) %>%
+  summarise(
+    nProperty = length(unique(Listing)),
+    avg_rating = mean(Overall, na.rm = TRUE),
+    count = n(),
+    .groups = 'drop'
+  )
+
+by_type <- reviews %>% 
+  group_by(PropertyType) %>%
+  summarise(
+    nProperty = length(unique(Listing)),
+    avg_rating = mean(Overall, na.rm = TRUE),
+    count = n(),
+    .groups = 'drop'
+  )
+
+ggplot(by_type_yr, aes(x = PropertyType, y = count, fill = factor(year))) +
+  geom_bar(stat='identity',position=position_stack()) +
+  geom_text(aes(label = sprintf("%.2f", avg_rating)), position=position_stack(vjust=0.5)) +
+  labs(title = "Average Rating by Property Type", x = "",  
+       y = "# Reviews",fill="Year")
+
+by_type_dist <- reviews %>%
+  filter(!is.na(Overall)) %>% 
+  mutate(rating = ifelse(Overall<=2,"<2",ifelse(Overall<4,"3-4",5))) %>%
+  group_by(PropertyType,rating) %>%
+  reframe(count=n())
+
+by_type_dist = by_type_dist %>% 
+  join(by_type_dist %>% group_by(PropertyType) %>% 
+         reframe(total=sum(count))) %>%
+  mutate(Percentage = count/total)
+ 
+by_type_dist %>% filter(!rating %in% 5) %>% 
+ggplot(aes(x = PropertyType, y = Percentage, fill = rating)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(label = paste0(count,"(",round(Percentage*100,1),"%)")),
+                position = position_stack(vjust = 0.5)) + 
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Non 5 star Ratings by Property Type", 
+       x = "", 
+       y = "% Rating") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+cat("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>")
+
+for(k in unique(reviews$PropertyType))
+  {
+    reviews_by_type = reviews %>% filter(PropertyType %in% k)
+    issue_summary = create_issue_summary_df(reviews_by_type, issue_categories) %>% 
+      arrange(desc(count))
+    top5 = NULL
+    for(i in 1:5)
+     top5 = c(top5, sprintf('%s: %d mention(s) [%s] from %d properties', 
+                                gsub('_', ' ', issue_summary$issue_type[i]), 
+                                issue_summary$count[i],
+                                paste(rep('★', issue_summary$severity[i]), collapse=''),
+                                issue_summary$num_properties[i]))
+    overall_sum = by_type %>% filter(PropertyType %in% k)  
+
+    cat(sprintf("\n### %s\n\n", k))
+    cat(sprintf("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>"))
+    #if(k %in% "Condo") cat(sprintf("%s", k))
+cat(sprintf("<span style='font-size: 24px; color: #007bff; font-weight: bold;'>%.1f</span> ",
+                  overall_sum$avg_rating))
+    cat(sprintf("<span style='color: #6c757d;'>(%d reviews in %d properties)</span>\n\n", overall_sum$count,overall_sum$nProperty))
+    cat("<div style='display: flex; gap: 20px; margin-top: 15px;'>")
+  
+  # top 5 Negatives
+  cat("<div style='flex: 1;'>")
+  cat("<h4 style='color: #dc3545;'>✗ Top 5 Issues</h4>")
+  cat("<ul>")
+  for (n in top5) {
+      cat(sprintf("<li>%s</li>", n))
+    }
+  cat("</ul>")
+  cat("</div>")
+  cat("</div></div>\n\n")
+  }
+  cat("</div>")
+```
+
+## By Region
+
+```{r segment_region, echo=FALSE,results='asis'}
+by_region_yr <- reviews %>% mutate(year=year(createdAt)) %>%
+  group_by(year,Region) %>%
+  summarise(
+    nProperty = length(unique(Listing)),
+    avg_rating = mean(Overall, na.rm = TRUE),
+    count = n(),
+    .groups = 'drop'
+  )
+by_region <- reviews %>% 
+  group_by(Region) %>%
+  summarise(
+    nProperty = length(unique(Listing)),
+    avg_rating = mean(Overall, na.rm = TRUE),
+    count = n(),
+    .groups = 'drop'
+  )
+ggplot(by_region_yr, aes(x = Region, y = count, fill = factor(year))) +
+  geom_bar(stat='identity',position=position_stack()) +
+  geom_text(aes(label = sprintf("%.2f", avg_rating)), position=position_stack(vjust=0.5)) +
+  labs(title = "Average Rating by Region", x = "",  y = "# Reviews",fill="Year")
+
+by_region_dist <- reviews %>%
+  filter(!is.na(Overall)) %>% 
+  mutate(rating = ifelse(Overall<=2,"<2",ifelse(Overall<4,"3-4",5))) %>%
+  group_by(Region,rating) %>%
+  reframe(count=n())
+
+by_region_dist = by_region_dist %>% 
+  join(by_region_dist %>% group_by(Region) %>% 
+         reframe(total=sum(count))) %>%
+  mutate(Percentage = count/total)
+ 
+by_region_dist %>% filter(!rating %in% 5) %>% 
+ggplot(aes(x = Region, y = Percentage, fill = rating)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(label = paste0(count,"(",round(Percentage*100,1),"%)")),
+                position = position_stack(vjust = 0.5)) + 
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Non 5 star Ratings by Region", 
+       x = "", 
+       y = "% Rating") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+cat("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>")
+ for(k in unique(reviews$Region))
+  {
+    reviews_by_type = reviews %>% filter(Region %in% k)
+    issue_summary = create_issue_summary_df(reviews_by_type, issue_categories) %>% 
+      arrange(desc(count))
+    top5 = NULL
+    for(i in 1:5)
+     top5 = c(top5, sprintf('%s: %d mention(s) [%s] from %d properties', 
+                                gsub('_', ' ', issue_summary$issue_type[i]), 
+                                issue_summary$count[i],
+                                paste(rep('★', issue_summary$severity[i]), collapse=''),
+                                issue_summary$num_properties[i]))
+    overall_sum = by_region %>% filter(Region %in% k)  
+
+    cat(sprintf("\n### %s\n\n", k))
+    cat(sprintf("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>"))
+    cat(sprintf("<span style='font-size: 24px; color: #007bff; font-weight: bold;'>%.1f</span> ",
+                  overall_sum$avg_rating))
+    cat(sprintf("<span style='color: #6c757d;'>(%d reviews in %d properties)</span>\n\n", overall_sum$count,overall_sum$nProperty))
+    cat("<div style='display: flex; gap: 20px; margin-top: 15px;'>")
+  
+  # top 5 Negatives
+  cat("<div style='flex: 1;'>")
+  cat("<h4 style='color: #dc3545;'>✗ Top 5 Issues</h4>")
+  cat("<ul>")
+  for (n in top5) {
+      cat(sprintf("<li>%s</li>", n))
+    }
+    cat("</ul>")
+  cat("</div>")
+  cat("</div></div>\n\n")
+ }
+ cat("</div>")
+```
+
+## By Bedrooms
+
+```{r segment_bedrooms, echo=FALSE,results='asis'}
+by_bedrooms <- reviews %>% 
+  group_by(bedroom_cat) %>%
+  summarise(
+    nProperty = length(unique(Listing)),
+    avg_rating = mean(Overall, na.rm = TRUE),
+    count = n(),
+    .groups = 'drop'
+  ) 
+by_bedrooms_yr <- reviews %>% mutate(year=year(createdAt)) %>%
+  group_by(year,bedroom_cat) %>%
+  summarise(
+    nProperty = length(unique(Listing)),
+    avg_rating = mean(Overall, na.rm = TRUE),
+    count = n(),
+    .groups = 'drop'
+  ) 
+
+ggplot(by_bedrooms_yr,aes(x = bedroom_cat, y = count, fill = factor(year))) +
+  geom_bar(stat='identity',position=position_stack()) +
+  geom_text(aes(label = sprintf("%.2f", avg_rating)), position=position_stack(vjust=0.5)) +
+  labs(title = "Average Rating by Number of Bedrooms", x = "",  
+       y = "# Reviews",fill="Year")
+
+by_bedrooms_dist <- reviews %>%
+  filter(!is.na(Overall)) %>% 
+  mutate(rating = ifelse(Overall<=2,"<2",ifelse(Overall<4,"3-4",5))) %>%
+  group_by(bedroom_cat,rating) %>%
+  reframe(count=n())
+
+by_bedrooms_dist = by_bedrooms_dist %>% 
+  join(by_bedrooms_dist %>% group_by(bedroom_cat) %>% 
+         reframe(total=sum(count))) %>%
+  mutate(Percentage = count/total)
+ 
+by_bedrooms_dist %>% filter(!rating %in% 5) %>% 
+ggplot(aes(x = bedroom_cat, y = Percentage, fill = rating)) +
+  geom_bar(stat='identity') + 
+  geom_text(aes(label = paste0(count,"(",round(Percentage*100,1),"%)")),
+                position = position_stack(vjust = 0.5)) + 
+  scale_y_continuous(labels = scales::percent) +
+  labs(title = "Non 5 star Ratings by Number of Bedrooms", 
+       x = "", 
+       y = "% Rating") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 14, face = "bold", hjust = 0.5))
+
+cat("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>")
+for(k in unique(reviews$bedroom_cat))
+  {
+    reviews_by_type = reviews %>% filter(bedroom_cat %in% k)
+    issue_summary = create_issue_summary_df(reviews_by_type, issue_categories) %>% 
+      arrange(desc(count))
+    top5 = NULL
+    for(i in 1:5)
+     top5 = c(top5, sprintf('%s: %d mention(s) [%s] from %d properties', 
+                                gsub('_', ' ', issue_summary$issue_type[i]), 
+                                issue_summary$count[i],
+                                paste(rep('★', issue_summary$severity[i]), collapse=''),
+                                issue_summary$num_properties[i]))
+    overall_sum = by_bedrooms %>% filter(bedroom_cat %in% k)  
+
+    cat(sprintf("\n### %s\n\n", k))
+    cat(sprintf("<div style='background-color: white; border-radius: 8px; padding: 15px; margin: 10px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>"))
+    cat(sprintf("<span style='font-size: 24px; color: #007bff; font-weight: bold;'>%.1f</span> ",
+                  overall_sum$avg_rating))
+    cat(sprintf("<span style='color: #6c757d;'>(%d reviews in %d properties)</span>\n\n", overall_sum$count,overall_sum$nProperty))
+    cat("<div style='display: flex; gap: 20px; margin-top: 15px;'>")
+  
+  # top 5 Negatives
+  cat("<div style='flex: 1;'>")
+  cat("<h4 style='color: #dc3545;'>✗ Top 5 Issues</h4>")
+  cat("<ul>")
+  for (n in top5) {
+      cat(sprintf("<li>%s</li>", n))
+    }
+    cat("</ul>")
+  cat("</div>")
+  cat("</div></div>\n\n")
+}
+  cat("</div>")
+```
+
+<!-- ## Key Insights -->
+
+<!-- <div style='background-color: #f8f9fa; padding: 20px; border-radius: 8px;'> -->
+
+<!-- **Key Findings from Segment Analysis:** -->
+
+<!-- - **Condos** perform consistently well across Seattle waterfront properties -->
+<!-- - **Single-family homes** have fewer reviews but face issues with furnishings and amenities -->
+<!-- - **Seattle properties** leverage waterfront location as their major selling point -->
+<!-- - **Eastside properties** compete on convenience and space -->
+<!-- - **1BR units** need furniture improvements, particularly adding comfortable couches -->
+
+<!-- </div> -->
+
+---
+
+# 4. Critical Issues & Refund Requests
+
+```{r critical_data}
+critical_issues <- reviews %>%
+  filter(Overall <= 2) %>%
+  mutate(RefundRequested = str_detect(tolower(Public.Review), fixed("refund")))
+```
+
+```{r critical_alert, echo=FALSE, results='asis'}
+if (nrow(critical_issues) > 0) {
+  cat(sprintf("<div style='background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;'>"))
+  cat(sprintf("<h3 style='color: #856404; margin-top: 0;'>⚠️ Alert: %d Critical Issue(s) Found</h3>", nrow(critical_issues)))
+  cat("<p>Issues resulting in low ratings or refund requests require immediate attention</p>")
+  cat("</div>\n\n")
+} else {
+  cat("<div style='background-color: #d4edda; border-left: 4px solid #28a745; padding: 15px; margin: 20px 0;'>")
+  cat("<h3 style='color: #155724; margin-top: 0;'>✓ No Critical Issues Found</h3>")
+  cat("<p>Excellent job! All properties are performing well.</p>")
+  cat("</div>\n\n")
+}
+```
+
+## Resolution Summary
+
+```{r resolution_summary, echo=FALSE}
+unresolved <- sum(!is.na(critical_issues$Communication) & critical_issues$Communication <= 2)
+refund_requests <- sum(!is.na(critical_issues$RefundRequested) & critical_issues$RefundRequested)
+
+resolution_df <- data.frame(
+  Metric = c("Total Critical Issues", "Unresolved (No Host Response)", "Refund Requests"),
+  Count = c(nrow(critical_issues), unresolved, refund_requests),
+  Status = c("Total", "Urgent", "Urgent")
+)
+
+resolution_df %>%
+  kable(format = "html", col.names = c("Metric", "Count", "Priority")) %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE) %>%
+  row_spec(0, bold = TRUE, background = "#007bff", color = "white") %>%
+  row_spec(which(resolution_df$Status == "Urgent"), background = "#fff3cd")
+```
+
+---
+
+```{r critical_details, echo=FALSE, results='asis'}
+if (nrow(critical_issues) > 0) {
+  for (i in 1:nrow(critical_issues)) { 
+    issue <- critical_issues[i, ]
+    issue_list = detect_issues(issue, issue_categories)
+ 
+    cat(sprintf("\n<div style='background-color: white; border-left: 4px solid #dc3545; padding: 15px; margin: 15px 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1);'>"))
+    cat(sprintf("<h3>%d. %s</h3>", i, issue$Listing))
+    cat(sprintf("<p><strong>%s</strong> | %s | Rating: <span style='color: #dc3545; font-size: 20px; font-weight: bold;'>%.1f★</span></p>", 
+                issue$PropertyType, issue$Region, issue$Overall))
+    
+    if (!is.na(issue$RefundRequested) && issue$RefundRequested) {
+      cat("<span style='background-color: #dc3545; color: white; padding: 5px 10px; border-radius: 4px; font-weight: bold;'>REFUND REQUESTED</span><br><br>")
+    }
+    
+    cat("<h4>Issue Description:</h4>")
+    cat(sprintf("<div style='background-color: #f8f9fa; padding: 10px; border-radius: 4px;'>%s</div>", issue$Public.Review))
+    
+    cat("<div style='display: flex; gap: 20px; margin-top: 15px;'>")
+    
+    # Problems
+    cat("<div style='flex: 1;'>")
+    cat("<h4>Identified Problems:</h4>")
+    cat("<ul>")
+    negative_detail = unique(unlist(lapply(issue_list,function(x)
+      paste0("<li>",x$issue_type,"</li>"))))
+    for(k in negative_detail) cat(k)
+    cat("</ul>")
+    cat("</div>")
+    cat("</div></div>\n")
+  }
+}
+```
+
+# Appendix: Data Summary
+
+```{r data_summary, echo=FALSE}
+cat("\n**Review Distribution:**\n\n")
+
+rating_dist <- reviews %>%
+  count(Overall) %>%
+  arrange(desc(Overall))
+
+rating_dist %>%
+  mutate(Percentage = sprintf("%.1f%%", n/sum(n)*100)) %>%
+  rename(Rating = Overall, Count = n) %>%
+  kable(format = "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"), full_width = FALSE)
+```

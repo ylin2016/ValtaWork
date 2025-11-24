@@ -1,0 +1,142 @@
+## 10/20/2025: revisit cleaning cost model
+library(plyr)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+source('/Users/ylin/My Drive/Cohost/Data and Reporting/Codes/DataProcess.R')
+bookings = import_data() 
+setwd("/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/")
+
+property <- read.xlsx('./Working/Data/Property_Cohost.xlsx')
+property = property %>% 
+  select(Listing, PropertyType,Region,OCCUPANCY, SqFt, BEDROOMS, BEDS, BATHROOMS) 
+
+# Read cleaning data with fee calculations
+cleaner <- read.xlsx('./Working/Data/Property_Cohost.xlsx',sheet='Cleaning')
+
+data = merge(property,cleaner %>% select(Listing,Group,Cleaner.lead,Cleaning.fee),
+             by="Listing",all=T) %>% 
+  filter(!is.na(Cleaning.fee) & !is.na(SqFt) & !is.na(OCCUPANCY)) %>% 
+  mutate(hottub = ifelse(Listing %in% c("Lilliwaup 28610", "Shelton 310", "Shelton 250", 
+                                        "Hoodsport 26060", "Longbranch 6821", "Poulsbo 3956"),"Yes","No"),
+         PropertyType = ifelse(PropertyType %in% c("Guest suite","Guesthouse"),
+                               "Guesthouse_ADU",PropertyType))
+
+Guests = bookings %>% filter(checkout_date>='2024-01-01' & checkout_date<='2025-09-30') %>%
+  group_by(Listing) %>% reframe(avg_bookings_per_month = n()/21,
+                                avg_rate = mean(AvgDailyRate,na.rm=T),
+                                avg_rate_per_guest= mean(AvgDailyRate/guests,na.rm=T),
+                                avg_guest = mean(guests,na.rm=T),
+                                med_guest = median(guests,na.rm=T))
+
+data = merge(data,Guests,by="Listing",all.x=T) %>% 
+  filter(!(Listing %in%  "Cottages All OSBR"|is.na(avg_bookings_per_month)))
+
+#summary(lm<-lm(Cleaning.fee ~ OCCUPANCY+SqFt+BEDROOMS+BEDS+BATHROOMS+hottub+PropertyType+med_guest+
+#                 avg_bookings_per_month+avg_rate+avg_rate_per_guest,data=data))
+#lm$fitted.values
+#==============================================
+library(rsample)      # data splitting 
+library(randomForest) # basic implementation
+library(ranger)       # a faster implementation of randomForest
+library(caret)        # an aggregator package for performing many machine learning models
+
+set.seed(123)
+data_split <- initial_split(data, prop = .7)
+data_train <- training(data_split)
+data_test  <- testing(data_split)
+
+predictors = data_train[,c("OCCUPANCY","SqFt","BEDROOMS","BEDS","BATHROOMS","hottub",
+                           "PropertyType","med_guest","Region",
+                           "avg_bookings_per_month","avg_rate","avg_rate_per_guest")]
+outcome <- data_train$Cleaning.fee
+
+ctrl <- trainControl(
+  method = "repeatedcv",
+  number = 5,
+  repeats = 3,
+  verboseIter = TRUE
+)
+
+rf_cv <- train(
+  x = predictors,
+  y = outcome,
+  method = "rf",
+  trControl = ctrl,
+  tuneLength = 5,
+  importance = TRUE
+)
+
+print(rf_cv)
+plot(rf_cv)
+
+varImpPlot(rf_cv$finalModel)
+
+pred <- predict(rf_cv, data_test)
+mse <- mean((pred - data_test$Cleaning.fee)^2)
+print(paste("MSE:", round(mse, 2)))
+
+save(rf_cv,data,data_split,file="/Users/ylin/My Drive/Cohost/Data and Reporting/05-Cleaning/CleaningFeeModel/Cleaningfee_RF.Rdata")
+
+library(pdp)
+library(ggplot2)
+
+# PDP for Square Footage
+p1 <- partial(rf_cv, pred.var = "SqFt", train = data)
+autoplot(p1, train = data_train,main = "Partial Dependence: SqFt", rug = TRUE)
+
+# PDP for Bathrooms
+p2 <- partial(rf_model, pred.var = "BATHROOMS", train = data)
+autoplot(p2, train = data_train,main = "Partial Dependence: Bathrooms", rug = TRUE)
+
+# PDP for Average Rate
+p3 <- partial(rf_model, pred.var = "avg_rate", train = data)
+autoplot(p3, train = data_train,main = "Partial Dependence: Avg Rate", rug = TRUE)
+
+p4 <- partial(rf_model, pred.var = "BEDROOMS", train = data)
+autoplot(p4, train = data_train,main = "Partial Dependence: BEDROOMS", rug = TRUE)
+
+p5 <- partial(rf_model, pred.var = "Group", train = data,type = "regression")
+autoplot(p5, train = data_train,main = "Partial Dependence: Group", rug = TRUE)
+ggplot(p5, aes(x = Group, y = yhat)) +
+  geom_col(width = 0.7) +
+  labs(title = "Partial Dependence: Group",
+       x = "Group", y = "Predicted cleaning fee (partial)")
+
+## new property prediction of cleaning cost
+library(plyr)
+library(dplyr)
+library(openxlsx)
+load("Cleaningfee_RF.Rdata")
+laundry.wt = read.xlsx("./Working/Data/Property_Cohost.xlsx",sheet="LaundryWeights")
+newdata=data.frame(Listing="Seattle 206",
+                   PropertyType ="House",
+                   OCCUPANCY=7,
+                   SqFt=1640,
+                   BEDROOMS=4,
+                   BEDS=4,
+                   BATHROOMS=2,
+                   Group="In town",
+                   hottub='No',
+                   med_guest = 4,
+                   avg_bookings_per_month = 3,
+                   avg_rate=c(170,200,220,250),
+                   avg_rate_per_guest = c(170,200,220,250)/4,
+                   Nqueen = 3,
+                   Ntwin=0,
+                   Nfull=2,
+                   Nking =0,
+                   pet_fee=0) %>%
+  mutate(sheets.wt = (laundry.wt$Sheets[laundry.wt$Type %in% 'Queen'] * Nqueen +
+               laundry.wt$Sheets[laundry.wt$Type %in% 'Full'] * Nfull +
+               laundry.wt$Sheets[laundry.wt$Type %in% 'Twin'] * Ntwin) / BEDS,
+          blanket.wt = laundry.wt$quilt[laundry.wt$Type %in% 'Queen'] * Nqueen +
+               laundry.wt$quilt[laundry.wt$Type %in% 'Full'] * Nfull +
+               laundry.wt$quilt[laundry.wt$Type %in% 'Twin'] * Ntwin) %>%
+ mutate(sheets = ifelse(med_guest> BEDS, BEDS, med_guest),
+        towelset = med_guest,
+        blanket = ifelse(!pet_fee %in% c(NA,0), 1, 0),
+        totalweight = sheets * sheets.wt + towelset * 1.7 + blanket*blanket.wt)
+
+
+newdata$pred <- predict(rf_cv, newdata)
