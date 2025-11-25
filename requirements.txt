@@ -10,4 +10,3 @@ matplotlib
 plotly
 =======
 pathlib 
->>>>>>> 7f08ea1 (Add root-level requirements for Streamlit Cloud)
