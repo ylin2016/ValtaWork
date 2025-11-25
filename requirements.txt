@@ -3,7 +3,11 @@ pandas
 numpy
 scikit-learn==1.6.1
 joblib
+<<<<<<< HEAD
 pathlib 
 openpyxl
 matplotlib
 plotly
+=======
+pathlib 
+>>>>>>> 7f08ea1 (Add root-level requirements for Streamlit Cloud)
