@@ -25,7 +25,7 @@ model = load_model()
 
 # MUST match training script
 NUMERIC_FEATURES = [
-    "OCCUPANCY",
+    "MaxGuests",
     "SqFt",
     "BEDROOMS",
     "BEDS",
@@ -72,7 +72,7 @@ col1, col2 = st.columns(2)
 
 with col1:
     occupancy = st.number_input(
-        "Max Guests (OCCUPANCY)",
+        "Max Guests",
         min_value=1,
         value=4,
         step=1,
@@ -129,7 +129,7 @@ with col6:
 # Build input DataFrame
 # ---------------------------
 input_row = {
-    "OCCUPANCY": occupancy,
+    "MaxGuests": occupancy,
     "SqFt": sqft,
     "BEDROOMS": bedrooms,
     "BEDS": beds,
@@ -152,7 +152,7 @@ st.dataframe(input_df)
 # ---------------------------
 if st.button("Estimate Cleaning Fee"):
     try:
-        pred = model.predict(input_df)[0]
+        pred = model.predict(input_df)[0]*1.05  # add 5% buffer
         st.success(f"Estimated Cleaning Fee: **${pred:,.0f}**")
     except Exception as e:
         st.error(f"Prediction error: {e}")
