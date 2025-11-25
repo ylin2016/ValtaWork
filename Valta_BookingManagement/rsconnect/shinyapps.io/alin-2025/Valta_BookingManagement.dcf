@@ -1,0 +1,13 @@
+name: Valta_BookingManagement
+title: Valta_BookingManagement
+username: alin-2025
+account: alin-2025
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 15251001
+bundleId: 10857915
+url: https://alin-2025.shinyapps.io/Valta_BookingManagement/
+version: 1
+asMultiple: FALSE
+asStatic: FALSE
+ignoredFiles: ArchiveData/Guesty_BookingConfirmed_20250822.csv|ArchiveData/Guesty_BookingConfirmed-20250901.csv|Code_Claude.R
