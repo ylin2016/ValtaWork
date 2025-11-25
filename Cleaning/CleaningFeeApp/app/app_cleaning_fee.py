@@ -30,13 +30,13 @@ NUMERIC_FEATURES = [
     "BEDROOMS",
     "BEDS",
     "BATHROOMS",
-    "avg_rate",
 ]
 
 CATEGORICAL_FEATURES = [
     "hottub",
     "PropertyType",
     "Region",
+    "PropertyClass",
 ]
 
 FEATURE_ORDER = NUMERIC_FEATURES + CATEGORICAL_FEATURES
@@ -55,6 +55,7 @@ PROPERTY_TYPE_OPTIONS = ['Apartment', 'House', 'Townhouse', 'Condominium', 'Cabi
        'Bungalow', 'Guesthouse_ADU',
 ]
 
+PROPERTYCLASS_OPTIONS =["Luxury","Middle","Economy"]
 
 # ---------------------------
 # Streamlit UI
@@ -102,16 +103,16 @@ with col2:
         value=2.0,
         step=0.5,
     )
-    avg_rate = st.number_input(
-        "Average Daily Rate (avg_rate)",
-        min_value=0.0,
-        value=200.0,
-        step=10.0,
-    )
+    # avg_rate = st.number_input(
+    #     "Average Daily Rate (avg_rate)",
+    #     min_value=0.0,
+    #     value=200.0,
+    #     step=10.0,
+    # )
 
 st.markdown("---")
 
-col3, col4, col5 = st.columns(3)
+col3, col4, col5 ,col6 = st.columns(4)
 
 with col3:
     hottub = st.selectbox("Hot Tub", ["No", "Yes"])
@@ -122,7 +123,8 @@ with col4:
 with col5:
     region = st.selectbox("Region", REGION_OPTIONS)
 
-
+with col6:
+    proeprtyclass = st.selectbox("PropertyClass", PROPERTYCLASS_OPTIONS)
 # ---------------------------
 # Build input DataFrame
 # ---------------------------
@@ -132,10 +134,11 @@ input_row = {
     "BEDROOMS": bedrooms,
     "BEDS": beds,
     "BATHROOMS": bathrooms,
-    "avg_rate": avg_rate,
+    #"avg_rate": avg_rate,
     "hottub": hottub,
     "PropertyType": property_type,
     "Region": region,
+    "PropertyClass": proeprtyclass,
 }
 
 input_df = pd.DataFrame([[input_row[f] for f in FEATURE_ORDER]], columns=FEATURE_ORDER)
