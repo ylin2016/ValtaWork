@@ -216,6 +216,7 @@ def combine_osbr_beachwood(yearly_table):
 data = import_data()
 excl = {"Bellevue 4551","Bothell 21833","NorthBend 44406","Ashford 137","Auburn 29123","Hoquiam 21"}
 data = data[~data["Listing"].isin(excl)].copy()
+data = data[~((data["booking_source"]=="owner")|(data["accommodation_fare"]==0))].copy()
 data.loc[data["Listing"].eq("Seattle 3617 Origin"), "Listing"] = "Seattle 3617"
 data.loc[data["Listing"].eq("Seattle 906"), "Listing"] = "Seattle 906 Lower"
 idx = (data['checkin_date']>=pd.to_datetime('2023-01-01')) & (data['checkin_date']<=pd.to_datetime('2025-12-31'))
