@@ -65,3 +65,7 @@ htmlcov/
 
 # Ignore local development files
 *.local
+
+#Ignore local folders
+
+Offers/
