@@ -29,6 +29,7 @@ cohost_input = function(){
 }
 confirmed_input = function(fileloc,filemonth){
   confirmed = read.csv(paste0(fileloc,'Guesty_booking_confirmed_',filemonth,'.csv'))
+  confirmed$LISTING.S.NICKNAME[confirmed$LISTING.S.NICKNAME %in% "Seattle 906"] ="Seattle 906 Lower"
   #print(setdiff(cohost$Listing,confirmed$LISTING.S.NICKNAME))
   print("Property missed: ")
   print(setdiff(confirmed$LISTING.S.NICKNAME,cohost$Listing))
@@ -38,6 +39,7 @@ confirmed_input = function(fileloc,filemonth){
 
 cancelled_input = function(fileloc,filemonth){
   cancelled = read.csv(paste0(fileloc,'Guesty_booking_cancelled_',filemonth,'.csv'))
+  cancelled$LISTING.S.NICKNAME[cancelled$LISTING.S.NICKNAME %in% "Seattle 906"] ="Seattle 906 Lower"
   cancelled = format_reservation(cancelled,startdate,enddate)
   cancelled$Earnings[!cancelled$Source %in% 'Airbnb' & !is.na(cancelled$Earnings)] = 0
   print("Property missed: ")
@@ -231,7 +233,8 @@ combine_reservations_trips_backup = function(reservations,trips.all,
     reservations = reservations %>% filter(!Cohost %in% c("Yumiko"))
     reservations
 }
-cohost_sheets = function(reservations,employee){
+cohost_sheets = function(reservations,employee,newemplyee=NA,
+                         emplyee_thisyear){
   output.val = c('Month','Listing','Confirmation.Code','Status','GuestName',
                  'Guests','CheckIn','CheckOut','Nights','Earnings',
                  'CohostPayOut','Backup','Comment')
@@ -245,7 +248,7 @@ cohost_sheets = function(reservations,employee){
       arrange(Listing,CheckIn) 
     CohostName =  paste0(employee$First.Name[employee$Nick.name %in% k],'_',
                          employee$Last.Name[employee$Nick.name %in% k])
-    if(k %in% c())  # new cohost this month
+    if(!is.na(newemplyee) & k %in% newemplyee)  # new cohost this month
     { 
       write.xlsx(list("2025"=temp),paste0(file_loc,CohostName,'.xlsx'),
                  na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
@@ -258,7 +261,7 @@ cohost_sheets = function(reservations,employee){
                CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
       colnames(old)[colnames(old) %in% 'Property'] = 'Listing'
       temp = rbind.fill(temp,old)  
-      if(k %in% c("Bri","VA","Destenit")) ## new this year
+      if(k %in% emplyee_thisyear) ## new this year
       { 
         write.xlsx(list("2025"=temp),paste0(file_loc,CohostName,'.xlsx'),
                    na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
@@ -325,7 +328,7 @@ update_summarysheet = function(sum_cohost,sum_property){
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
   
   sum_cohost= sum_cohost %>% 
-    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA"),NA,
+    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia"),NA,
         ifelse(Cohost %in% "Crystal",length(unique(sum_property$Property[Cohost %in% "Crystal"]))*150,
            ifelse(Cohost %in% "Shaya", 1600,CohostPayOut))))
   sum_cohost_all = rbind.fill(sum_cohost,
