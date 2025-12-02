@@ -157,7 +157,7 @@ def import_data():
     guesty_bf25 = pd.read_csv(filepath+"/Data/Revenue/Guesty_bookings_bf2025.csv", na_values=["", " "])
 
     # 2025 Guesty (exclude specific listings)
-    guesty_2025 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2025-20251121.csv", na_values=["", " "])
+    guesty_2025 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2025-20251201.csv", na_values=["", " "])
 
     guesty_2025 = guesty_2025[~guesty_2025["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
     guesty_2025.columns=guesty_bf25.columns[:-1]
