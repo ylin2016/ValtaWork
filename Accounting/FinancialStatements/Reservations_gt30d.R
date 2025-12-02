@@ -1,8 +1,8 @@
 library(plyr)
 library(dplyr)
 library(openxlsx)
-setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/04-Accounting//")
-data = read.csv("./Data/Guesty_gt30d_reservation-20251002.csv")
+setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/04-Accounting/DeferRevenue/")
+data = read.csv("./Data/Guesty_gt30d_reservation-20251201.csv")
 data$From = as.Date(data$CHECK.IN)
 data$To = as.Date(data$CHECK.OUT)
 
@@ -50,4 +50,4 @@ for(i in 1:nrow(data))
                     ranges)
   res = rbind(res,temp)
 }
-write.csv(res,'Reservation_gt30d_MonthlyPay_20251002.csv',row.names=F,na='')
+write.csv(res,'Reservation_gt30d_MonthlyPay_20251201.csv',row.names=F,na='')
