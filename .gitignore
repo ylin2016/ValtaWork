@@ -3,6 +3,26 @@
 .AppleDouble
 .LSOverride
 
+# Ignore Microsoft Office files
+*.doc
+*.docx
+*.xls
+*.xlsx
+*.xlsm
+*.csv    # remove this if you WANT to track CSVs
+*.ppt
+*.pptx
+
+# Ignore PDFs
+*.pdf
+
+# Ignore images
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+
 # Icon files
 Icon?
 
