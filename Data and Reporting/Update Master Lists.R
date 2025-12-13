@@ -208,3 +208,17 @@ sets = read.xlsx("./Data and Reporting/03-Revenue & Pricing/Analytics/RevenueRep
                  sheet="Listing_Status")
 property = merge(property,sets %>% select(Listing,Set),by="Listing",all.x=T)
 property %>% select(Listing,Set) %>% write.csv("property_temp.csv",row.names=F,na="")
+
+
+## 2025.12.10 add newly modeled cleaning fee 
+
+cleaning = read.xlsx('./Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx',
+                     sheet = "Cleaning")
+cleaning_est = read.xlsx("Data and Reporting/05-Cleaning/CleaningModelApp/data/Cleaning_fee_estimates.xlsx",
+                         startRow = 2)
+cleaning = merge(cleaning,
+                 cleaning_est %>% 
+                   select(Listing,Group Cleaner.lead,New.Guesty.cleaning.fee.to.update,New.Maria.rate.in.2026),
+                 by="Listing",all=T)
+
+write.csv(cleaning,"./Cohost Cleaner Compensation/Working/cleaning.csv",row.names=F,na="")
