@@ -67,3 +67,16 @@ outputs = merge(estimates %>% select(Listing,rnk,New.Guesty.cleaning.fee.to.upda
 
 write.xlsx(outputs,paste0(est.loc,"CleaningModelApp/data/Cleaning_fee_estimates_mariapayout.xlsx"),
            na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+
+## 12/14/2025: extract cleaner payouts for accounting
+tmp = read_sheet(payoutfile, sheet = 'Payment',skip=2)
+tmp = tmp[,1:6]
+colnames(tmp)[6]="Payment.date"
+tmp$PayDate=unlist(sapply(tmp$Payment.date,function(x) 
+  ifelse(is.null(x),NA,as.character(x))),use.names = F)
+
+tmp %>%filter(!is.na(PayDate)) %>% 
+   group_by(PayDate,Cleaner) %>% reframe(Amount=sum(Rate)) %>% 
+   write.csv("/Users/ylin/My Drive/Cohost/Data and Reporting/04-Accounting/Destiny Cleaning LLC/Maria cleaner payout.csv",row.names=F,na="")
+
+
