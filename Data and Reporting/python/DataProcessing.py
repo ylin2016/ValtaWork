@@ -167,7 +167,7 @@ def import_data():
     #manual correct errors:
     confirmed_guesty.loc[confirmed_guesty["CONFIRMATION.CODE"]=="HA-jNbd0Rc","ACCOMMODATION.FARE"]=2235
 
-    confirmed_fmt = format_reservation(confirmed_guesty, "2017-01-01", "2025-12-31")
+    confirmed_fmt = format_reservation(confirmed_guesty, "2017-01-01", "2026-12-31")
     
     # 2023 historicals
     guesty2023 = pd.read_csv(filepath+"/Input_PowerBI/Guesty_PastBooking_airbnb_adj_12312023.csv", na_values=["", " "])
