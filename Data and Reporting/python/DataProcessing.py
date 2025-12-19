@@ -87,12 +87,15 @@ def format_reservation(df, startdate, enddate):
     # Dates
     df["CHECKIN"]  = pd.to_datetime(df["CHECK.IN"].astype(str).str[:10],  errors="coerce")
     df["CHECKOUT"] = pd.to_datetime(df["CHECK.OUT"].astype(str).str[:10], errors="coerce")
-
     if "CONFIRMATION.DATE" in df.columns:
-        conf_date = pd.to_datetime(df["CONFIRMATION.DATE"], errors="coerce")
-        df["BOOKING2CHECKIN"] = (df["CHECKIN"] - conf_date).dt.days
+        df["CONFIRMED.DATE"] = pd.to_datetime(df["CONFIRMATION.DATE"].astype(str).str[:10], errors="coerce")
+        df["LEAD.TIME"] = np.where(df["CONFIRMED.DATE"].isna(),np.nan,
+                                    np.where(df["CHECKIN"] == df["CONFIRMED.DATE"],0,
+                                        (df["CHECKIN"] - df["CONFIRMED.DATE"]).dt.days))
     else:
-        df["BOOKING2CHECKIN"] = np.nan
+        df["LEAD.TIME"] = np.nan
+
+    df["LEAD.TIME"] = np.where(df["LEAD.TIME"] < 0, np.nan, df["LEAD.TIME"])
 
     # Filter by check-in window
     df = df[(df["CHECKIN"] >= pd.to_datetime(startdate)) & (df["CHECKIN"] <= pd.to_datetime(enddate))].copy()
@@ -113,7 +116,8 @@ def format_reservation(df, startdate, enddate):
     needed = [
         "LISTING.S.NICKNAME","CONFIRMATION.CODE","NUMBER.OF.GUESTS","NUMBER.OF.ADULTS",
         "NUMBER.OF.CHILDREN","NUMBER.OF.INFANTS","CHECKIN","CHECKOUT","NUMBER.OF.NIGHTS",
-        "EARNINGS","SOURCE","CLEANING.FEE","PET.FEE","ACCOMMODATION.FARE","PLATFORM","BOOKING2CHECKIN"
+        "EARNINGS","SOURCE","CLEANING.FEE","PET.FEE","ACCOMMODATION.FARE","PLATFORM","LEAD.TIME",
+        "CONFIRMED.DATE"
     ]
     df = ensure_cols(df, needed)
     df = df[needed].copy()
@@ -134,7 +138,8 @@ def format_reservation(df, startdate, enddate):
         "PET.FEE":            "pet_fee",
         "ACCOMMODATION.FARE": "accommodation_fare",
         "PLATFORM":           "booking_platform",
-        "BOOKING2CHECKIN":    "booking2checkin"
+        "LEAD.TIME":          "lead_time",
+        "CONFIRMED.DATE":     "confirmation_date",
     })
 
     # Derived fields
@@ -145,7 +150,7 @@ def format_reservation(df, startdate, enddate):
     df["DailyListingPrice"] = df["earnings"] / df["nights"]  # includes cleaning
     df["AvgDailyRate"]      = df["accommodation_fare"]/ df["nights"]
     df["total_revenue"]     = df["earnings"]
-    df["month"]             = pd.to_datetime(df["checkin_date"]).dt.strftime("%Y-%m")
+    df["yearmonth"]             = pd.to_datetime(df["checkin_date"]).dt.strftime("%Y-%m")
     df["checkin_date_plot"] = pd.to_datetime(df["checkin_date"])
     return df
 
@@ -286,6 +291,7 @@ def import_data():
     # Combine
     data = pd.concat([data, LRT_diff_fmt], ignore_index=True, sort=False)
     data.loc[data["Listing"]=="Seattle 906","Listing"] = "Seattle 906 Lower" 
+    data["lead_time"] = np.where(data["lead_time"]<0, np.nan,data["lead_time"])
     data = data.copy()
     return data
 
