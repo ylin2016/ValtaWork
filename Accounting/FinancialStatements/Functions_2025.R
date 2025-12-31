@@ -26,10 +26,10 @@ payouts_fun <- function(payouts){
   paytable = payouts %>% 
           mutate(Month = sapply(Date,function(x) 
                                sub(".","-",ifelse(x %in% '2025.1','2025.10',x),fixed=T)),
-                 Property = ifelse(Property %in% 'Seattle 906',"Seattle 906 Lower",Property))%>%
+                 Listing = ifelse(Property %in% 'Seattle 906',"Seattle 906 Lower",Property))%>%
           filter(!(is.na(Payout)&is.na(MCR))) %>% 
     mutate(Property = trimws(sub("Lower|Upper|ADU|Main|middle|top","",Property))) %>%
-    group_by(Property,Month,Type) %>%
+    group_by(Property,Listing,Month,Type) %>%
     reframe(Payout = sum(Payout,na.rm=T),MCR = sum(MCR,na.rm=T))
   
   reports = paytable %>% group_by(Property) %>% 
@@ -71,10 +71,14 @@ input_financial <- function(property_listing){
 }
 vrp_sum <- function(data){
   tmp = data
+  if(!"Owner.Cleaning.Fee" %in% colnames(tmp)) tmp$Owner.Cleaning.Fee=0
+  if(!"Taxes.paid.to.Owner" %in% colnames(tmp)) tmp$Taxes.paid.to.Owner=0
   rental=NULL
   rental = tmp %>% filter(is.na(description)) %>% 
-    select(Group.By.Month,description,amount=Net.Rental.Revenue) %>%
+    mutate(amount =Net.Rental.Revenue+Owner.Cleaning.Fee+Taxes.paid.to.Owner) %>%
+    select(Group.By.Month,description,amount) %>%
     mutate(description = "Gross Rent")
+  
   Others = NULL
   Others = tmp %>% filter(!is.na(description)) %>% 
     select(description,Group.By.Month,amount) %>%
@@ -109,7 +113,11 @@ group_vrp <-function(all.vrp,YearSel){
 }
 
 manual_month <-function(t0,timelab,listing,filename){
-  dat = read.xlsx(filename,sheet=t0)
+  if(t0=='2024.12'){
+    dat = read.xlsx(filename24)
+  }else{
+    dat = read.xlsx(filename,sheet=t0)
+  }
   if(sum(!is.na(dat[,1]))==0) dat = dat[,-1]
   colnames(dat)[1] = "Item"
   colnames(dat)[-1] = dat[(grep("Rent",dat$Item)[1]-1),-1]
@@ -123,13 +131,15 @@ manual_month <-function(t0,timelab,listing,filename){
   
   expense.idx = max(grep("Total Rent",dat$Item),grep("Total for Rent",dat$Item))+1
   expense = dat[expense.idx:nrow(dat),] %>% 
-    filter(grepl('Total',Item) & !grepl("Total Customer",Item)) %>%
+    filter(grepl('Total|Utilities',Item) & !grepl("Total Customer",Item)) %>%
     mutate(Item = sub(" - ADU| - main","",sub('for','',sub("Total","",Item)))) %>%
-    group_by(description=trimws(Item)) %>%
-    reframe(Listing=listing,amount = -(sum(as.numeric(Paid.Amount),na.rm=T))) %>%
-    mutate(description = ifelse(description %in% c("Other Expense","Other expense"),
-                                "Other Owner Expense",description))
-  
+    mutate(Item = trimws(Item),
+           description = ifelse(Item %in% c("Other Expenses","Other expense","Other Expenses"),
+                                "Other Owner Expense",
+                         ifelse(Item %in% "Utilities Reimbursement","Utilities",Item))) %>% 
+    group_by(description) %>%
+    reframe(Listing=listing,amount = -(sum(as.numeric(Paid.Amount),na.rm=T))) 
+
   output = data.frame(Group.By.Month = timelab,rbind(rents,expense))  
 }
 manual_qt <-function(t0,timelab,listing,filename){
@@ -139,19 +149,24 @@ manual_qt <-function(t0,timelab,listing,filename){
   colnames(dat)[-1] = gsub(" ",".",dat[(grep("Rent",dat$Item)[1]-1),-1])
   colnames(dat)[is.na(colnames(dat))] ="NAs"
   dat = dat[((grep("Rent",dat$Item)[1]):nrow(dat)),]
-  rents = dat %>% filter(grepl("Rent for All Units ",Name)) %>% 
-    mutate(Item = "Gross Rent",Listing = listing) %>% 
+  rents = dat %>% filter(grepl("Rent for",Name)) %>% 
+    mutate(Item = "Gross Rent",Listing = listing) 
+  if(sum(grepl("Rent for All Unit",rents$Name))>0) 
+    rents = rents[grep("Rent for All Unit",rents$Name,fixed=T),]
+  rents = rents %>% 
     group_by(description=Item,Listing) %>%
     reframe(amount=sum(as.numeric(Amount.to.Valta,na.rm=T)))
   
-  expense.idx = grep("Rent for All Units ",dat$Name)+1
+  expense.idx = max(grep("Rent for",dat$Name),grep("Rent for All Unit",dat$Name,fixed=T))+1
   expense = dat[expense.idx:nrow(dat),] %>% fill(Item) %>%
-    filter(Date %in% "Total") %>%
+    filter(Date %in% "Total" & !grepl("Expenses for 4",Name)) %>%
     filter(!(grepl("Expenses for All Units",Name) | grepl("Balance",Item))) %>%
-    group_by(description=trimws(Item)) %>%
+    mutate( Item = trimws(Item),
+            description = ifelse(Item %in% c("Other Expenses","Other Expense","Other expense"),
+                                "Other Owner Expense",Item)) %>%
+    group_by(description) %>%
     reframe(Listing=listing,amount = -(sum(as.numeric(Amount.to.Valta),na.rm=T))) %>%
-    mutate(description = ifelse(description %in% c("Other Expense","Other expense"),
-                                "Other Owner Expense",description))
+    filter(amount!=0)
   output = data.frame(Group.By.Month = t0,rbind(rents,expense))  
 }
 
@@ -172,13 +187,15 @@ manual_month_beachwood <-function(t0,timelab,listing,filename,filename24){
     reframe(amount=sum(as.numeric(Paid.Amount,na.rm=T)))
   
   expense = dat[(rent.idx+1):nrow(dat),] %>% fill(Item) %>% 
-    filter(!is.na(Paid.Amount) & Item %in% c("Repairs","Supplies","Cleaning",
+    mutate(Item = ifelse(Date %in% "Utilities Reimbursment","Utilities",Item)) %>%
+    filter(!is.na(Paid.Amount) & (Item %in% c("Repairs","Supplies","Cleaning",
         "Maintenance","Utilities","Management fee","Management Fee",
-        "Other expense")) %>% 
-    group_by(description=Item) %>% 
+        "Other Expenses","Other expense") | Date %in% "Utilities Reimbursment")) %>% 
+    mutate(description = ifelse(Item %in% c("Other Expenses","Other Expense","Other expense"),
+                                "Other Owner Expense",Item)) %>%
+    group_by(description) %>% 
     reframe(amount=-(round(sum(as.numeric(Paid.Amount)),2))) %>%
-    mutate(description = ifelse(description %in% c("Other expense"),
-                                "Other Owner Expense",description))
+    filter(amount !=0)
   
   output = data.frame(Group.By.Month = timelab,rbind(rents,expense))  
 }
@@ -200,17 +217,19 @@ manual_month_osbr <-function(t0,timelab,listing,filename,filename24){
                       grep("Rent for 10 units",dat$Name)),
                       grep("Rent for 12 units",dat$Name))+1
   expense = dat[expense.idx:nrow(dat),] %>% fill(Item) %>% 
+    mutate(Item = ifelse(Date %in% "Utilities Reimbursment","Utilities",Item)) %>%
     filter(Item %in% c("Repairs","Supplies","Cleaning","Management fee",
-                       "Management Fee","Maintenance","Utilities",
-                       "Other expense")) %>% 
-    filter(Date %in% "Total" & is.na(Name)) %>% 
-    group_by(Item) %>%
+           "Management Fee","Maintenance","Utilities","Other expense",
+           "Other owner Expenses")|Date %in% "Utilities Reimbursment") %>% 
+    filter(Date %in% c("Total","Utilities Reimbursment") & 
+             !Name %in% c("Expenses for 10 units + site","Expenses for 12 units + site")) %>% 
+    mutate(description = ifelse(Item %in% c("Other Expenses","Other owner Expenses",
+          "Other Expense","Other expense"), "Other Owner Expense",Item)) %>%
+    group_by(description) %>%
     reframe(amount = -sum(as.numeric(Amount.to.Valta),na.rm=T)) %>%
     mutate(Listing = "OSBR") %>%
     filter(amount>0) %>%
-    select(description=Item,Listing,amount) %>%
-    mutate(description = ifelse(description %in% c("Other expense"),
-                                "Other Owner Expense",description))
+    select(description,Listing,amount) 
   
   output = data.frame(Group.By.Month = timelab,rbind(rents,expense))  
 }
