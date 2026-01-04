@@ -12,9 +12,9 @@ format_reservation <- function(data,startdate,enddate){
   data = data[data$CheckOut>=startdate & data$CheckOut<=enddate,]
   data$Earnings = as.numeric(ifelse(!is.na(data$TOTAL.PAID) & data$TOTAL.PAID>0,data$TOTAL.PAID,data$TOTAL.PAYOUT))
   data = data[,c('LISTING.S.NICKNAME','CONFIRMATION.CODE','STATUS','GUEST.S.NAME','NUMBER.OF.GUESTS',
-                 'CheckIn','CheckOut','NUMBER.OF.NIGHTS','Earnings','SOURCE')]
+                 'CheckIn','CheckOut','NUMBER.OF.NIGHTS','Earnings','SOURCE',"CLEANING.FARE")]
   colnames(data) = c('Listing','Confirmation.Code','Status','GuestName','Guests','CheckIn',
-                     'CheckOut','Nights','Earnings','Source')
+                     'CheckOut','Nights','Earnings','Source','Cleaning.fare')
   data$Comment = data$Cleaner = data$CohostPayOut = data$Backup = NA
   data
 }
@@ -215,7 +215,7 @@ add_backups = function(fileloc, filemonth,reservations,employee) ## add backup
       reservations$Backup[idx] = backup$Nick.name.backup[i]
     }
   }
-  reservations_backup
+  list(reservations_backup=reservations_backup,reservations=reservations)
 }
 
 combine_reservations_trips_backup = function(reservations,trips.all,
@@ -329,7 +329,8 @@ update_summarysheet = function(sum_cohost,sum_property){
   
   sum_cohost= sum_cohost %>% 
     mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia"),NA,
-        ifelse(Cohost %in% "Crystal",length(unique(sum_property$Property[Cohost %in% "Crystal"]))*150,
+        ifelse(Cohost %in% "Crystal",
+               length(unique(sum_property$Property[sum_property$Cohost %in% "Crystal"]))*150,
            ifelse(Cohost %in% "Shaya", 1600,CohostPayOut))))
   sum_cohost_all = rbind.fill(sum_cohost,
                               sum_coh %>% filter(!Month %in% substr(enddate,1,7))) %>%
@@ -390,19 +391,25 @@ cleaning_sheets_summary = function(reservations,enddate){
   write.xlsx(cleaning.output,filename,firstActiveRow = 2,withFilter = T)
   cleaning.output
 }
-cleaner_sheets = function(cleansheet){
+cleaner_sheets = function(cleansheet,newcleaner=NULL){
   cleaning_loc = "./Cohost's reservation sheets/CleaningSheet_"
   for(k in unique(cleansheet$Cleaner.lead))
   {
     print(k)
-    old2024 = read.xlsx(paste0(cleaning_loc,k,'.xlsx'),sheet='2024')
-    old = read.xlsx(paste0(cleaning_loc,k,'.xlsx'),sheet='2025')
-    old = old %>% filter(!Month %in% substr(enddate,1,7)) %>%
-      mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
-             CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
-    temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% select(all_of(colnames(old)))
-    temp = rbind.fill(temp,old)
-    write.xlsx(list("2025"=temp,"2024"=old2024),paste0(cleaning_loc,k,'.xlsx'),
-               na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+    if(!is.null(newcleaner) & k %in% newcleaner){
+      temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% select(all_of(colnames(old)))
+      write.xlsx(list("2025"=temp),paste0(cleaning_loc,k,'.xlsx'),
+                 na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+    }else{
+      old2024 = read.xlsx(paste0(cleaning_loc,k,'.xlsx'),sheet='2024')
+      old = read.xlsx(paste0(cleaning_loc,k,'.xlsx'),sheet='2025')
+      old = old %>% filter(!Month %in% substr(enddate,1,7)) %>%
+        mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
+               CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
+      temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% select(all_of(colnames(old)))
+      temp = rbind.fill(temp,old)
+      write.xlsx(list("2025"=temp,"2024"=old2024),paste0(cleaning_loc,k,'.xlsx'),
+                 na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+    }
   }
 }
