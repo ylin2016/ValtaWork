@@ -231,7 +231,7 @@ def combine_osbr_beachwood(yearly_table):
 def yearrecords(monthly: pd.DataFrame, year_sel: str) -> pd.DataFrame:
     values_to_wide = ["Revenue","ADR","OccRt"]
     idx =(monthly["Year"]==year_sel) & (monthly["Type"]=="STR") & (monthly["Status"]=="Active")
-    monthly_tab = monthly_tab.loc[idx,["Listing","Month",*values_to_wide]]
+    monthly_tab = monthly.loc[idx,["Listing","Month",*values_to_wide]]
     cols = [f"{m}_{year_sel}" for m in values_to_wide]
     monthly_tab.columns = ["Listing","Month",*cols]
     return monthly_tab
