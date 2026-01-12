@@ -1,6 +1,14 @@
 # -------------------------------------------------------------------
 # Small helpers
 # -------------------------------------------------------------------
+import re
+import numpy as np
+import pandas as pd
+from datetime import date, datetime
+from calendar import monthrange
+from IPython.display import display,HTML
+import seaborn as sns
+import matplotlib.pyplot as plt
 
 def days_in_month_from_yearmonth(ym: str) -> int:
     """ym like '2024-05' -> number of days in that month."""
@@ -179,8 +187,8 @@ def cal_occupancy(data):
 
 def yoy_delta(monthly_tab, monthly, prev: str, curr: str) -> pd.DataFrame:
     """Calculate year-over-year delta and percentage change between two years.""" 
-    delta_col = f"RevenueIncr{prev}{curr}"
-    perc_col = f"RevenueIncr{prev}{curr}_perc"
+    delta_col = f"Rev_delta_{curr}"
+    perc_col = f"Rev_delta_{curr}_perc"
     monthly_tab = monthly_tab.assign(
         **{
             delta_col: monthly_tab[f"Revenue_{curr}"] - monthly_tab[f"Revenue_{prev}"],
@@ -190,8 +198,8 @@ def yoy_delta(monthly_tab, monthly, prev: str, curr: str) -> pd.DataFrame:
     # Append YoY increments back to monthly (per yearmonth)
     rev_incr = monthly_tab[["Listing","Month",delta_col,perc_col]].copy()
     rev_incr["yearmonth"] = curr + "-" + rev_incr["Month"].astype(str)
-    rev_incr = rev_incr.rename(columns={delta_col: "RevenueIncr", perc_col: "RevenueIncr_perc"})
-    rev_incr = rev_incr[["Listing","yearmonth","RevenueIncr","RevenueIncr_perc"]]
+    rev_incr = rev_incr.rename(columns={delta_col: "Rev_delta", perc_col: "Rev_delta_perc"})
+    rev_incr = rev_incr[["Listing","yearmonth","Rev_delta","Rev_delta_perc"]]
     return monthly_tab,rev_incr
 
 def combine_osbr_beachwood(yearly_table):
@@ -219,3 +227,11 @@ def combine_osbr_beachwood(yearly_table):
     yearly_table = pd.concat([yearly_table[~mask], osbr_summary,beachwood_summary], 
                              ignore_index=True)
     return yearly_table
+
+def yearrecords(monthly: pd.DataFrame, year_sel: str) -> pd.DataFrame:
+    values_to_wide = ["Revenue","ADR","OccRt"]
+    idx =(monthly["Year"]==year_sel) & (monthly["Type"]=="STR") & (monthly["Status"]=="Active")
+    monthly_tab = monthly_tab.loc[idx,["Listing","Month",*values_to_wide]]
+    cols = [f"{m}_{year_sel}" for m in values_to_wide]
+    monthly_tab.columns = ["Listing","Month",*cols]
+    return monthly_tab
