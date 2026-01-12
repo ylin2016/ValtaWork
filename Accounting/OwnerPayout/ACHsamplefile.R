@@ -43,7 +43,7 @@ owners = read.xlsx("/Users/ylin/My Drive/Cohost/Data and Reporting/04-Accounting
 
 ## Owner Payout Checking....
 payout= read.xlsx("/Users/ylin/My Drive/Cohost/Accounting/01-OwnerPayout Records.xlsx",
-                   sheet="2025.11") 
+                   sheet="2025.12") 
 colnames(payout)[c(3,10)] =c("Listing","PayoutName_old")
 payout= payout %>% filter(!is.na(Date) & !is.na(Payout)) 
 
@@ -59,24 +59,35 @@ both = merge(owners %>% select(Property,Name),
 
 ## ======================================================
 ### create ACH file
+paydate ="20260112"
 payouts = merge(payout %>% select(Listing,Property,Owner,Payout,MCR,PayoutName),
                 owners %>% select(Property,Rounting, account.number),
                 by="Property",all.x=T) %>%
           mutate(filename = ifelse(is.na(Rounting),NA,
-                   paste("20251215",Property,PayoutName,"Owner Payout",Payout,sep="_"))) 
-payouts[payouts$Listing %in% "Seattle 1512" & payouts$Owner %in% "Valta Homes LLC",
-        c("PayoutName","Rounting","account.number","filename")] = c("Valta Homes LLC",rep(NA,3))
+                   paste(paydate,Property,PayoutName,"Owner Payout",Payout,sep="_"))) 
+#payouts[payouts$Listing %in% "Seattle 1512" & payouts$Owner %in% "Valta Homes LLC",
+#        c("PayoutName","Rounting","account.number","filename")] = c("Valta Homes LLC",rep(NA,3))
 
-sum(payouts$Payout) #155694.57/58
-
+sum(payouts$Payout) #154556.68/58
+sum(payouts$Payout[payouts$Owner %in% 'Valta Homes'])
+sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) #153018.3
 
 samplefile = read.csv("./Data/ACHsamplefile.csv")
 
-BatchId = 2511 
+BatchId = 2601 
+
+remains = payouts %>% 
+  filter((Owner %in% "Valta Homes"|
+             Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
+                            "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
 achfile = payouts %>% 
+          filter(!(Owner %in% "Valta Homes"|
+                     Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
+                            "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
+achfile = achfile %>%
   mutate(Indicator=6,
          TrxnCode=22,
-         IDnumber=1:nrow(payouts)) %>%
+         IDnumber=1:nrow(achfile)) %>%
   mutate(TrxnID=BatchId*100+IDnumber, ## TrxnID is yearmonth+ranks
          X.1=NA,Payout = Payout*100) %>%
   #mutate(Payout=100) %>%
@@ -88,16 +99,13 @@ achfile = payouts %>%
 colnames(achfile) = colnames(samplefile)
 removed = achfile %>% filter(is.na(File.creation.date))
 achfile = achfile %>% filter(!is.na(File.creation.date))
-#55 , sophia and ValtaHome is not $1126.02
+#58 , sophia and ValtaHome is not $1126.02
 
 
-#2025.11 batch payout:
-achfile = achfile %>% filter(grepl("Jing Zhou",X) & !grepl("Huijing Tao|D303",X))
-
-samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","251209")
+samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","260107")
 samplefile$X[4] = BatchId # need to change every time
 samplefile$Total.trxn[2] = samplefile$X.1[4] = nrow(achfile)
-samplefile$Total.ACH.credit.amount[4] = "251216" # delivery date
+samplefile$Total.ACH.credit.amount[4] = "260113" # delivery date
 # money come in
 samplefile$Total.ACH.debit.amount[2] = 0
 samplefile$Batch.Count[4] = 0
@@ -107,18 +115,16 @@ samplefile$Total.ACH.debit.amount[4] = sum(achfile$Total.trxn)
 samplefile$Total.ACH.credit.amount[2] = sum(achfile$Total.trxn)
 
 output = rbind(samplefile[1:5,],achfile)
-View(output)
-write.table(output,"./ACHfile_filled/ACHfile_filled_202511.csv",
+View(output) #148,073.88
+write.table(output,"./ACHfile_filled/ACHfile_filled_202601.csv",
             row=F,col = F,na="",sep=",",quo=F)
 
-write.table(output,"./ACHfile_filled/ACHfile_filled_202511_jing.csv",
-            row=F,col = F,na="",sep=",",quo=F)
 ## add Trxn in Batch to csv
 
 
 ## check payments
 
-reports = read.csv('./Report/Owner_payout_202511.csv')
+reports = read.csv('./Report/Owner_payout_202601.csv')
 reports$Amount = as.numeric(gsub("[$, ]","",reports$Amount))
 
 both = merge(payout,reports[,c("Recipient","Amount")],by.x="Payout",by.y="Amount",all.x=T)
