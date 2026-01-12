@@ -162,11 +162,16 @@ def import_data():
     guesty_bf25 = pd.read_csv(filepath+"/Data/Revenue/Guesty_bookings_bf2025.csv", na_values=["", " "])
 
     # 2025 Guesty (exclude specific listings)
-    guesty_2025 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2025-20260104.csv", na_values=["", " "])
-
+    guesty_2025 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2025.csv", na_values=["", " "])
     guesty_2025 = guesty_2025[~guesty_2025["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
     guesty_2025.columns=np.delete(guesty_bf25.columns,[-7,-1])
-    confirmed_guesty = pd.concat([guesty_2025, guesty_bf25], ignore_index=True, sort=False)
+
+    # 2026 Guesty (exclude specific listings)
+    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-20260111.csv", na_values=["", " "])
+    guesty_2026 = guesty_2026[~guesty_2026["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
+    guesty_2026.columns=np.delete(guesty_bf25.columns,[-7,-1])
+
+    confirmed_guesty = pd.concat([guesty_2025, guesty_bf25,guesty_2026], ignore_index=True, sort=False)
     confirmed_guesty = confirmed_guesty.merge(platforms, on="SOURCE", how="left")
     
     #manual correct errors:
