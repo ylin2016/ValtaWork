@@ -35,7 +35,7 @@ def reorder_property(name):
 
 # Owner payouts (2024–2025)
 # -------------------------------------------------------------------
-def build_owner_payout(endmonth):
+def build_owner_payout_2425():
     pay_path = "/Users/ylin/My Drive/Cohost/Accounting/"
     y25 = [f"2025.{m:02d}" for m in range(1, 13)]
     y24 = [s.replace("2025","2024") for s in y25]
@@ -131,10 +131,10 @@ def build_owner_payout(endmonth):
     # OwnerPayout wide by Year
     owner_dist = (
         owner_payout.groupby(["Year", "Property"], as_index=False)["Payout"].sum()
-        .rename(columns={"Payout": "OwnserDist"})
+        .rename(columns={"Payout": "OwnerDist"})
     )
-    owner_dist = owner_dist[(owner_dist["OwnserDist"] > 0) & owner_dist["Property"].notna()]
-    owner_wide = owner_dist.pivot(index="Property", columns="Year", values="OwnserDist").reset_index()
+    owner_dist = owner_dist[(owner_dist["OwnerDist"] > 0) & owner_dist["Property"].notna()]
+    owner_wide = owner_dist.pivot(index="Property", columns="Year", values="OwnerDist").reset_index()
     owner_wide.columns.name = None  # remove MultiIndex name
     owner_wide = owner_wide.rename(columns={"Property": "Listing"})
 
@@ -145,6 +145,65 @@ def build_owner_payout(endmonth):
     mask = owner_wide["Listing"].str.contains(r"Beachwood", case=False, na=False)
     owner_wide = pd.concat([owner_wide[~mask],comb_sum],ignore_index=True)
     return owner_payout, owner_wide
+
+def build_owner_payout_26(endmonth):
+    pay_path = "/Users/ylin/My Drive/Cohost/Accounting/"
+    y26 = [f"2026.{m:02d}" for m in range(1, 13)]
+    owner_payout = []
+    # 2026 payouts: sheets from 2025.12 and 2026.11 in "01-OwnerPayout Records.xlsx"\\
+    for k in ["2025.12", *y26[:endmonth]]:  
+        tmp = pd.read_excel(pay_path+"/* Monthly/0-Process & Template/01-OwnerPayout Records.xlsx", sheet_name=k)
+        idx = tmp["Date"].notna() & (tmp['Payout'].notna()) & (tmp['Payout'] != 0)
+        tmp["Date"]=k
+        take = tmp.loc[idx, ["Date","Property","Payout"]].copy()
+        owner_payout.append(take)
+
+    owner_payout = pd.DataFrame(pd.concat(owner_payout, ignore_index=True))
+    owner_payout["PayPeriod"] = owner_payout["Date"]
+    owner_payout["Date"]= pd.to_datetime(owner_payout["Date"],format="%Y.%m") + pd.DateOffset(months=1)
+    owner_payout["Date"]= owner_payout["Date"].astype(str).str[:7]
+
+    owner_payout["Year"] = owner_payout["Date"].str[:4]
+    owner_payout["yearmonth"] = owner_payout["Date"]#.str.replace(".", "-")
+    owner_payout["Property"] = owner_payout["Property"].str.strip()
+    owner_payout["Property"] = owner_payout["Property"].str.replace(r"\bIsland\s+", "", regex=True)
+    owner_payout["Property"] = owner_payout["Property"].str.replace("SeaTac", "Seatac", regex=False)
+
+    # Collapse to (Property, yearmonth)
+    owner_payout = (
+        owner_payout.loc[~owner_payout["Property"].astype(str).str.contains("Total", na=False)]
+        .dropna(subset=["Payout"])
+    )
+    owner_payout = owner_payout[owner_payout["Payout"] != 0]
+    owner_payout = (
+        owner_payout.groupby(["Property", "yearmonth"], as_index=False)
+        .agg(Year=("yearmonth", lambda s: s.iloc[0][:4]), Payout=("Payout", "sum"))
+        .drop_duplicates()
+    )
+    #HTML(owner_payout.to_html())
+
+    # owner_payout.loc[owner_payout["Property"]=="Bellevue 14507","Property"] = "Bellevue 14507U3"
+    # owner_payout["Payout"]= pd.to_numeric(owner_payout["Payout"], errors="coerce")
+
+    # OwnerPayout wide by Year
+    owner_dist = (
+        owner_payout.groupby(["Year", "Property"], as_index=False)["Payout"].sum()
+        .rename(columns={"Payout": "OwnerDist"})
+    )
+    owner_dist = owner_dist[(owner_dist["OwnerDist"] > 0) & owner_dist["Property"].notna()]
+    owner_wide = owner_dist.pivot(index="Property", columns="Year", values="OwnerDist").reset_index()
+    owner_wide.columns.name = None  # remove MultiIndex name
+    owner_wide.columns = ["Listing","OwnerDist"]
+    owner_wide["OwnerDist"] = pd.to_numeric(owner_wide["OwnerDist"], errors="coerce")
+    
+    #comb_data = owner_wide[owner_wide["Listing"].str.contains(r"Beachwood", case=False, na=False)]
+    #num_col1 = comb_data.select_dtypes(include=[np.number]).columns
+    #comb_sum = comb_data.assign(Listing="Beachwood").groupby("Listing", as_index=False).agg({c:"sum" for c in num_col1})
+
+    #ask = owner_wide["Listing"].str.contains(r"Beachwood", case=False, na=False)
+    #owner_wide = pd.concat([owner_wide[~mask],comb_sum],ignore_index=True)
+    return owner_payout, owner_wide
+   
 
 def cal_occupancy(data):
     """Calculate occupancy rate by listing and yearmonth."""
