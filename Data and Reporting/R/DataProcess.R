@@ -56,7 +56,7 @@
 #   filter(CheckIn<'2025-01-01')
 # write.csv(Confirmed_bf25,"./Data/Guesty_bookings_bf2025.csv",row.names=F,na='')
 
-setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/")
+#setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/")
 
 ## Intergrate Data
 property_input = function(){
