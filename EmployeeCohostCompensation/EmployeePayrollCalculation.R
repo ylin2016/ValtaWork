@@ -7,44 +7,7 @@ library(lubridate)
 library(ggplot2)
 library(scales)
 setwd("/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/")
-#source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
-source("/Users/ylin/ValtaWork/Data and Reporting/DataProcess.R")
-filemonth = "2025-12"
-startdate = paste0(filemonth,"-01")
-enddate = as.character(as.Date(startdate)+days_in_month(startdate)-1)
-print(startdate)
-print(enddate)
-cohost = read.xlsx('./Data/Property_Cohost.xlsx')
-confirmed = read.csv("../../Data and Reporting/Data/Revenue/Guesty_bookings_2025.csv",
-                           na.strings = c(NA,""," "))
-confirmed = format_reservation(confirmed,startdate,enddate) 
-
-property = cohost
-
-## check Cottage checkin and out 
-
-osbr = confirmed %>% filter(grepl("Cottage",Listing) &
-                         CheckOut >= startdate &  CheckOut <= enddate)
-
-checkins = osbr.assign(Date = osbr["checkin_date"].astype(str).str[:10]).groupby("Date", as_index=False).agg(checkin=("checkin_date",'count'))
-checkouts = osbr.assign(Date = osbr["checkout_date"].astype(str).str[:10]).groupby("Date", as_index=False).agg(checkout=("checkout_date",'count'))
-counts = checkins.merge(checkouts,on="Date",how="outer")
-df = pd.DataFrame({
-  "Date": pd.date_range("2025-12-01", "2025-12-31")
-})
-counts["Date"] = pd.to_datetime(counts["Date"])
-counts = df.merge(counts,on="Date",how="left")
-counts["Weekday"] = counts["Date"].dt.day_name()
-counts["Date"] = counts["Date"].astype(str).str[:10]
-counts = counts[["Date", "Weekday", "checkin", "checkout"]]
-osbr_sum = (osbr[["Listing","checkout_date"]].merge(property[["Listing","BEDROOMS"]],on="Listing",how="left")
-            .pivot_table(index="checkout_date", columns="BEDROOMS",aggfunc="size",fill_value=0).reset_index()
-            .assign(Date=lambda x: x["checkout_date"].astype(str).str[:10]))
-
-counts = counts.merge(osbr_sum, on="Date", how="left").drop(columns=["checkout_date"])
-counts.to_excel("/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/Brittany_booking_counts.xlsx", index=False,na_rep="")
-
-
+source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
 
 ## Check reviews :
 
@@ -96,7 +59,7 @@ ratings[[k]] %>% filter(Overall %in% c(5,10) ) %>%
 
 
 ## Jackson's
-ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2025|2026",month)) %>% 
+ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2025-12",month)) %>% 
   group_by(month) %>% reframe(n=n())
 
 

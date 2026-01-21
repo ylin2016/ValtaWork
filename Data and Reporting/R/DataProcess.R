@@ -60,7 +60,7 @@
 
 ## Intergrate Data
 property_input = function(){
-  filepath = '/Users/ylin/Google Drive/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/'
+  filepath = '/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/'
   cohost = read.xlsx(paste0(filepath,'Property_Cohost.xlsx')) %>%
     filter(!Listing %in% c("Ashford 137","Auburn 29123","Hoquiam 21","Valta Realty","Maria"))
   employee = read.xlsx(paste0(filepath,'Property_Cohost.xlsx'),sheet='Employee')
@@ -78,27 +78,34 @@ format_reservation <- function(data,startdate,enddate){
   colnames(data) = toupper(colnames(data)) 
   data$CHECKIN = as.Date(data$CHECK.IN)
   data$CHECKOUT = as.Date(data$CHECK.OUT)
-  data$BOOKING2CHECKIN = ifelse(is.na(data$CONFIRMATION.DATE),NA,
-                                data$CHECKIN-as.Date(data$CONFIRMATION.DATE))
+  data$LEAD.TIME = NA
+  if("CONFIRMATION.DATE" %in% colnames(data))
+    data$LEAD.TIME = ifelse(is.na(data$CONFIRMATION.DATE),NA,
+                    ifelse(data$CHECKIN==as.Date(data$CONFIRMATION.DATE),0,
+                           data$CHECKIN-as.Date(data$CONFIRMATION.DATE)))
   data = data[data$CHECKIN>=startdate & data$CHECKIN<=enddate,]
+  
   if(!"EARNINGS" %in% colnames(data))
     data$EARNINGS = as.numeric(ifelse(!is.na(data$TOTAL.PAYOUT) & data$TOTAL.PAYOUT>0,
                                       data$TOTAL.PAYOUT,data$TOTAL.PAID))
   colnames(data) = toupper(colnames(data))
+  
   if("CLEANING.FARE" %in% colnames(data))
     data$CLEANING.FEE = ifelse(!data$CLEANING.FARE %in% c(NA,0),
                                data$CLEANING.FARE,data$CLEANING.FEE)
-  data = data[,c('LISTING.S.NICKNAME','CONFIRMATION.CODE',
-                 'NUMBER.OF.GUESTS',"NUMBER.OF.ADULTS","NUMBER.OF.CHILDREN","NUMBER.OF.INFANTS",
-                 'CHECKIN','CHECKOUT','NUMBER.OF.NIGHTS','EARNINGS',
-                 'SOURCE',"CLEANING.FEE","PET.FEE","PLATFORM","BOOKING2CHECKIN")]
+  
+  data = data[,c("LISTING.S.NICKNAME","CONFIRMATION.CODE","NUMBER.OF.GUESTS",
+                 "NUMBER.OF.ADULTS", "NUMBER.OF.CHILDREN","NUMBER.OF.INFANTS",
+                 "CHECKIN","CHECKOUT","NUMBER.OF.NIGHTS",
+                 "EARNINGS","SOURCE","CLEANING.FEE","PET.FEE","ACCOMMODATION.FARE",
+                 "PLATFORM","LEAD.TIME","CONFIRMATION.DATE")]
   colnames(data) = c('Listing','Confirmation.Code','guests','adults','children','infants',
                      "checkin_date",'checkout_date','nights',
-                     'earnings','booking_source',"cleaning_fee","pet_fee",
-                     "booking_platform","booking2checkin")
+                     'earnings','booking_source',"cleaning_fee","pet_fee","accommodation_fare",
+                     "booking_platform","lead_time","Confirmation_date")
   data = data %>%
     mutate(DailyListingPrice=earnings/nights,  # DailyListingPrice incl cleaning 
-           AvgDailyRate = (earnings-cleaning_fee)/nights,
+           AvgDailyRate = (accommodation_fare)/nights,
            total_revenue = earnings,
            month=format(checkin_date, "%Y-%m"),
            checkin_date_plot=as.POSIXct(checkin_date)) # ADR: daily income excl cleaning
@@ -107,24 +114,33 @@ format_reservation <- function(data,startdate,enddate){
 
 # Reservations:
 import_data <- function(){
-  platforms = read.xlsx('./Data/Revenue/Source_Platform.xlsx')
-  Guestybf25 = read.csv("./Data/Revenue/Guesty_bookings_bf2025.csv",
+  datapath = "/Users/ylin/My Drive/Cohost/Data and Reporting/Data/Revenue/"
+  platforms = read.xlsx(paste0(datapath,'Source_Platform.xlsx'))
+  Guestybf25 = read.csv(paste0(datapath,"Guesty_bookings_bf2025.csv"),
                              na.strings = c(NA,""," ")) 
-    ConfirmedGuesty = read.csv("./Data/Revenue/Guesty_bookings_2025-20251109.csv",
+  guesty_2025 = read.csv(paste0(datapath,"Guesty_bookings_2025.csv"),
+                         na.strings = c(NA,""," ")) %>%
+    filter(!LISTING.S.NICKNAME %in% c("Ashford 137","Auburn 29123","Hoquiam 21"))
+  
+  ConfirmedGuesty = read.csv(paste0(datapath,"Guesty_bookings_2026-20260111.csv"),
                              na.strings = c(NA,""," ")) %>%
     filter(!LISTING.S.NICKNAME %in% c("Ashford 137","Auburn 29123","Hoquiam 21")) 
-  ConfirmedGuesty = rbind.fill(ConfirmedGuesty,Guestybf25)
-  guesty2023 = read.csv('./Input_PowerBI/Guesty_PastBooking_airbnb_adj_12312023.csv',
+  ConfirmedGuesty = rbind.fill(ConfirmedGuesty,Guestybf25,guesty_2025)
+  ConfirmedGuesty$ACCOMMODATION.FARE[ConfirmedGuesty$CONFIRMATION.CODE=="HA-jNbd0Rc"]=2235
+  
+  guesty2023 = read.csv('/Users/ylin/My Drive/Cohost/Data and Reporting/Input_PowerBI/Guesty_PastBooking_airbnb_adj_12312023.csv',
                         na.strings = c(NA,""," "))
-  CHs =  read.csv('./Input_PowerBI/Rev_CH_2023.csv',na.strings = c(NA,""," "))
-  Vrbo2023 = read.csv('./Input_PowerBI/VRBO_20200101-20231230.csv',na.strings = c(NA,""," "))
+  CHs =  read.csv('/Users/ylin/My Drive/Cohost/Data and Reporting/Input_PowerBI/Rev_CH_2023.csv',na.strings = c(NA,""," "))
+  Vrbo2023 = read.csv('/Users/ylin/My Drive/Cohost/Data and Reporting/Input_PowerBI/VRBO_20200101-20231230.csv',na.strings = c(NA,""," "))
   CH2023 = CHs %>% filter(substr(CHECK.OUT,1,4)==2023) 
   dat2023 = rbind(guesty2023,CH2023,Vrbo2023)
   dat2023 = merge(dat2023,platforms,by='SOURCE',all.x=T)
   dat2023$PET.FEE=NA
+  dat2023$ACCOMMODATION.FARE = dat2023$Earnings-dat2023$Cleaning.fee
   dat2023 = format_reservation(dat2023,"2017-01-01","2023-12-31")
+  
   ConfirmedGuesty = merge(ConfirmedGuesty,platforms,by='SOURCE',all.x=T)
-  ConfirmedGuesty= format_reservation(ConfirmedGuesty,"2017-01-01","2025-12-31")
+  ConfirmedGuesty= format_reservation(ConfirmedGuesty,"2017-01-01","2026-12-31")
   data = rbind(ConfirmedGuesty,dat2023 %>% 
                  filter(Confirmation.Code %in% 
                           setdiff(dat2023$Confirmation.Code,ConfirmedGuesty$Confirmation.Code)))
@@ -136,8 +152,9 @@ import_data <- function(){
   varchanged = c("earnings","total_revenue", "DailyListingPrice","AvgDailyRate")
   data[idx,varchanged] = data[idx,paste0(varchanged,'.adj')] 
   data[,paste0(varchanged,'.adj')] = NULL
-  cleaning = read.xlsx(paste0('/Users/ylin/Google Drive/My Drive/Cohost/',
-              'Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx'),sheet = 'Cleaning') %>% 
+  cleaning = read.xlsx(paste0('/Users/ylin/My Drive/Cohost/',
+              'Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx'),
+              sheet = 'Cleaning') %>% 
             mutate(newCleaning.fee = Cleaning.fee)
   
   data1 = merge(data %>% filter(checkout_date<'2025-03-01'),
@@ -153,7 +170,7 @@ import_data <- function(){
     mutate(DailyListingPrice=(earnings)/nights,  
             total_revenue = earnings)
   
-  LRT = read.xlsx("./Data/Revenue/LRT_bookings.xlsx") 
+  LRT = read.xlsx(paste0(datapath,"LRT_bookings.xlsx"))
   LRT.diff = LRT %>% 
     filter(CONFIRMATION.CODE %in% setdiff(LRT$CONFIRMATION.CODE,data$Confirmation.Code)) %>%
     mutate(CONFIRMATION.DATE=NA,TOTAL.PAID=0,

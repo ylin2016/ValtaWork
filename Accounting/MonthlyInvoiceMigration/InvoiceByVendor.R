@@ -29,7 +29,6 @@ for(k in 1:nrow(file.sel))
   system(tmp)
 }
 
-
 ## scan copied invoices 
 files = list.files(path=paste0(drv.loc,"Filestracking/"),pattern=".csv")
 
@@ -55,5 +54,60 @@ for(k in files)
 
 invoices %>% filter(!property %in% "Valta Realty" & grepl("2025-",yearmonth)) %>%
   write.xlsx("2025_vendor_invoice_list.xlsx",firstActiveRow = 2,withFilter = T)
+
+## copy revised invoice list to vendor folder
+
+invoices = read.xlsx(paste0(drv.loc, "2025_vendor_invoice_list.xlsx"))
+
+suppliers =c("Amazon","Capitol Lumber and Door","Home Depot",
+             "Fred meyer","Target","Wayfair","Doordash","WalMart","QFC","Xfinity")
+invoices = invoices %>% filter(!(service %in% 'supply'| 
+      vendor %in% suppliers))
+
+
+
+newloc = '/Users/ylin/My Drive/Cohost/Accounting/* Monthly/'
+invoiceloc = paste0('/Users/ylin/My Drive/Cohost/Accounting/Company Transactions/2025/')
+setwd(invoiceloc)
+months = list.files(path=invoiceloc)
+
+pathes = NULL
+for(k in months[-length(months)])
+{
+  loc2 = list.dirs(path=paste0('./',k))
+  for(j in loc2[-1])
+    pathes = rbind(pathes,data.frame(month=k,fullpath=j))
+}
+
+files = NULL
+for(k in 1:nrow(pathes))
+{
+  tmp = list.files(path=pathes$fullpath[k])
+  if(length(tmp)>0) files = rbind(files,data.frame(pathes[k,],file=tmp))
+}
+
+invoices$file = ifelse(substr(invoices$file,1,1) %in% c("-","✔"),
+                       sub("^.", "",invoices$file),invoices$file)
+
+invoices = merge(invoices,files,by='file',all.x=T)
+
+vendors = sort(unique(invoices$vendor))
+
+setwd("../1-Invoice by Vendor/")
+for(k in vendors[-c(9,16)])
+{
+  print(k)
+  tmp = paste0("mkdir '",k,"'")
+  system(tmp)
+}
+
+for(i in 1:nrow(invoices))
+{
+  print(i)
+  tmp = paste0("cp '",invoices$fullpath[i],"/",invoices$file[i],"' '",
+               "../1-Invoice by Vendor/",invoices$vendor[i],"' ")
+  system(tmp)
+}
+
 
 

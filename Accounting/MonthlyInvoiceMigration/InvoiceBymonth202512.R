@@ -4,8 +4,8 @@ drv.loc = "/Users/ylin/Google Drive/My Drive/Cohost/"
 setwd(paste0(drv.loc,"Accounting/Company Transactions/2025/",Month))
 source("/Users/ylin/ValtaWork/Accounting/MonthlyInvoiceMigration/Functions.R")
 ##============================================================================
-newloc = '/Users/ylin/Google Drive/My Drive/Cohost/Accounting/* Monthly/'
-oldloc = paste0('/Users/ylin/Google Drive/My Drive/Cohost/Accounting/Company Transactions/2025/',Month)
+newloc = '/Users/ylin/My Drive/Cohost/Accounting/* Monthly/'
+oldloc = paste0('/Users/ylin/My Drive/Cohost/Accounting/Company Transactions/2025/',Month)
 listings = unique(cohost$Listing)
 pathes = NULL
 loc1 = list.files(path=oldloc)
