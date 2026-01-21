@@ -36,7 +36,7 @@ def reorder_property(name):
 # Owner payouts (2024–2025)
 # -------------------------------------------------------------------
 def build_owner_payout_2425():
-    pay_path = "/Users/ylin/My Drive/Cohost/Accounting/"
+    pay_path = "/Users/ylin/Google Drive/My Drive/Accounting/"
     y25 = [f"2025.{m:02d}" for m in range(1, 13)]
     y24 = [s.replace("2025","2024") for s in y25]
     owner_payout = []
@@ -147,7 +147,7 @@ def build_owner_payout_2425():
     return owner_payout, owner_wide
 
 def build_owner_payout_26(endmonth):
-    pay_path = "/Users/ylin/My Drive/Cohost/Accounting/"
+    pay_path = "/Users/ylin/Google Drive/My Drive/Accounting/"
     y26 = [f"2026.{m:02d}" for m in range(1, 13)]
     owner_payout = []
     # 2026 payouts: sheets from 2025.12 and 2026.11 in "01-OwnerPayout Records.xlsx"\\

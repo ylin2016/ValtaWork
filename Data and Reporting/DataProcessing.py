@@ -43,7 +43,7 @@ def natural_join(left, right):
     return left.merge(right, on=common, how="left")
 
 def build_guesty_2325_and_write(
-    base_path="/Users/ylin/Google Drive/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/",
+    base_path="/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/Data/",
     out_confirm="/Users/ylin/ValtaWork/Valta_BookingManagement/Data/ConfirmedGuesty2325.csv",
     out_canceled="/Users/ylin/ValtaWork/Valta_BookingManagement/Data/CanceledGuesty2325.csv",
 ):
@@ -72,7 +72,7 @@ def build_guesty_2325_and_write(
 # ---------------------------------------------------------------------
 
 def property_input():
-    filepath = "/Users/ylin/Google Drive/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/"
+    filepath = "/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/Data/"
     cohost = pd.read_excel(filepath+"Property_Cohost.xlsx")
     cohost = cohost[~cohost["Listing"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21", "Valta Realty", "Maria"])]
     return cohost
@@ -155,7 +155,7 @@ def format_reservation(df, startdate, enddate):
     return df
 
 def import_data():
-    filepath = "/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/"
+    filepath = "/Users/ylin/Google Drive/My Drive/Data and Reporting/"
     platforms = pd.read_excel(filepath+"Data/Revenue/Source_Platform.xlsx")
 
     # Guesty pre-2025 (already filtered & saved from your earlier step)
@@ -167,7 +167,7 @@ def import_data():
     guesty_2025.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
     # 2026 Guesty (exclude specific listings)
-    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-20260111.csv", na_values=["", " "])
+    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-20260119.csv", na_values=["", " "])
     guesty_2026 = guesty_2026[~guesty_2026["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
     guesty_2026.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
@@ -218,9 +218,9 @@ def import_data():
         data = data.drop(columns=adj_leftovers) 
 
     # Cleaning fee table (pre/post 2025-03-01)
-    fileloc = "/Users/ylin/Google Drive/My Drive/Cohost/"
+    fileloc = "/Users/ylin/Google Drive/My Drive/"
     cleaning = pd.read_excel(fileloc + 
-        "Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx",
+        "01- Compensation Calculation/Working/Data/Property_Cohost.xlsx",
         sheet_name="Cleaning").copy()
     cleaning["newCleaning.fee"] = cleaning["Cleaning.fee"]
 
