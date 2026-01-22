@@ -1,10 +1,8 @@
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/05-Cleaning/")
 ## source("/Users/ylin/ValtaWork/Cleaning/DispatchCard.R")
-## Require: please make distinguish for Lower/Upper/Whole, 
-#       if maria didn't specify, please check Guesty calendar to make it clear
-## No Elektra 906, should be Seattle 906. Whenever there is number you are not sure, 
-## you could check guesty calendar to make it clear
-##
+
+## !!! Cleaning fee use the ones on payout record to label each cleaning, 
+## not the ones on property_cohost file
 
 library(plyr)
 library(dplyr)
@@ -17,6 +15,9 @@ library(ggplot2)
 library(ggbreak)
 library(slider)
 
+#--------------------------------------------------------------------------------
+#        dispatch card
+#--------------------------------------------------------------------------------
 ## Pay Cleaner records: payments and # clean per property
 payfile2025 = "./Data/Maria cleaning payment process_2025.xlsx"
 payfile2026 = "./Data/Maria cleaning payment process_copied20260117.xlsx"
@@ -130,6 +131,12 @@ for(k in 1:length(txt))
 #data_dispatch$Listing[data_dispatch$Listing %in% "12520 Bellevue"] = "Bellevue 12520"
 #setdiff(data_dispatch$Listing,c(Residential$Listing,property$Listing))
 
+## put Seatac 12834 to upper & lower to match pay records
+add= data_dispatch %>% filter(Listing %in% "Seatac 12834")
+add$Listing = "Seatac 12834 Lower"
+data_dispatch = rbind(data_dispatch %>% 
+                        mutate(Listing = ifelse(Listing %in% "Seatac 12834",
+                        "Seatac 12834 Upper",Listing)),add)
 ##-----------------------------------------------------------------
 ## check data_dispatch : dispatch card vs. organized data_dispatch (find error in dispatch card)
 ##-----------------------------------------------------------------
@@ -141,8 +148,9 @@ tmp %>% filter(nunit!=nunit1) %>% arrange(Cleaning.Date)
 #2025-10-11    12     11: it is ok as Kirkland 8017 shown in car 1 &2 for joint work
 ##-----------------------------------------------------------------
 
-
+#--------------------------------------------------------------------------------
 ## ---  pay Cleaners ------
+#--------------------------------------------------------------------------------
 payCleaner = read.xlsx(payfile2026,sheet = "Payment", startRow = 3) %>%
   filter(!grepl("Maria", Payment.date)) 
 
@@ -182,6 +190,9 @@ data_all = data %>% filter(!is.na(Rate)) %>%
 data_all %>% group_by(yearmonth) %>% 
   reframe(days = length(unique(Cleaning.Date)))
 
+#--------------------------------------------------------------------------------
+#        Income from STR and Residential
+#--------------------------------------------------------------------------------
 ## cleaning per listing
 payout = vector('list', 12)
 # Read payout data for months 1-10
@@ -197,58 +208,33 @@ for(i in 1:12) {
   payout[[i]] = indv %>% filter(Total!=0)
 }
 
-# Based on payment to get #clean
-monthly_units = NULL
+# ----  STR Income Based on payment to get #clean, by month summary
+IncomeSTR = NULL
 for(k in 6:12)
 {
   x=payout[[k]]
-  monthly_units = rbind(monthly_units,
+  IncomeSTR = rbind(IncomeSTR,
                         data.frame(yearmonth=ifelse(k<10,paste0("2025-0",k),paste0("2025-",k)),
                                    x[!is.na(x$Times) & !x$Listing %in% "Total payment",
                                      c("Listing","Times","Cleaning.fee","Total")]))
 }
 
-monthly_units$Listing = sub("#|Island ","",monthly_units$Listing) 
+IncomeSTR$Listing = sub("#|Island ","",IncomeSTR$Listing) 
 txt = c("Redmond Gull val 7(Redmond 7579)","Bellevue C19","Bellevue D303","Bellevue E205")
 chg = c("Redmond 7579","Microsoft 14645-C19","Microsoft 14615-D303","Microsoft 14620-E205")
 for(k in 1:length(txt)) 
-  monthly_units$Listing[monthly_units$Listing %in% txt[k]]= chg[k]
-monthly_units$CleaningFee = monthly_units$Total
-monthly_units$Type = "STR"
+  IncomeSTR$Listing[IncomeSTR$Listing %in% txt[k]]= chg[k]
+IncomeSTR$CleaningIncome= IncomeSTR$Total
+IncomeSTR$Type = "STR"
 
 #################### temp fix ############################
-monthly_units[monthly_units$yearmonth %in% '2025-09' & 
-                monthly_units$Listing %in% "Mercer 3627 ADU",-1] =
+IncomeSTR[IncomeSTR$yearmonth %in% '2025-09' & 
+            IncomeSTR$Listing %in% "Mercer 3627 ADU",-1] =
   c("Mercer 3627 Main",2,130,260,260,"STR")
 ##########################################################
 
-data = merge(data_all %>% 
-               filter(Cleaning.Date>="2025-06-01"), 
-             monthly_units %>% select(yearmonth,Listing,Cleaning.fee),
-             by=c("yearmonth","Listing"),all=T)
-
-## check paid to Maria, but not in dispatch card/schedule
-data %>% filter(is.na(Cleaning.Date))
-
-
-cleaning.rate = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx', 
-                     sheet = 'Cleaning') #%>%
- #  mutate(Cleaning.fee = ifelse(is.na(New.cleaning.fee), 
- #                               Current.clg.fee, New.cleaning.fee))
-property = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx')
-cleaning.rate = merge(cleaning.rate,property %>% select(Listing,SqFt,BEDROOMS,BEDS,BATHROOMS),by="Listing",all.x=T)
-cleaning.rate = cleaning.rate %>%
-  mutate(base = ifelse(SqFt<=600,ifelse(BEDROOMS %in% 0,70,85),85),
-         added = 20*(BEDS-1)+ 15*(BATHROOMS-1),
-         laundry = 12*ifelse(BEDROOMS<=1,1,BEDROOMS),
-         estimated.cleaning = base+added+laundry)
-
-data = merge(data,cleaning.rate %>% 
-              select(Listing,Cleaning.fee,Maria.pay,SqFt,BEDROOMS,BEDS,BATHROOMS,estimated.cleaning),
-              by="Listing",all.x=T,suffixes = c("",".defined"))
-
-#Residential.customers = read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx",sheet="Data validation")
-Residential.cleanings = read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx") %>%
+#----  Residential Cleaning Income:
+IncomeResid = read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx") %>%
   select(Service.Date,Listing,residential.fee=`Maria.(.80.of.Column.K)`) %>%
   filter(!is.na(Service.Date)) %>%
   mutate(Service.Date = as.Date(as.integer(Service.Date), origin = '1899-12-30'),
@@ -256,19 +242,46 @@ Residential.cleanings = read.xlsx("./Data/Valta Homes Residential Cleaning Sched
          Type ="Residential",
          Listing = ifelse(Listing %in% "Seattle 10057", "Seattle 10057 Whole",Listing))  %>%
   filter(!is.na(Service.Date))
-Residential.cleanings$order = 1:nrow(Residential.cleanings) 
 
-#Residential.cleanings = Residential.cleanings %>% arrange(order)
-#write.csv(Residential.cleanings,"Residential_cleanings_reformat.csv",row.names=F,na='')
+Incomes_monthly = rbind.fill(IncomeSTR, IncomeResid %>% 
+                    mutate(yearmonth = substr(Service.Date,1,7)) %>%
+  group_by(yearmonth,Listing,Type) %>% 
+  reframe(Times=n(),CleaningIncome=sum(residential.fee)))
+#-------------------------------------------------------------------------------
 
-Residential = Residential.cleanings%>%
-  filter(yearmonth %in% c(paste0('2025-0',5:9),paste0('2025-',10:12)))
+## get cleaning.fee from IncomeSTR for STR cleanings
+data = merge(data_all %>% 
+               filter(Cleaning.Date>="2025-06-01"), 
+             IncomeSTR %>% select(yearmonth,Listing,Cleaning.fee),
+             by=c("yearmonth","Listing"),all=T)
 
-data = merge(data,Residential %>% 
+## check paid to Maria, but not in dispatch card/schedule
+data %>% filter(is.na(Cleaning.Date))
+
+#-------------------------------------------------------------------------------
+# Cleaning rate for calculate laundry weights -----------------
+#-------------------------------------------------------------------------------
+cleaning.rate = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx', 
+                     sheet = 'Cleaning') 
+property = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx')
+cleaning.rate = merge(cleaning.rate,property %>% 
+                  select(Listing,SqFt,BEDROOMS,BEDS,BATHROOMS),
+                  by="Listing",all.x=T)
+cleaning.rate = cleaning.rate %>%
+  mutate(base = ifelse(SqFt<=600,ifelse(BEDROOMS %in% 0,70,85),85),
+         added = 20*(BEDS-1)+ 15*(BATHROOMS-1),
+         laundry = 12*ifelse(BEDROOMS<=1,1,BEDROOMS),
+         estimated.cleaning = base+added+laundry)
+
+data = merge(data,cleaning.rate %>% 
+              select(Listing,estimated.cleaning), by="Listing",all.x=T)
+#-------------------------------------------------------------------------------
+
+data = merge(data,IncomeResid %>% 
                select(Service.Date,Listing,residential.fee,Type), 
              by.x=c('Cleaning.Date',"Listing"),
              by.y=c("Service.Date","Listing"),all.x=T) %>%
-       mutate(CleaningIncome = ifelse(!is.na(Maria.pay),Maria.pay,residential.fee),
+       mutate(CleaningIncome = as.numeric(ifelse(!is.na(Cleaning.fee),Cleaning.fee,residential.fee)),
          estimated.cleaning = ifelse(!is.na(residential.fee),
                                      residential.fee,estimated.cleaning),
          Type = ifelse(is.na(Type),"STR",Type))
@@ -276,21 +289,50 @@ data = merge(data,Residential %>%
 ##--------------------------------------------------------------------------------
 # check: dispatch has, neither in STR nor residential 
 ##--------------------------------------------------------------------------------
-setdiff(setdiff(data$Listing,Residential$Listing),property$Listing)
+setdiff(setdiff(data$Listing,IncomeResid$Listing),property$Listing)
 ##--------------------------------------------------------------------------------
 # check missing residential cleaning, but on dispatch card
 ##--------------------------------------------------------------------------------
 data %>% filter(is.na(estimated.cleaning)) %>% 
   select(Cleaning.Date,Listing) %>% distinct()
 
-data %>% filter(is.na(CleaningIncome))
+data %>% filter(is.na(CleaningIncome)& Cleaning.Date<='2025-12-31')
+
+data[data$yearmonth %in% '2025-08' & data$Listing %in% "Elektra 1314",
+     c('residential.fee',"CleaningIncome") ] = 56
+
+data[data$yearmonth %in% '2025-08' & data$Listing %in% "Elektra 1514",
+     c('residential.fee',"CleaningIncome") ] = 60
+
+data[data$yearmonth %in% '2025-08' & data$Listing %in% "Elektra 609",
+     c('residential.fee',"CleaningIncome") ] = 72
+
+##remove 7/2 beachwood 9 as 7/4 has one record
+
+data = data %>% 
+  filter(!(Cleaning.Date =='2025-07-02' & Listing %in% "Beachwood 9"))
+
+## Check missing CleaningIncome, but on dispatch card:
+data %>% filter(is.na(CleaningIncome)& Cleaning.Date<='2025-12-31')
+
+dispatch_monthly = data %>% 
+  mutate(yearmonth = substr(Cleaning.Date,1,7)) %>%
+  filter(!duplicated(paste(Cleaning.Date,Listing))) %>%
+  group_by(yearmonth,Listing) %>%
+  reframe(Times = n())
+
+k = "Elektra 1314" #Seattle 1512"#Redmond 16012" "Bellevue 1420"
+IncomeSTR %>% filter(grepl(k,Listing))
+IncomeResid %>% filter(grepl(k,Listing))
+dispatch_monthly %>% filter(grepl(k,Listing))
+data %>% filter(Cleaning.Date =='2025-11-14' & Listing %in% k)
 ##--------------------------------------------------------------------------------
 
 # treat Elektras as residential
 idx = data$Listing %in% c("Elektra 609","Elektra 1514",
                           "Elektra 1314","Elektra 909","Elektra 510")
 data$Type[idx] = "STR/Residential"
-data$estimated.cleaning[idx] = data$Maria.pay[idx]
+data$estimated.cleaning[idx] = data$residential.fee[idx]
 
 pay_cleaner = data %>% 
   group_by(Cleaning.Date,Listing,Cleaning.fee,CleaningIncome) %>% 
@@ -322,8 +364,8 @@ properties = sort(unique(property_costs$Listing))
 
 
 data = data %>% filter(Cleaning.Date<="2025-12-31")
-save(property,data,cleaning.rate,payout,payCleaner,monthly_units,
-     Residential.cleanings,file="./MariaCleaningCost/DispatchCardData-20260117.Rdata")
+save(property,data,cleaning.rate,payCleaner,Incomes_monthly,
+      file="./MariaCleaningCost/DispatchCardData-20260117.Rdata")
 
 ## get cood
 # library(tidygeocoder)

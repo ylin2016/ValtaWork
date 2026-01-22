@@ -60,7 +60,7 @@
 
 ## Intergrate Data
 property_input = function(){
-  filepath = '/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/'
+  filepath = '/Users/ylin/Google Drive/My Drive/Cohost Cleaner Compensation/Working/Data/'
   cohost = read.xlsx(paste0(filepath,'Property_Cohost.xlsx')) %>%
     filter(!Listing %in% c("Ashford 137","Auburn 29123","Hoquiam 21","Valta Realty","Maria"))
   employee = read.xlsx(paste0(filepath,'Property_Cohost.xlsx'),sheet='Employee')
@@ -114,7 +114,7 @@ format_reservation <- function(data,startdate,enddate){
 
 # Reservations:
 import_data <- function(){
-  datapath = "/Users/ylin/My Drive/Cohost/Data and Reporting/Data/Revenue/"
+  datapath = "/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Revenue/"
   platforms = read.xlsx(paste0(datapath,'Source_Platform.xlsx'))
   Guestybf25 = read.csv(paste0(datapath,"Guesty_bookings_bf2025.csv"),
                              na.strings = c(NA,""," ")) 
@@ -128,10 +128,10 @@ import_data <- function(){
   ConfirmedGuesty = rbind.fill(ConfirmedGuesty,Guestybf25,guesty_2025)
   ConfirmedGuesty$ACCOMMODATION.FARE[ConfirmedGuesty$CONFIRMATION.CODE=="HA-jNbd0Rc"]=2235
   
-  guesty2023 = read.csv('/Users/ylin/My Drive/Cohost/Data and Reporting/Input_PowerBI/Guesty_PastBooking_airbnb_adj_12312023.csv',
+  guesty2023 = read.csv('/Users/ylin/Google Drive/My Drive/Data and Reporting/Input_PowerBI/Guesty_PastBooking_airbnb_adj_12312023.csv',
                         na.strings = c(NA,""," "))
-  CHs =  read.csv('/Users/ylin/My Drive/Cohost/Data and Reporting/Input_PowerBI/Rev_CH_2023.csv',na.strings = c(NA,""," "))
-  Vrbo2023 = read.csv('/Users/ylin/My Drive/Cohost/Data and Reporting/Input_PowerBI/VRBO_20200101-20231230.csv',na.strings = c(NA,""," "))
+  CHs =  read.csv('/Users/ylin/Google Drive/My Drive/Data and Reporting/Input_PowerBI/Rev_CH_2023.csv',na.strings = c(NA,""," "))
+  Vrbo2023 = read.csv('/Users/ylin/Google Drive/My Drive/Data and Reporting/Input_PowerBI/VRBO_20200101-20231230.csv',na.strings = c(NA,""," "))
   CH2023 = CHs %>% filter(substr(CHECK.OUT,1,4)==2023) 
   dat2023 = rbind(guesty2023,CH2023,Vrbo2023)
   dat2023 = merge(dat2023,platforms,by='SOURCE',all.x=T)
@@ -152,8 +152,8 @@ import_data <- function(){
   varchanged = c("earnings","total_revenue", "DailyListingPrice","AvgDailyRate")
   data[idx,varchanged] = data[idx,paste0(varchanged,'.adj')] 
   data[,paste0(varchanged,'.adj')] = NULL
-  cleaning = read.xlsx(paste0('/Users/ylin/My Drive/Cohost/',
-              'Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx'),
+  cleaning = read.xlsx(paste0('/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/',
+              'Working/Data/Property_Cohost.xlsx'),
               sheet = 'Cleaning') %>% 
             mutate(newCleaning.fee = Cleaning.fee)
   
