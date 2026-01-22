@@ -4,8 +4,8 @@ library(dplyr)
 library(tidyr)
 library(openxlsx)
 library(lubridate)
-setwd("/Users/ylin/My Drive/Cohost/Data and Reporting/10-OnboardingTemplate/")
-property.file = '/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx'
+setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/10-OnboardingTemplate/")
+property.file = '/Users/ylin/Google Drive/My Drive/01- Compensation Calculation//Working/Data/Property_Cohost.xlsx'
 property = read.xlsx(property.file)
 cleaning = read.xlsx(property.file,sheet = "Cleaning")
 template = read.xlsx("PropertyTemplate.xlsx",sheet="Property",startRow = 2)
@@ -111,15 +111,15 @@ for(k in listings)
   
   ## write property page: 
   grid_tpl <- readWorkbook(wb_out, sheet = "Property", colNames = FALSE)
-  grid_tpl[-(1:2),2] = files[[k]]$Description[1:74]
+  grid_tpl[-(1:2),2] = files[[k]]$Description[1:75]
   
-  add = files[[k]][-(1:74),c("Field","Description")] %>% 
+  add = files[[k]][-(1:75),c("Field","Description")] %>% 
           filter(!Field %in% "Owner") %>%
           mutate(Field=paste0("Additional: ",Field))
   addlines = data.frame(X1=rep(NA,nrow(add)))
   grid_tpl = rbind.fill(grid_tpl[1,,drop=F],addlines[1,,drop=F],
                         grid_tpl[-1,],addlines)
-  grid_tpl[-(1:77),1:2] = add[,1:2]
+  grid_tpl[-(1:78),1:2] = add[,1:2]
   grid_tpl = grid_tpl[,1:3]
   
   ## add space for lines
