@@ -1,11 +1,11 @@
-setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/04-Accounting/")
+setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/")
 source("/Users/ylin/ValtaWork/Accounting/FinancialStatements/Functions_2025.R")
 YearSel = 2025
 
 ##===========================================================================### 
 ##============================== Payout records =============================###
 ##===========================================================================### 
-  payouts = read.xlsx("/Users/ylin/My Drive/Cohost/Accounting/01-OwnerPayout Records.xlsx",
+  payouts = read.xlsx("/Users/ylin/Google Drive/My Drive/Accounting/01-OwnerPayout Records.xlsx",
                       sheet = "2025",startRow = 2)
   #tmp = payouts_fun(payouts)
   
@@ -73,7 +73,7 @@ YearSel = 2025
   manual_property = setdiff(unique(files$Property[is.na(files$filetype)]),
                             c("Beachwood","OSBR","Seattle 906"))
   manualpath = read.xlsx("./MonthlyInvoiceMigration/Data/FolderPaths.xlsx")
-  manualloc = "/Users/ylin/My Drive/Cohost/Accounting/* Monthly/"
+  manualloc = "/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/"
   
   ##== Yearly report template
   ## Seattle 1512 half paid
@@ -229,4 +229,19 @@ write.xlsx(list(payout_monthly,payout_summary),
            firstActiveRow = 2,withFilter = T)
 
 
+## copy yearly statments to individual property folder: 
+files = data.frame(file=list.files(path="/Users/ylin/Google Drive/My Drive/* Monthly/Financial Analysis/2025/Yearly/",
+                   pattern = ".pdf"))
+files$Property = sapply(files$file,function(x) trimws(unlist(strsplit(x,"[-.]"))[2]))
+files$Property[grepl("Keaau",files$Property)] = "Keaau 15-1542"
+setwd("/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/Financial Analysis/2025/Yearly/")
+for(i in c(24,30,31,54,55))#1:nrow(files))
+{
+  file.sel = files$file[i]
+  print(file.sel)
+  property.sel = files$Property[i]
 
+  tmp = paste0("cp '",file.sel,"' '../../",
+               sub("./","../",manualpath$loc[manualpath$property %in% property.sel]),"' ")
+  system(tmp)
+}

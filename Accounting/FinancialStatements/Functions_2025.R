@@ -4,9 +4,9 @@ library(tidyr)
 library(stringr)
 library(openxlsx)
 
-masterloc = "/Users/ylin/My Drive/Cohost/Accounting/* Monthly/"
-savepath = "/Users/ylin/My Drive/Cohost/Accounting/* Monthly/Financial Analysis/"
-property_listing = read.xlsx("/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx")
+masterloc = "/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/"
+savepath = "/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/Financial Analysis/"
+property_listing = read.xlsx("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/Data/Property_Cohost.xlsx")
 
 #Expense table 
 Expense = data.frame(Type = c("",rep("Variable",7),rep("Fixed",4)),
