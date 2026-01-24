@@ -105,6 +105,29 @@ extract_name <- function(s) {
   candidates[which.max(nchar(candidates))]
 }
 
+## Read pre-existing excel files
+listing.excel = c("Redmond 11641","Elektra 1203")
+file_loc = read.xlsx("./PPT Info summary/Cohost_Property_PPTs_Locations.xlsx")
+for(k in listing.excel)
+{
+  filepath = file_loc$ppt_path[file_loc$Listing %in% k]
+  tmp = read.xlsx(filepath,sheet="Property",startRow = 3)
+  ownerinfo = read.xlsx(filepath,sheet="Owner",startRow = 3)
+  files[[k]] = merge(files[[k]],tmp,by='Field',all=T) %>%
+    arrange(rnk)
+  files[[k]]$Description = files[[k]]$`Property/Main.listing`
+  files[[k]] = files[[k]]%>%
+            select(Field,Description,rnk) %>%
+             arrange(rnk,Description) 
+  addowner = data.frame(Field="Owner",
+                        Description = paste(ownerinfo$Your.Answer,collapse = ','))
+  
+  files[[k]] = rbind.fill(files[[k]],addowner) %>%
+             mutate(rnk=ifelse(is.na(rnk),"Additional",rnk)) 
+  
+  
+}
+
 for(k in listings) 
 {
   wb_out = loadWorkbook("PropertyFormat.xlsx")

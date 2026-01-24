@@ -246,7 +246,13 @@ IncomeResid = read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Pa
 Incomes_monthly = rbind.fill(IncomeSTR, IncomeResid %>% 
                     mutate(yearmonth = substr(Service.Date,1,7)) %>%
   group_by(yearmonth,Listing,Type) %>% 
-  reframe(Times=n(),CleaningIncome=sum(residential.fee)))
+  reframe(Times=n(),CleaningIncome=sum(residential.fee))) %>%
+  mutate(CleaningIncome = as.numeric(CleaningIncome),
+         Times = as.integer(Times))
+#-------------------------------------------------------------------------------
+Valtapay = data.frame(yearmonth = c(paste0('2025-0',1:9),paste0('2025-',10:12)),
+                      ValtaPaid = unlist(lapply(payout,function(x)
+                        -sum(as.numeric(x[grep('payout',x$Listing),'Total']),na.rm=T))))
 #-------------------------------------------------------------------------------
 
 ## get cleaning.fee from IncomeSTR for STR cleanings
@@ -281,10 +287,11 @@ data = merge(data,IncomeResid %>%
                select(Service.Date,Listing,residential.fee,Type), 
              by.x=c('Cleaning.Date',"Listing"),
              by.y=c("Service.Date","Listing"),all.x=T) %>%
-       mutate(CleaningIncome = as.numeric(ifelse(!is.na(Cleaning.fee),Cleaning.fee,residential.fee)),
-         estimated.cleaning = ifelse(!is.na(residential.fee),
+       mutate(Cleaning.fee = as.numeric(Cleaning.fee),
+              CleaningIncome = ifelse(!is.na(Cleaning.fee),Cleaning.fee,residential.fee),
+              estimated.cleaning = ifelse(!is.na(residential.fee),
                                      residential.fee,estimated.cleaning),
-         Type = ifelse(is.na(Type),"STR",Type))
+              Type = ifelse(is.na(Type),"STR",Type))
 
 ##--------------------------------------------------------------------------------
 # check: dispatch has, neither in STR nor residential 
@@ -362,10 +369,29 @@ property_costs = data %>%
 
 properties = sort(unique(property_costs$Listing))
 
-
 data = data %>% filter(Cleaning.Date<="2025-12-31")
-save(property,data,cleaning.rate,payCleaner,Incomes_monthly,
+save(property,data,cleaning.rate,payCleaner,
+     Incomes_monthly,IncomeSTR,IncomeResid,Valtapay,
       file="./MariaCleaningCost/DispatchCardData-20260117.Rdata")
+
+month.sel = '2025-10'
+dispatch_m = data %>% filter(yearmonth %in% month.sel) %>%
+  distinct(Cleaning.Date,Listing,CleaningIncome)%>% 
+  group_by(Listing) %>% 
+  reframe(Times=n(),CleaningIncome = sum(CleaningIncome))
+Both = merge(dispatch_m,Incomes_monthly %>% 
+               filter(yearmonth %in% month.sel),by="Listing",all=T)
+Both %>% filter(Times.x!=Times.y)
+k="Beachwood 1"
+data_dispatch %>% mutate(yearmonth = substr(Cleaning.Date,1,7)) %>% 
+  filter(yearmonth %in% month.sel & Listing %in% k) 
+
+## dispatch card to check: on dispatch, not pay
+# 2025-12-06 Redmond 14707 , manual removed
+# 2025-06-29 Bellevue 1420
+# 2025-07-29  Elektra 1314
+# 2025-07-10 Redmond 16012
+# 2025-11-14 Seattle 1512
 
 ## get cood
 # library(tidygeocoder)
@@ -381,8 +407,3 @@ save(property,data,cleaning.rate,payCleaner,Incomes_monthly,
 # finded = property_address %>% filter(!is.na(long))
 # 
 # write.csv(property_address,'address.csv',row.names=F,na="")
-
-
-
-
-  
