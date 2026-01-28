@@ -72,8 +72,7 @@ def build_guesty_2325_and_write(
 # ---------------------------------------------------------------------
 
 def property_input():
-    filepath = "/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/Data/"
-    cohost = pd.read_excel(filepath+"Property_Cohost.xlsx")
+    cohost = pd.read_excel("/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx")
     cohost = cohost[~cohost["Listing"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21", "Valta Realty", "Maria"])]
     return cohost
 
@@ -167,7 +166,7 @@ def import_data():
     guesty_2025.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
     # 2026 Guesty (exclude specific listings)
-    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-20260119.csv", na_values=["", " "])
+    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-20260127.csv", na_values=["", " "])
     guesty_2026 = guesty_2026[~guesty_2026["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
     guesty_2026.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
@@ -218,9 +217,7 @@ def import_data():
         data = data.drop(columns=adj_leftovers) 
 
     # Cleaning fee table (pre/post 2025-03-01)
-    fileloc = "/Users/ylin/Google Drive/My Drive/"
-    cleaning = pd.read_excel(fileloc + 
-        "01- Compensation Calculation/Working/Data/Property_Cohost.xlsx",
+    cleaning = pd.read_excel(filepath+"Data/Property_Cohost.xlsx",
         sheet_name="Cleaning").copy()
     cleaning["newCleaning.fee"] = cleaning["Cleaning.fee"]
 
@@ -239,20 +236,33 @@ def import_data():
     )
     left = left.drop(columns=["Cleaning.fee.bf0325"], errors="ignore")
 
-    # On/after 2025-03-01
-    right = data[data["checkout_date"] >= pd.Timestamp("2025-03-01")].merge(
-        cleaning[["Listing", "Cleaning.fee"]],
+    # On/after 2025-03-01  
+    right = data[(data["checkout_date"] >= pd.Timestamp("2025-03-01")) &(data["checkout_date"] <= pd.Timestamp("2025-12-31"))].merge(
+        cleaning[["Listing", "Cleaning.fee.202512"]],
         on="Listing",
         how="left"
     )
     right["cleaning_fee"] = np.where(
         right["cleaning_fee"].isna() | (right["cleaning_fee"] == 0),
-        right["Cleaning.fee"],
+        right["Cleaning.fee.202512"],
         right["cleaning_fee"]
     )
-    right = right.drop(columns=["Cleaning.fee"], errors="ignore")
+    right = right.drop(columns=["Cleaning.fee.202512"], errors="ignore")
     
-    data = pd.concat([left, right], ignore_index=True, sort=False)
+    # cleaning fee changed from 2026-0-01 to new rates
+    new = data[(data["checkout_date"] >= pd.Timestamp("2026-01-01"))].merge(
+        cleaning[["Listing", "Cleaning.fee"]],
+        on="Listing",
+        how="left"
+    )
+    new ["cleaning_fee"] = np.where(
+        new ["cleaning_fee"].isna() | (new ["cleaning_fee"] == 0),
+        new ["Cleaning.fee"],
+        new ["cleaning_fee"]
+    )
+    new  = new .drop(columns=["Cleaning.fee"], errors="ignore")
+    
+    data = pd.concat([left, right,new], ignore_index=True, sort=False)
 
     # Final filters & recalcs
     data = data[~data["Listing"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21","Bellevue 4551","Bothell 21833","NorthBend 44406"])].copy()
