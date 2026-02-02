@@ -5,13 +5,14 @@ library(tidyr)
 library(openxlsx)
 library(lubridate)
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/10-OnboardingTemplate/")
-property.file = '/Users/ylin/Google Drive/My Drive/01- Compensation Calculation//Working/Data/Property_Cohost.xlsx'
+property.file = '/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx'
 property = read.xlsx(property.file)
 cleaning = read.xlsx(property.file,sheet = "Cleaning")
 template = read.xlsx("PropertyTemplate.xlsx",sheet="Property",startRow = 2)
 var_mapping = read.xlsx("PropertyTemplate.xlsx",sheet = "Var_mapping")
 var_mapping0 = var_mapping %>% filter(!duplicated(Resource)) %>%
-  filter(!is.na(TemplateCol)) %>% select(Resource, TemplateCol)
+  filter(!is.na(TemplateCol)) %>% select(Resource, TemplateCol) %>% 
+  arrange(TemplateCol)
 
 ppts = read.xlsx("./PPT Info summary/Property_ppt_tables.xlsx")
 
@@ -43,33 +44,51 @@ var_property = c("Listing","Address","PropertyType","Type","SqFt",
 for(k in listings)
 {
   print(k)
-  files[[k]][files[[k]]$Field %in% txt,"description"] = 
+  dat = files[[k]]
+  
+  dat[dat$Field %in% txt,"description"] = 
     unlist(property[property$Listing %in% k,var_property])
   if(k %in% cleaning$Listing)
-    files[[k]][files[[k]]$Field %in% clean_info,"description"] = 
+    dat[dat$Field %in% clean_info,"description"] = 
       unlist(cleaning[cleaning$Listing %in% k,
-          c("Cleaner.lead","New.Guesty.cleaning.fee.to.update","New.Maria.rate.in.2026")])
+          c("Cleaner.lead","Cleaning.fee","Maria.pay")])
   
-  tofill = files[[k]]$Field[is.na(files[[k]][,"description"])]
-  print(nrow(files[[k]]))
-  files[[k]] = merge(files[[k]],var_mapping0,by.x="Field",by.y="TemplateCol",all.x=T)
-  print(nrow(files[[k]]))
+  tofill = dat$Field[is.na(dat[,"description"])]
+  #print(nrow(dat))
+  dat = merge(dat,var_mapping0,by.x="Field",by.y="TemplateCol",all.x=T)
+  #print(nrow(dat))
+  
   ppts_info =  ppts %>% filter(Listing %in% k) %>% 
-                select(Resource,Description) %>% join(var_mapping0,type='left')
+                select(Resource,Description) %>% 
+                join(var_mapping0,type='left')
+  
+  fields_dup=unique(dat$Field[duplicated(dat$Field)])
+  idx = dat$Field %in% fields_dup
+  
+  dat = dat[!paste(dat$Field,dat$Resource) %in% 
+  setdiff(paste(dat$Field[idx],dat$Resource[idx]),
+    paste(ppts_info$TemplateCol,ppts_info$Resource)),]
+  missings = setdiff(1:nrow(files[[k]]),dat$rnk)
+  print(length(missings))
+  if(length(missings)>0)
+    dat = rbind.fill(dat,files[[k]] %>% filter(rnk %in% missings))
   unmatched = ppts_info %>% filter(is.na(TemplateCol)) %>% 
     select(Resource,Description) %>% mutate(rnk="Additional")
   colnames(unmatched)[1] = "Field"
-  files[[k]] = merge(files[[k]],ppts_info, by="Resource",all.x=T) %>% 
+  
+  dat = merge(dat,ppts_info[!is.na(ppts_info$Resource),], 
+              by="Resource",all.x=T) %>% 
                arrange(rnk) 
   
-  files[[k]] = files[[k]] %>%
+  dat = dat %>%
                mutate(Description = ifelse(is.na(description) & !is.na(Resource),Description,description)) %>%
                select(Field,Description,rnk) %>%
                arrange(rnk,Description)
-  files[[k]] = files[[k]] %>% filter(!(duplicated(rnk) & is.na(Description)))
-  files[[k]] = rbind.fill(files[[k]],unmatched)
-  files[[k]]$Listing = k
-  print(nrow(files[[k]]))
+  dat = dat %>% filter(!(duplicated(rnk) & is.na(Description)))
+  dat = rbind.fill(dat,unmatched)
+  dat$Listing = k
+  print(nrow(dat))
+  files[[k]] = dat
 }
 
 estimate_lines <- function(text, col_width_chars = 90) {
@@ -124,29 +143,28 @@ for(k in listing.excel)
   
   files[[k]] = rbind.fill(files[[k]],addowner) %>%
              mutate(rnk=ifelse(is.na(rnk),"Additional",rnk)) 
-  
-  
 }
 
 for(k in listings) 
 {
+  print(k)
   wb_out = loadWorkbook("PropertyFormat.xlsx")
   
   ## write property page: 
   grid_tpl <- readWorkbook(wb_out, sheet = "Property", colNames = FALSE)
-  grid_tpl[-(1:2),2] = files[[k]]$Description[1:75]
+  grid_tpl[-(1:2),2] = files[[k]]$Description[1:76]
   
-  add = files[[k]][-(1:75),c("Field","Description")] %>% 
+  add = files[[k]][-(1:76),c("Field","Description")] %>% 
           filter(!Field %in% "Owner") %>%
           mutate(Field=paste0("Additional: ",Field))
   addlines = data.frame(X1=rep(NA,nrow(add)))
   grid_tpl = rbind.fill(grid_tpl[1,,drop=F],addlines[1,,drop=F],
                         grid_tpl[-1,],addlines)
-  grid_tpl[-(1:78),1:2] = add[,1:2]
+  grid_tpl[-(1:79),1:2] = add[,1:2]
   grid_tpl = grid_tpl[,1:3]
   
   ## add space for lines
-  for (r in 13:nrow(grid_tpl)) {
+  for (r in 8:nrow(grid_tpl)) {
     if(!is.na(grid_tpl[r,2])){
       lines  = estimate_lines(grid_tpl[r, 2],90)
       h <- 22 + (lines-1)* 18 # excel pixel scaling
