@@ -231,11 +231,11 @@ write.xlsx(list(payout_monthly,payout_summary),
 
 ## copy yearly statments to individual property folder: 
 files = data.frame(file=list.files(path="/Users/ylin/Google Drive/My Drive/* Monthly/Financial Analysis/2025/Yearly/",
-                   pattern = ".pdf"))
+                   pattern = ".xlsx"))
 files$Property = sapply(files$file,function(x) trimws(unlist(strsplit(x,"[-.]"))[2]))
 files$Property[grepl("Keaau",files$Property)] = "Keaau 15-1542"
 setwd("/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/Financial Analysis/2025/Yearly/")
-for(i in c(24,30,31,54,55))#1:nrow(files))
+for(i in 1:70) #c(24,30,31,54,55))#1:nrow(files))
 {
   file.sel = files$file[i]
   print(file.sel)
