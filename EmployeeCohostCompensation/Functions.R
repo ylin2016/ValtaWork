@@ -1,6 +1,7 @@
 library(dplyr)
 library(plyr)
 library(tidyr)
+library(readxl)
 library(openxlsx)
 library(lubridate)
 ##-----------------------------------------------------------------------------------
@@ -19,9 +20,10 @@ format_reservation <- function(data,startdate,enddate){
   data
 }
 cohost_input = function(){
-  cohost = read.xlsx('./Working/Data/Property_Cohost.xlsx')
-  employee = read.xlsx('./Working/Data/Property_Cohost.xlsx',sheet='Employee')
-  employee.rates = read.xlsx('./Working/Data/Property_Cohost.xlsx',sheet='Rates',rows=1:4)
+  file_loc="/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx"
+  cohost = read.xlsx(file_loc)
+  employee = read.xlsx(file_loc,sheet='Employee')
+  employee.rates = read.xlsx(file_loc,sheet='Rates',rows=1:4)
   employee = employee %>% select(-(Comment)) %>% join(employee.rates)
   cohost = merge(cohost,employee,by.x='Cohost',by.y ='Nick.name',all.x=T) %>% 
     arrange(Listing)
@@ -233,8 +235,7 @@ combine_reservations_trips_backup = function(reservations,trips.all,
     reservations = reservations %>% filter(!Cohost %in% c("Yumiko"))
     reservations
 }
-cohost_sheets = function(reservations,employee,newemplyee=NA,
-                         emplyee_thisyear){
+cohost_sheets = function(reservations,employee,newemplyee=NA){
   output.val = c('Month','Listing','Confirmation.Code','Status','GuestName',
                  'Guests','CheckIn','CheckOut','Nights','Earnings',
                  'CohostPayOut','Backup','Comment')
@@ -250,32 +251,48 @@ cohost_sheets = function(reservations,employee,newemplyee=NA,
                          employee$Last.Name[employee$Nick.name %in% k])
     if(!is.na(newemplyee) & k %in% newemplyee)  # new cohost this month
     { 
-      write.xlsx(list("2025"=temp),paste0(file_loc,CohostName,'.xlsx'),
+      write.xlsx(list("2026"=temp),paste0(file_loc,CohostName,'.xlsx'),
                  na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
     }else{
-      old2023 = try(read.xlsx(paste0(file_loc,CohostName,'.xlsx'),sheet='2023'))
-      old2024 = try(read.xlsx(paste0(file_loc,CohostName,'.xlsx'),sheet='2024'))
-      old = read.xlsx(paste0(file_loc,CohostName,'.xlsx'))
-      old = old %>% filter(!Month %in% substr(enddate,1,7)) %>%
-        mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
-               CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
-      colnames(old)[colnames(old) %in% 'Property'] = 'Listing'
-      temp = rbind.fill(temp,old)  
-      if(k %in% emplyee_thisyear) ## new this year
-      { 
-        write.xlsx(list("2025"=temp),paste0(file_loc,CohostName,'.xlsx'),
-                   na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+      filename = paste0(file_loc,CohostName,'.xlsx')
+      sheet_names =excel_sheets(filename)
+      all_sheets = lapply(sheet_names, function(s) {
+        read_excel(filename, sheet = s)
+      })
+      names(all_sheets) <- sheet_names
+      
+      #old2023 = try(read.xlsx(paste0(file_loc,CohostName,'.xlsx'),sheet='2023'))
+      #old2024 = try(read.xlsx(paste0(file_loc,CohostName,'.xlsx'),sheet='2024'))
+      #old = read.xlsx(paste0(file_loc,CohostName,'.xlsx'))
+      
+      if(grepl("-00",unique(temp$Month))) {
+        all_sheets$`2026` = temp
+        all_sheets = all_sheets[c('2026',sheet_names)]
       }else{
-        if(class(old2023)=="try-error"){
-          write.xlsx(list("2025"=temp,"2024"=old2024),
-                     paste0(file_loc,CohostName,'.xlsx'),
-                     na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
-        }else{
-          write.xlsx(list("2025"=temp,"2024"=old2024,"2023"=old2023),
-                     paste0(file_loc,CohostName,'.xlsx'),
-                     na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
-        }
+           all_sheets$`2026` = all_sheets$`2026` %>% filter(!Month %in% substr(enddate,1,7)) %>%
+            mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
+                   CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
+          colnames(all_sheets$`2026`)[colnames(all_sheets$`2026`) %in% 'Property'] = 'Listing'
+          all_sheets$`2026` = rbind.fill(temp,all_sheets$`2026`)  
       }
+      write.xlsx(all_sheets,paste0(file_loc,CohostName,'.xlsx'),
+                 na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+      
+      # if(k %in% emplyee_thisyear) ## new this year
+      # { 
+      #   write.xlsx(list("2026"=temp),paste0(file_loc,CohostName,'.xlsx'),
+      #              na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+      # }else{
+      #   if(class(old2023)=="try-error"){
+      #     write.xlsx(list("2025"=temp,"2024"=old2024),
+      #                paste0(file_loc,CohostName,'.xlsx'),
+      #                na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+      #   }else{
+      #     write.xlsx(list("2025"=temp,"2024"=old2024,"2023"=old2023),
+      #                paste0(file_loc,CohostName,'.xlsx'),
+      #                na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+      #   }
+      # }
     }
   }
 }
@@ -315,16 +332,17 @@ summary_sheets = function(reservations){
 
 update_summarysheet = function(sum_cohost,sum_property){
   sum_loc = "./Cohost's reservation sheets/"
-  sum_prop0 = read.xlsx(paste0(sum_loc,'Property_Cohost_Summary.xlsx'),sheet = 'Property_2324')
-  sum_coh0  = read.xlsx(paste0(sum_loc,'Property_Cohost_Summary.xlsx'),sheet = 'Cohost_2324')
-  sum_prop = read.xlsx(paste0(sum_loc,'Property_Cohost_Summary.xlsx'),sheet = 'Property')
-  sum_coh  = read.xlsx(paste0(sum_loc,'Property_Cohost_Summary.xlsx'),sheet = 'Cohost')
+  filename = paste0(sum_loc,'Property_Cohost_Summary.xlsx')
+  sheet_names =excel_sheets(filename)
+  all_sheets = lapply(sheet_names, function(s) {
+    read_excel(filename, sheet = s)
+  })
+  names(all_sheets) <- sheet_names
+  #sum_coh0$Paid.day = as.character(as.Date(as.integer(sum_coh0$Paid.day),origin= '1899-12-30'))
+  #sum_coh$Paid.day = as.character(as.Date(as.integer(sum_coh$Paid.day),origin= '1899-12-30'))
   
-  sum_coh0$Paid.day = as.character(as.Date(as.integer(sum_coh0$Paid.day),origin= '1899-12-30'))
-  sum_coh$Paid.day = as.character(as.Date(as.integer(sum_coh$Paid.day),origin= '1899-12-30'))
-  
-  sum_property_all = rbind.fill(sum_property,
-                                sum_prop %>% filter(!Month %in% substr(enddate,1,7))) %>%
+  all_sheets$Property = rbind.fill(sum_property,
+                                   all_sheets$Property %>% filter(!Month %in% substr(enddate,1,7))) %>%
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
   
   sum_cohost= sum_cohost %>% 
@@ -332,12 +350,11 @@ update_summarysheet = function(sum_cohost,sum_property){
         ifelse(Cohost %in% "Crystal",
                length(unique(sum_property$Property[sum_property$Cohost %in% "Crystal"]))*150,
            ifelse(Cohost %in% "Shaya", 1600,CohostPayOut))))
-  sum_cohost_all = rbind.fill(sum_cohost,
-                              sum_coh %>% filter(!Month %in% substr(enddate,1,7))) %>%
+  all_sheets$Cohost = rbind.fill(sum_cohost,
+                    all_sheets$Cohost %>% filter(!Month %in% substr(enddate,1,7))) %>%
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
   
-  output = list(Cohost=sum_cohost_all,Property = sum_property_all,
-                Cohost_2324=sum_coh0,Property_2324=sum_prop0)
+  all_sheets
 }
 STR_calculate_table = function(reservations){
   org_table = read.xlsx("./Working/Data/2025/STR Properties by Month.xlsx") 
@@ -356,7 +373,8 @@ STR_calculate_table = function(reservations){
 
 cleaning_sheets_summary = function(reservations,enddate){
   ## Cleaner payment sheet
-  cleaner = read.xlsx('./Working/Data/Property_Cohost.xlsx',sheet='Cleaning')
+  file_loc="/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx"
+  cleaner = read.xlsx(file_loc,sheet='Cleaning')
   cleansheet = merge(confirmed[,c("Listing","Confirmation.Code",'CheckIn','CheckOut','Guests','Nights',"GuestName","Earnings")],
                      cleaner[,c("Listing","Cleaner.lead",'Cleaning.fee',"Maria.pay")],
                      by="Listing",all.x=T) 
@@ -393,22 +411,36 @@ cleaning_sheets_summary = function(reservations,enddate){
 }
 cleaner_sheets = function(cleansheet,newcleaner=NULL){
   cleaning_loc = "./Cohost's reservation sheets/CleaningSheet_"
+  output.val = c('Month','Listing','Confirmation.Code','GuestName',
+                 'Guests','CheckIn','CheckOut','Nights','Earnings',
+                 'Cleaner.lead','Cleaning.fee','Maria.pay')
   for(k in unique(cleansheet$Cleaner.lead))
   {
     print(k)
     if(!is.null(newcleaner) & k %in% newcleaner){
-      temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% select(all_of(colnames(old)))
-      write.xlsx(list("2025"=temp),paste0(cleaning_loc,k,'.xlsx'),
+      temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% select(all_of(output.val))
+      write.xlsx(list("2026"=temp),paste0(cleaning_loc,k,'.xlsx'),
                  na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
     }else{
-      old2024 = read.xlsx(paste0(cleaning_loc,k,'.xlsx'),sheet='2024')
-      old = read.xlsx(paste0(cleaning_loc,k,'.xlsx'),sheet='2025')
-      old = old %>% filter(!Month %in% substr(enddate,1,7)) %>%
-        mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
+      filename = paste0(cleaning_loc,k,'.xlsx')
+      sheet_names =excel_sheets(filename)
+      all_sheets = lapply(sheet_names, function(s) {
+        read_excel(filename, sheet = s)
+      })
+      names(all_sheets) <- sheet_names
+      temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% 
+        select(all_of(output.val))
+      
+      if(grepl("-01",unique(temp$Month))) {
+        all_sheets$`2026` = temp
+        all_sheets = all_sheets[c('2026',sheet_names)]
+      }else{
+           all_sheets$`2026` = all_sheets$`2026` %>% filter(!Month %in% substr(enddate,1,7)) %>%
+            mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
                CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
-      temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% select(all_of(colnames(old)))
-      temp = rbind.fill(temp,old)
-      write.xlsx(list("2025"=temp,"2024"=old2024),paste0(cleaning_loc,k,'.xlsx'),
+        all_sheets$`2026` = rbind.fill(temp,all_sheets$`2026`)
+      }
+      write.xlsx(all_sheets,paste0(cleaning_loc,k,'.xlsx'),
                  na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
     }
   }

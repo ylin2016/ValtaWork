@@ -58,6 +58,7 @@
 ## 9/1/2025: unlist Bothell 11131
 ## 10/1/2025: unlist  Mercer 3627 ADU and Mercer 3627
 ## 11/1/2025: all of Zoey's list under VA from Oct
+# 1/12/2026: Beachwood 2 to inactive LTR
 
 setwd("/Users/ylin/Google Drive/My Drive/Cohost/Cohost Cleaner Compensation/")
 source("./Working/Code/Functions.R")
