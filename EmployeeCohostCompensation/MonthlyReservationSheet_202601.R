@@ -1,6 +1,7 @@
 ##======================================================================
 ## Logs at: MonthlyReservationSheet_Logfile.R
 # 1/12/2026: Beachwood 2 to inactive LTR
+# 2/1/2026: add owner stay record step
 ##======================================================================
 setwd("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/")
 source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
@@ -21,8 +22,13 @@ employee = tmp$employee
 #View(cohost)
 ######## booking records ########
 confirmed = confirmed_input(fileloc,filemonth) 
-ownerstay = confirmed %>% filter(Source %in% "owner" | Earnings %in% 0)
-confirmed = confirmed %>% filter(!(Source %in% "owner"| Earnings %in% 0)) #229 
+
+ownerfile = "/Users/ylin/Google Drive/My Drive/* Monthly/0-Process & Template/Owner_stay_records.xlsx"
+owners = read.xlsx(ownerfile)
+ownerstay = confirmed %>% filter(Source %in% "owner" | Earnings %in% 0) 
+rbind(owners,ownerstay )%>% write.xlsx(ownerfile)
+
+confirmed = confirmed %>% filter(!(Source %in% "owner"| Earnings %in% 0)) #227 
 
 cancelled = cancelled_input(fileloc,filemonth) #58
 
