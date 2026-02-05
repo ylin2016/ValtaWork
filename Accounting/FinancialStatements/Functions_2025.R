@@ -6,7 +6,7 @@ library(openxlsx)
 
 masterloc = "/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/"
 savepath = "/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/Financial Analysis/"
-property_listing = read.xlsx("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/Data/Property_Cohost.xlsx")
+property_listing = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx")
 
 #Expense table 
 Expense = data.frame(Type = c("",rep("Variable",7),rep("Fixed",4)),
@@ -39,10 +39,26 @@ payouts_fun <- function(payouts){
 }
 
 input_financial <- function(property_listing){
-  estimates = read.xlsx("./FinanceAnalysis/Data/0_FinancialImportData.xlsx",startRow = 3)
+  estimates = read.xlsx("2025_FinancialImportData.xlsx",startRow = 3)
+  estimates = estimates %>% filter(Status=="Active")
+  listings = property_listing %>% filter(Property %in% estimates$Property) %>%
+                select(Listing,Property,Address,BEDROOMS,BATHROOMS,SqFt) %>%
+            filter(!Listing %in% c("Beachwood","Bellevue 14507","Shelton 310 Upper",
+                                  "Burien 14407 top","Burien 14407 middle",
+                                  "Mercer 3627 ADU","Mercer 3627 Main",
+                                  "Seatac 12834 Upper","Seatac 12834 Lower",
+            "Longbranc 6821 Upper","Longbranc 6821 Lower","Seattle 10057 Lower",
+            "Seattle 10057 Upper","OSBR",paste("Cottage",1:12),"Cottage 11 (tiny)"))
+  
+  property = listings %>% group_by(Property,Address) %>%
+             reframe(Bedrooms=sum(BEDROOMS,na.rm=T),
+                     Bathrooms = sum(BATHROOMS,na.rm=T),
+                     Sqft = sum(SqFt,na.rm=T))
+  
+  estimates = merge(estimates, property,by="Property",all.x=T)
   estimates = estimates %>% 
-    mutate(Property = sub("Cottage","OSBR",Property),
-           AssessmentYear = YearSel,
+    mutate(AssessmentYear = YearSel,
+           FF.E = 4000*(Bedrooms+2),
            Rent = ifelse(!is.na(RentZillow) & !is.na(RentRedfin),(RentZillow+RentRedfin)/2,
                          ifelse(is.na(RentZillow),RentRedfin,RentZillow)),
            Assessment = ifelse(!is.na(ZillowEstimate) & !is.na(RedfinEstimate),
@@ -63,9 +79,7 @@ input_financial <- function(property_listing){
            Netproceeding = Assessment-InvestmentSum-SaleCost,
            CapitalGainTax = Netproceeding*0.15,
            ROI = (Assessment-InvestmentSum-SaleCost)/InvestmentSum/InvestYears,
-           ROI_pct = ifelse(is.na(ROI),NA,paste0(round(ROI*100,2),"%"))) %>% 
-    filter(!grepl("Beachwood|OSBR",Property) | Property %in% c("Beachwood","OSBRs All OSBR")) %>%
-    mutate(Property = ifelse(Property %in% "OSBRs All OSBR","OSBR",Property))
+           ROI_pct = ifelse(is.na(ROI),NA,paste0(round(ROI*100,2),"%")))
   
   estimates
 }
@@ -260,67 +274,105 @@ manual_sum <-function(listing,filename,filename24=NULL,Timerange){
   monthly
 }
 
-output_format <-function(Listing,Expense,all,MCR,estimates){
-  output = merge(Expense %>% filter(Type %in% c("","Variable")), 
-                 all,by.x="Expense",by.y="description",all.x=T) %>% arrange(Order)
+output_format <-function(Listing,Expense0,estimates){
+  # output = merge(Expense %>% filter(Type %in% c("","Variable")), 
+  #                all,by.x="Expense",by.y="description",all.x=T) %>% arrange(Order)
+  # 
+  Expense0[,-1] = apply(Expense0[,-1],2,as.numeric)
+  colnames(Expense0)[1] = "Expense"
+  payout_idx = grep("Payout",Expense0$Expense)
+  Expense = Expense0[1:9,]
+  #Expense = rbind(Expense,data.frame(Expense ="Total Revenue",Expense[1,-1]))
   
-  output$Estimate = output$Actual = NA
-  output$Actual = apply(output[,grep(paste0(YearSel-1,"|",YearSel),colnames(output)),drop=F],1,
-                        function(x) ifelse(sum(!is.na(x))>0,sum(x,na.rm=T),NA))
+  if(length(payout_idx)>0) 
+   { 
+     Margin = Expense0[payout_idx,-1]
+   }else{
+     Margin = round(Expense[1,-1]-Expense[9,-1],2)
+   }
+
+  Margin_pct = paste0(round(Margin/Expense[1,-1]*100),"%")
+  Margin_pct = ifelse(Margin_pct %in% "NA%",NA,Margin_pct)
+  Expense = rbind(Expense,
+                  data.frame(Expense =c("Contribution Margin (Owner Payout)",
+                             "Contribution Margin%"),
+                             rbind(Margin,Margin_pct))) 
+  
+  MCR = max(unlist(round(Expense0[Expense0$Expense %in% "Property Management",-1]/Expense0[Expense0$Expense %in% "Gross Rent",-1],2)),na.rm=T)
+  output = data.frame(Order=1:nrow(Expense),
+                      Type = c("",rep("Variable",nrow(Expense)-1)),Expense)
+
+  output$Estimate = NA
+  colnames(output) = sub("Total","Actual",colnames(output))
+  
+  # output$Actual = apply(output[,grep(paste0(YearSel-1,"|",YearSel),colnames(output)),drop=F],1,
+  #                       function(x) {
+  #                         x=as.numeric(x)
+  #                         ifelse(sum(!is.na(x))>0,sum(x,na.rm=T),NA)})
+  # 
   output[output$Expense %in% "Gross Rent","Estimate"] = 
-    estimates[estimates$Property %in% Listing,"Rent"]*(ncol(all)-1)
+    estimates[estimates$Property %in% Listing,"Rent"]*(ncol(Expense)-2)
+  
   output[output$Expense %in% c("Repairs","Maintenance"),"Estimate"] = 
     output[output$Expense %in% c("Repairs","Maintenance"),"Actual"]
   
-  output[output$Expense %in% c("Other Owner Expense"),"Estimate"] = 
-    output[output$Expense %in% c("Other Owner Expense"),"Actual"] + 
-    output[output$Expense %in% "Gross Rent","Estimate"]*0.05  ## vacancy 5% for estimates from LRT 
+  output[output$Expense %in% c("Supplies","Cleaning"),"Estimate"] = NA
   
+  output[output$Expense %in% c("Other Owner Expense"),"Estimate"] = 
+    as.numeric(output[output$Expense %in% c("Other Owner Expense"),"Actual"]) + 
+    as.numeric(output[output$Expense %in% "Gross Rent","Estimate"])*0.05  ## vacancy 5% for estimates from LRT 
+  
+  # LRT 10% MCR as estimate
   output[output$Expense %in% c("Property Management"),"Estimate"] = 
-    output[output$Expense %in% "Gross Rent","Estimate"]*MCR
+    as.numeric(output[output$Expense %in% "Gross Rent","Estimate"])*ifelse(is.na(MCR),0,0.1)
+  
+  output[output$Expense %in% c("Total Expense"),"Estimate"] = 
+                    sum(as.numeric(output[2:8,"Estimate"]),na.rm=T)
+  output[output$Expense %in% "Contribution Margin (Owner Payout)","Estimate"] = 
+    as.numeric(output[1,"Estimate"])-as.numeric(output[9,"Estimate"])
+  
   output$Actual.financial = output$Actual
   output$Estimate.financial = output$Estimate
-  output[output$Expense %in% "Other Owner Expense",c("Actual.financial","Estimate.financial")] = NA
-  devs = apply(output[,-(1:3),drop=F],2,function(x) 
-  {
-    TotalRevenue = x[1]
-    TotalExpense = sum(x[-1],na.rm = T) 
-    Margin = round(TotalRevenue-TotalExpense,2)
-    Margin_pct = ifelse(is.na(Margin),NA,paste0(round(100*Margin/TotalRevenue),"%"))
-    c(TotalExpense,TotalRevenue,Margin,Margin_pct)
-  })
-  colnames(devs) = colnames(output)[-(1:3)]
-  output = rbind(output,
-                 data.frame(Type=rep("Variable",4),
-                            Expense=c("Total Expense","Total Revenue",
-                                      "Contribution Margin (Owner Payout)",
-                                      "Contribution Margin%"),
-                            Order = c(13:16),
-                            devs[,drop=F])) %>% arrange(Order)
-}
+  
+  output[output$Expense %in% "Other Owner Expense",
+         c("Actual.financial","Estimate.financial")] = NA
+  output[output$Expense %in% c("Total Expense"),"Actual.financial"] = 
+    sum(as.numeric(output[2:8,"Actual.financial"]),na.rm=T)
+  output[output$Expense %in% c("Total Expense"),"Estimate.financial"] = 
+    sum(as.numeric(output[2:8,"Estimate.financial"]),na.rm=T)
+  
+  output[output$Expense %in% "Contribution Margin (Owner Payout)","Estimate.financial"] = 
+    as.numeric(output[1,"Estimate.financial"])-as.numeric(output[9,"Estimate.financial"])
+  output[output$Expense %in% "Contribution Margin (Owner Payout)","Actual.financial"] = 
+    as.numeric(output[1,"Actual.financial"])-as.numeric(output[9,"Actual.financial"])
+  
+  output
+  }
 
 fixed_val <-function(estimates,Listing){
   fixed.val = unlist(estimates[estimates$Property %in% Listing,
                                c('PropertyTaxes', 'Insurance', 'HOA')])
   fixed.val = c(fixed.val,ifelse(sum(is.na(fixed.val))==0,NA,sum(fixed.val,na.rm=T)))
   
-  fixed = Expense %>% filter(Type %in% "Fixed") %>% 
-    mutate(Actual = fixed.val,Estimate=fixed.val,
-           Actual.financial=fixed.val,Estimate.financial=fixed.val)
+  fixed = data.frame(Type="Fixed",
+                     Expense =c('PropertyTaxes', 'Insurance', 'HOA',"Total Fixed"),
+                     Actual = fixed.val,Estimate=fixed.val,
+                     Actual.financial=fixed.val,Estimate.financial=fixed.val)
+  fixed$Order = 20+(1:nrow(fixed))
   fixed
 }
 
 NOI_KPI_add <- function(Listing,output,estimates){
   
   ## Net Operating Income
-  NOI = apply(output[output$Expense %in% c("Total Expense","Total Revenue", "Total Fixed"),
+  NOI = apply(output[output$Expense %in% c("Gross Rent","Total Expense","Total Fixed"),
               -(1:3),drop=F],2,function(x)  { x = as.numeric(x) ; 
-              sum(x[2],na.rm=T)-sum(x[1],na.rm=T)-sum(x[3],na.rm=T)})
+              sum(x[1],na.rm=T)-sum(x[2],na.rm=T)-sum(x[3],na.rm=T)})
   NOI_pct =  apply(rbind(NOI,
-                   output[output$Expense %in% 'Total Revenue',-(1:3),drop=F]),2,
+                   output[output$Expense %in% 'Gross Rent',-(1:3),drop=F]),2,
                    function(x){
                      x = as.numeric(x)
-                     ifelse(is.na(x[1]),NA,paste0(round(100*x[1]/x[2],2),"%"))
+                     ifelse(is.na(x[1])|x[2] %in% c(NA,0),NA,paste0(round(100*x[1]/x[2],2),"%"))
                     })
   ## KPI 
   kpi = estimates[estimates$Property %in% Listing,c('InvestmentSum',"ROI","ROI_pct")]
@@ -361,7 +413,7 @@ property_desc <- function(Listing,estimates){
   tmp$Categ[idx] = 2
   
   idx =tmp$Description %in% c("ZillowEstimate","RedfinEstimate",
-                              "AssessmentYear","Assessment")
+                              "AssessmentYear","Final")
   tmp$Category[idx] = 'Assessment'
   tmp$Categ[idx] = 3
   
@@ -374,8 +426,8 @@ property_desc <- function(Listing,estimates){
   tmp$Category[idx] = 'Fixed Cost'
   tmp$Categ[idx] = 5
   
-  idx = tmp$Description %in% c("RentZillow","RentRedfin","Rent")
-  tmp$Category[idx] = 'LTR rent estimate'
+  idx = tmp$Description %in% c("RentZillow","RentRedfin","LTRrent")
+  tmp$Category[idx] = 'LTR rent'
   tmp$Categ[idx]= 6 
   
   tmp$Category[tmp$Description %in% c(33:34,37:38)] = 'Calculation'
@@ -474,14 +526,43 @@ format_yearly_expense <- function(Listing,yearly,wb_out){
   grid_detail <- read_grid(wb_out, "Details")
   details = yearly$Details
   grid_detail = details
-  # colnames(grid_detail) = c('X1',grid_detail[1,-1])
-  # grid_detail[,setdiff(colnames(details)[-1],colnames(grid_detail))] = NA
-  # for(cl in grid_detail$X1[-1])
-  #   grid_detail[grid_detail$X1 %in% cl,colnames(details)[-1]] = 
-  #    details[details$Category %in% cl,colnames(details)[-1]]
-  # grid_detail = grid_detail[,c(1,4:ncol(grid_detail),2,3)]
-  # grid_detail = rbind.fill(grid_detail[1:2,],addlines,grid_detail[-(1:2),])
-  # grid_detail[1,-1] = colnames(grid_detail)[-1]
   writeData(wb_out, "Details", x = grid_detail,rowNames = F,colNames = F)
+  wb_out
+}
+
+format_property <- function(Listing,table1,wb_out){
+  grid_tpl <- read_grid(wb_out, "Property")
+  for(k in grid_tpl$X2[-(1)]) 
+    grid_tpl[grid_tpl$X2 %in% k,'X4'] = 
+        table1[table1$Description %in% k,'Value']
+  writeData(wb_out, "Property", x = grid_tpl, colNames = FALSE)
+  wb_out
+}
+
+format_Financials<- function(Listing,table1,wb_out){
+  grid_tpl <- read_grid(wb_out, "Financials")
+  addlines = data.frame(Type=NA)
+  table1 = rbind.fill(table1[1,],addlines,table1[1,],table1[-1,])
+  table1[,-(1:2)] = apply(table1[,-(1:2)],2,function(x) 
+    ifelse(x %in% c("NA%","NA"),NA,x))
+  grid_tpl[-(1:2),-(1:3)] = table1[,-(1:2)]
+  writeData(wb_out, "Financials", x = grid_tpl, colNames = FALSE)
+  wb_out
+}
+
+format_monthly<- function(Listing,table1,wb_out){
+  grid_tpl <- read_grid(wb_out, "Monthly")
+  addlines = data.frame(Type=NA)
+  if(ncol(table1)==3) {
+    for(i in 1: nrow(table1)) 
+      table1[i,3] = ifelse(table1[i,3] %in% c("NA%","NA"),NA,table1[i,3])
+  }else{
+    table1[,-(1:2)] = apply(table1[,-(1:2)],2,function(x) 
+              ifelse(x %in% c("NA%","NA"),NA,x))
+  }
+  table1=rbind.fill(addlines,table1)
+  table1[1,] = colnames(table1)
+  grid_tpl = cbind(grid_tpl,table1[,-(1:2)])
+  writeData(wb_out, "Monthly", x = grid_tpl, colNames = FALSE)
   wb_out
 }
