@@ -2,15 +2,15 @@ library(plyr)
 library(dplyr)
 library(lubridate)
 library(openxlsx)
-setwd("/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/04-Accounting/DeferRevenue/")
-data = read.csv("./Data/Guesty_gt30d_reservation-20251201.csv")
+setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/DeferRevenue/")
+data = read.csv("./Data/Guesty_gt30d_reservation-20260202.csv")
 data$From = as.Date(data$CHECK.IN)
 data$To = as.Date(data$CHECK.OUT)
 
 # months = data.frame(CHECK.IN = seq(as.Date("2024-01-01"),length=24,by="months"),
 #                     CHECK.OUT= seq(as.Date("2024-02-01"),length=24,by="months")-1)
 
-data = data %>% filter(data$CHECK.OUT>=as.Date("2024-12-01")) %>%
+data = data %>% filter(data$CHECK.OUT>=as.Date("2025-12-01")) %>%
   mutate(CHECK.IN = substr(CHECK.IN,1,10),
          CHECK.OUT =substr(CHECK.OUT,1,10))
 res = NULL
@@ -56,4 +56,4 @@ for(i in 1:nrow(data))
                     ranges)
   res = rbind(res,temp[c(1,3,2,4:nrow(temp)),])
 }
-write.csv(res,'Reservation_gt30d_MonthlyPay_20251201.csv',row.names=F,na='')
+write.csv(res,'Reservation_gt30d_MonthlyPay_20260202.csv',row.names=F,na='')
