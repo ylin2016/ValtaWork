@@ -4,7 +4,7 @@ library(tidyr)
 library(openxlsx)
 library(lubridate)
 
-cohost = read.xlsx('/Users/ylin/Library/CloudStorage/GoogleDrive-nklinyi@gmail.com/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx')
+cohost = read.xlsx('/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx')
 listings = unique(cohost$Listing)
 
 ## Create folders

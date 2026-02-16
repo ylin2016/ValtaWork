@@ -2,7 +2,7 @@
 library(plyr)
 library(dplyr)
 library(tidyr)
-library(openxlsx)
+library(openxlsx2)
 library(lubridate)
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/10-OnboardingTemplate/")
 property.file = '/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx'

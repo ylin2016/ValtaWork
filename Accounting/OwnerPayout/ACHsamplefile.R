@@ -5,8 +5,8 @@ library(openxlsx)
 library(lubridate)
 
 ###   invoices from billing emails:
-setwd("/Users/ylin/My Drive/Cohost/Data and Reporting/04-Accounting/OwnerPayments/")
-cohost = read.xlsx('/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/Data/Property_Cohost.xlsx')
+setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/OwnerPayments/")
+cohost = read.xlsx('/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx')
 # owners = read.xlsx("/Users/ylin/My Drive/Cohost/Accounting/01-OwnerPayout Records.xlsx",
 #                    startRow=8)
 # colnames(owners)[4]="Rounting"
@@ -36,14 +36,14 @@ cohost = read.xlsx('/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Work
 # owners = rbind.fill(owners,added)
 
 #owners_direct = owners
-owners = read.xlsx("/Users/ylin/My Drive/Cohost/Data and Reporting/04-Accounting/OwnerPayments/Data/Owners.xlsx")
+owners = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/OwnerPayments/Data/Owners.xlsx")
 ## check owners directly pull from payout to my owner file
 #both = merge(owners_direct,owners,by="Property",all=T) 
 #both %>% filter(account.number.x!=account.number.y)
 
 ## Owner Payout Checking....
-payout= read.xlsx("/Users/ylin/My Drive/Cohost/Accounting/01-OwnerPayout Records.xlsx",
-                   sheet="2025.12") 
+payout= read.xlsx("/Users/ylin/Google Drive/My Drive/Accounting/01-OwnerPayout Records.xlsx",
+                   sheet="2026.01") 
 colnames(payout)[c(3,10)] =c("Listing","PayoutName_old")
 payout= payout %>% filter(!is.na(Date) & !is.na(Payout)) 
 
@@ -55,35 +55,42 @@ payout = merge(payout,owners %>% select(Property,PayoutName),
 ## check owner info
 both = merge(owners %>% select(Property,Name),
              payout %>% select(Listing,Owner,PayoutName),
-             by.x="Property",by.y="Listing",all=T)
+             by.x="Property",by.y="Listing",all.y=T)
 
 ## ======================================================
 ### create ACH file
-paydate ="20260112"
+paydate ="20260213"
 payouts = merge(payout %>% select(Listing,Property,Owner,Payout,MCR,PayoutName),
                 owners %>% select(Property,Rounting, account.number),
-                by="Property",all.x=T) %>%
+                by="Property",all.x=T) 
+add = payouts %>% filter(Owner %in% 'Valta Homes')
+add$Owner = add$PayoutName
+add$Payout = 704.17
+payouts = rbind(payouts,add) %>%
+          mutate(PayoutName = ifelse(Owner %in% 'Valta Homes','Valta Homes',PayoutName)) %>%
           mutate(filename = ifelse(is.na(Rounting),NA,
                    paste(paydate,Property,PayoutName,"Owner Payout",Payout,sep="_"))) 
 #payouts[payouts$Listing %in% "Seattle 1512" & payouts$Owner %in% "Valta Homes LLC",
 #        c("PayoutName","Rounting","account.number","filename")] = c("Valta Homes LLC",rep(NA,3))
 
-sum(payouts$Payout) #154556.68/58
-sum(payouts$Payout[payouts$Owner %in% 'Valta Homes'])
-sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) #153018.3
+
+sum(payouts$Payout) #118247/61 #154556.68/58
+sum(payouts$Payout[payouts$Owner %in% 'Valta Homes']) #328.36
+sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) #117918.69/60
 
 samplefile = read.csv("./Data/ACHsamplefile.csv")
 
-BatchId = 2601 
+BatchId = 2602 
 
 remains = payouts %>% 
-  filter((Owner %in% "Valta Homes"|
-             Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
-                            "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
+  filter((Owner %in% "Valta Homes"))#|
+            # Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
+            #                "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
 achfile = payouts %>% 
-          filter(!(Owner %in% "Valta Homes"|
-                     Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
-                            "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
+          filter(!(Owner %in% "Valta Homes"))#|
+                   #  Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
+                    #        "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
+
 achfile = achfile %>%
   mutate(Indicator=6,
          TrxnCode=22,
@@ -99,13 +106,13 @@ achfile = achfile %>%
 colnames(achfile) = colnames(samplefile)
 removed = achfile %>% filter(is.na(File.creation.date))
 achfile = achfile %>% filter(!is.na(File.creation.date))
-#58 , sophia and ValtaHome is not $1126.02
+#2026.1.11: 58 , sophia and ValtaHome is not $1126.02 
 
 
-samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","260107")
+samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","260210")
 samplefile$X[4] = BatchId # need to change every time
 samplefile$Total.trxn[2] = samplefile$X.1[4] = nrow(achfile)
-samplefile$Total.ACH.credit.amount[4] = "260113" # delivery date
+samplefile$Total.ACH.credit.amount[4] = substr(paydate,3,8) # delivery date = paydate
 # money come in
 samplefile$Total.ACH.debit.amount[2] = 0
 samplefile$Batch.Count[4] = 0
@@ -115,16 +122,15 @@ samplefile$Total.ACH.debit.amount[4] = sum(achfile$Total.trxn)
 samplefile$Total.ACH.credit.amount[2] = sum(achfile$Total.trxn)
 
 output = rbind(samplefile[1:5,],achfile)
-View(output) #148,073.88
-write.table(output,"./ACHfile_filled/ACHfile_filled_202601.csv",
+View(output) #115,644.52 # 148,073.88
+write.table(output,"./ACHfile_filled/ACHfile_filled_202602.csv",
             row=F,col = F,na="",sep=",",quo=F)
 
 ## add Trxn in Batch to csv
 
-
 ## check payments
 
-reports = read.csv('./Report/Owner_payout_202601.csv')
+reports = read.csv('./Report/Owner_payout_202602.csv')
 reports$Amount = as.numeric(gsub("[$, ]","",reports$Amount))
 
 both = merge(payout,reports[,c("Recipient","Amount")],by.x="Payout",by.y="Amount",all.x=T)

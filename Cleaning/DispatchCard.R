@@ -1,4 +1,5 @@
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/05-Cleaning/")
+
 ## source("/Users/ylin/ValtaWork/Cleaning/DispatchCard.R")
 
 ## !!! Cleaning fee use the ones on payout record to label each cleaning, 
@@ -10,10 +11,6 @@ library(tidyr)
 library(openxlsx)
 library(lubridate)
 library(reshape2)
-library(scales)
-library(ggplot2)
-library(ggbreak)
-library(slider)
 
 #--------------------------------------------------------------------------------
 #        dispatch card
@@ -193,13 +190,18 @@ data_all %>% group_by(yearmonth) %>%
 #--------------------------------------------------------------------------------
 #        Income from STR and Residential
 #--------------------------------------------------------------------------------
+months = unique(substr(data$Cleaning.Date,1,7))
 ## cleaning per listing
-payout = vector('list', 12)
+payout = vector('list', length(months)+5)
+names(payout)=c(paste0('2025-0',1:5),months)
+
 # Read payout data for months 1-10
-for(i in 1:12) {
-  if(i==12){
-    tmp = read.xlsx(payfile2026, sheet = paste0("2025-", i))
-  }else{tmp = read.xlsx(payfile2025, sheet = paste0("2025-", i))}
+for(i in c(paste0('2025-0',1:5),months)) {
+  if(i=='2025-12'|grepl("2026",i)){
+    tmp = read.xlsx(payfile2026, sheet = i)
+  }else{
+    tmp = read.xlsx(payfile2025, sheet = sub("-0","-",i))  
+  }
   
   # Extract relevant payout information
   indv = tmp[c(1:(grep("Total payment", tmp[,1])[1]),
@@ -210,11 +212,11 @@ for(i in 1:12) {
 
 # ----  STR Income Based on payment to get #clean, by month summary
 IncomeSTR = NULL
-for(k in 6:12)
+for(k in months[-length(months)])
 {
   x=payout[[k]]
   IncomeSTR = rbind(IncomeSTR,
-                        data.frame(yearmonth=ifelse(k<10,paste0("2025-0",k),paste0("2025-",k)),
+                        data.frame(yearmonth=k,
                                    x[!is.na(x$Times) & !x$Listing %in% "Total payment",
                                      c("Listing","Times","Cleaning.fee","Total")]))
 }
@@ -234,8 +236,10 @@ IncomeSTR[IncomeSTR$yearmonth %in% '2025-09' &
 ##########################################################
 
 #----  Residential Cleaning Income:
-IncomeResid = read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx") %>%
-  select(Service.Date,Listing,residential.fee=`Maria.(.80.of.Column.K)`) %>%
+Resid25=read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx",sheet = "2025")
+Resid26=read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx",sheet = "2026")
+IncomeResid =  rbind(Resid25[,colnames(Resid26)],Resid26) %>%
+  select(Service.Date,Listing,residential.fee=Maria) %>%
   filter(!is.na(Service.Date)) %>%
   mutate(Service.Date = as.Date(as.integer(Service.Date), origin = '1899-12-30'),
          yearmonth = substr(Service.Date,1,7),
@@ -250,7 +254,7 @@ Incomes_monthly = rbind.fill(IncomeSTR, IncomeResid %>%
   mutate(CleaningIncome = as.numeric(CleaningIncome),
          Times = as.integer(Times))
 #-------------------------------------------------------------------------------
-Valtapay = data.frame(yearmonth = c(paste0('2025-0',1:9),paste0('2025-',10:12)),
+Valtapay = data.frame(yearmonth = names(payout),
                       ValtaPaid = unlist(lapply(payout,function(x)
                         -sum(as.numeric(x[grep('payout',x$Listing),'Total']),na.rm=T))))
 #-------------------------------------------------------------------------------
@@ -267,9 +271,8 @@ data %>% filter(is.na(Cleaning.Date))
 #-------------------------------------------------------------------------------
 # Cleaning rate for calculate laundry weights -----------------
 #-------------------------------------------------------------------------------
-cleaning.rate = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx', 
-                     sheet = 'Cleaning') 
-property = read.xlsx('../01- Compensation Calculation/Working/Data/Property_Cohost.xlsx')
+cleaning.rate = read.xlsx('../Data/Property_Cohost.xlsx', sheet = 'Cleaning') 
+property = read.xlsx('../Data/Property_Cohost.xlsx')
 cleaning.rate = merge(cleaning.rate,property %>% 
                   select(Listing,SqFt,BEDROOMS,BEDS,BATHROOMS),
                   by="Listing",all.x=T)
@@ -300,10 +303,12 @@ setdiff(setdiff(data$Listing,IncomeResid$Listing),property$Listing)
 ##--------------------------------------------------------------------------------
 # check missing residential cleaning, but on dispatch card
 ##--------------------------------------------------------------------------------
-data %>% filter(is.na(estimated.cleaning)) %>% 
-  select(Cleaning.Date,Listing) %>% distinct()
 
-data %>% filter(is.na(CleaningIncome)& Cleaning.Date<='2025-12-31')
+enddate = '2026-01-31'
+data %>% filter(is.na(estimated.cleaning) & Cleaning.Date <=enddate & Cleaning.Date>='2026-01-01') %>% 
+  select(Listing) %>% distinct()
+
+data %>% filter(is.na(CleaningIncome)& Cleaning.Date<=enddate)
 
 data[data$yearmonth %in% '2025-08' & data$Listing %in% "Elektra 1314",
      c('residential.fee',"CleaningIncome") ] = 56
@@ -320,7 +325,7 @@ data = data %>%
   filter(!(Cleaning.Date =='2025-07-02' & Listing %in% "Beachwood 9"))
 
 ## Check missing CleaningIncome, but on dispatch card:
-data %>% filter(is.na(CleaningIncome)& Cleaning.Date<='2025-12-31')
+data %>% filter(is.na(CleaningIncome)& Cleaning.Date<=enddate)
 
 dispatch_monthly = data %>% 
   mutate(yearmonth = substr(Cleaning.Date,1,7)) %>%
@@ -335,7 +340,7 @@ dispatch_monthly %>% filter(grepl(k,Listing))
 data %>% filter(Cleaning.Date =='2025-11-14' & Listing %in% k)
 ##--------------------------------------------------------------------------------
 
-# treat Elektras as residential
+# treat Elektra as residential
 idx = data$Listing %in% c("Elektra 609","Elektra 1514",
                           "Elektra 1314","Elektra 909","Elektra 510")
 data$Type[idx] = "STR/Residential"
@@ -369,10 +374,10 @@ property_costs = data %>%
 
 properties = sort(unique(property_costs$Listing))
 
-data = data %>% filter(Cleaning.Date<="2025-12-31")
+data = data %>% filter(Cleaning.Date<=enddate)
 save(property,data,cleaning.rate,payCleaner,
      Incomes_monthly,IncomeSTR,IncomeResid,Valtapay,
-      file="./MariaCleaningCost/DispatchCardData-20260117.Rdata")
+      file="./MariaCleaningCost/DispatchCardData-20260211.Rdata")
 
 month.sel = '2025-10'
 dispatch_m = data %>% filter(yearmonth %in% month.sel) %>%
