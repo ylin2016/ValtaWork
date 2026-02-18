@@ -6,14 +6,15 @@ library(openxlsx)
 library(lubridate)
 library(ggplot2)
 library(scales)
-setwd("/Users/ylin/My Drive/Cohost/Cohost Cleaner Compensation/Working/")
+
+setwd("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/")
 source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
 
 ## Check reviews :
 
-rating.loc = "/Users/ylin/My Drive/Cohost/** Properties ** -- Valta/0_Cohosting/1-Reviews/Guesty reviews from Tech team/"
+rating.loc = "/Users/ylin/Google Drive/My Drive/** Properties ** -- Valta/0_Cohosting/1-Reviews/Guesty reviews from Tech team/"
 rating.list = list.files(path=rating.loc,pattern = ".xlsx")
-rating.list = rating.list[-c(1:3,5,7,8,12)]
+#rating.list = rating.list[-c(1:3,5,7,8,12)]
 ratings = vector('list',length(rating.list))
 names(ratings) = rating.list
 for(k in rating.list)
@@ -52,20 +53,17 @@ ggplot(res,aes(data_collect,n,group = month,color=month)) +
   scale_x_datetime(date_break="15 days",labels = date_format("%m-%d")) +
   labs(x="date_collected",y="# of 5 star reviews",color="Created Month")
   
-k="20260116 guesty_reviews.xlsx"
-
-ratings[[k]] %>% filter(Overall %in% c(5,10) ) %>% 
-  group_by(month,checkout.month) %>% reframe(n=n())
-
+k="20260216 guesty_reviews.xlsx"
 
 ## Jackson's
-ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2025-12",month)) %>% 
+ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2026-01",month)) %>% 
+  filter(!grepl("Cottage",nickname)) %>%
   group_by(month) %>% reframe(n=n())
 
 
 ## Brittany:
 
 ratings[[k]] %>% 
-  filter(createdAt >="2025-11-01") %>% 
+  filter(createdAt >="2026-01-01") %>% 
   filter(Overall %in% c(5,10) & grepl("Cottage",nickname)& grepl("2025|2026",month)) %>% 
   group_by(month) %>% reframe(n=n())
