@@ -1,7 +1,5 @@
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/05-Cleaning/")
-
 ## source("/Users/ylin/ValtaWork/Cleaning/DispatchCard.R")
-
 ## !!! Cleaning fee use the ones on payout record to label each cleaning, 
 ## not the ones on property_cohost file
 
@@ -93,6 +91,9 @@ dispatch[dispatch$Cleaning.Date %in% '2025-07-31',c("Car2P2","Car2P3")] =
 # 5/25 dispatch card wrong, it was for 5/23
 # 5/30 dispatch card have 3 cleaners, we paid 2 only
 
+# No scheduled clean for Seattle 10057 Upper on 2026-01-26
+dispatch[dispatch$Cleaning.Date %in% '2026-01-26',"Car1P4"] = NA
+         
 data_dispatch = NULL
 for(i in 1: nrow(dispatch))
  for(j in 1:4)
@@ -187,6 +188,12 @@ data_all = data %>% filter(!is.na(Rate)) %>%
 data_all %>% group_by(yearmonth) %>% 
   reframe(days = length(unique(Cleaning.Date)))
 
+dispatch_monthly = data_all %>% 
+  mutate(yearmonth = substr(Cleaning.Date,1,7)) %>%
+  filter(!duplicated(paste(Cleaning.Date,Listing))) %>%
+  group_by(yearmonth,Listing) %>%
+  reframe(Times = n())
+
 #--------------------------------------------------------------------------------
 #        Income from STR and Residential
 #--------------------------------------------------------------------------------
@@ -249,10 +256,31 @@ IncomeResid =  rbind(Resid25[,colnames(Resid26)],Resid26) %>%
 
 Incomes_monthly = rbind.fill(IncomeSTR, IncomeResid %>% 
                     mutate(yearmonth = substr(Service.Date,1,7)) %>%
-  group_by(yearmonth,Listing,Type) %>% 
-  reframe(Times=n(),CleaningIncome=sum(residential.fee))) %>%
-  mutate(CleaningIncome = as.numeric(CleaningIncome),
-         Times = as.integer(Times))
+  group_by(yearmonth,Listing) %>% 
+  reframe(Times=n(),CleaningIncome=sum(residential.fee,na.rm=T),
+          Type="Residential")) %>%
+  group_by(yearmonth,Listing) %>% 
+  reframe(CleaningIncome = sum(as.numeric(CleaningIncome),na.rm=T),
+         Times = sum(as.integer(Times),na.rm=T),
+         Type = paste(Type,collapse = "/"))
+
+# compare dispatch card and Incomes #time per listing per month
+
+both = merge(dispatch_monthly,Incomes_monthly,by=c("yearmonth","Listing"),all=T)
+both %>% filter(yearmonth %in% '2026-01' & (Times.x!=Times.y | is.na(Times.y)))
+#Beachwood 2 missing 1 residential cleaning 
+#Kirkland 8017 missing 2 residential cleaning 
+#Redmond 14707 missing 2 residential cleaning 
+
+#data_all %>% filter(yearmonth %in% '2026-01' & Listing %in% 'Bellevue 1420')
+both %>% filter(yearmonth %in% '2025-10' & (Times.x!=Times.y | is.na(Times.y)))
+data_all %>% filter(yearmonth %in% '2025-10' & Listing %in% "Beachwood 1")
+
+2025-11
+Beachwood 1 scheduled + cleaned on 11/2 and 11/3, what reason?
+Kirkland 8017 were cleaned 4 times in Nov, we only pay 3 times?
+2025-10 
+
 #-------------------------------------------------------------------------------
 Valtapay = data.frame(yearmonth = names(payout),
                       ValtaPaid = unlist(lapply(payout,function(x)
@@ -324,14 +352,13 @@ data[data$yearmonth %in% '2025-08' & data$Listing %in% "Elektra 609",
 data = data %>% 
   filter(!(Cleaning.Date =='2025-07-02' & Listing %in% "Beachwood 9"))
 
+# add cleaning fee for Mercer3925 cleaning
+data[data$Cleaning.Date == "2026-01-03" & data$Listing %in% "Mercer 3925",
+     c('Cleaning.fee',"CleaningIncome") ] = 50
+
 ## Check missing CleaningIncome, but on dispatch card:
 data %>% filter(is.na(CleaningIncome)& Cleaning.Date<=enddate)
 
-dispatch_monthly = data %>% 
-  mutate(yearmonth = substr(Cleaning.Date,1,7)) %>%
-  filter(!duplicated(paste(Cleaning.Date,Listing))) %>%
-  group_by(yearmonth,Listing) %>%
-  reframe(Times = n())
 
 k = "Elektra 1314" #Seattle 1512"#Redmond 16012" "Bellevue 1420"
 IncomeSTR %>% filter(grepl(k,Listing))
@@ -379,7 +406,7 @@ save(property,data,cleaning.rate,payCleaner,
      Incomes_monthly,IncomeSTR,IncomeResid,Valtapay,
       file="./MariaCleaningCost/DispatchCardData-20260211.Rdata")
 
-month.sel = '2025-10'
+month.sel = '2026-01'
 dispatch_m = data %>% filter(yearmonth %in% month.sel) %>%
   distinct(Cleaning.Date,Listing,CleaningIncome)%>% 
   group_by(Listing) %>% 
