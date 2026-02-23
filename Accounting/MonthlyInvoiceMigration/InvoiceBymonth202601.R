@@ -72,12 +72,20 @@ write.csv(files,paste0(drv.loc,"Data and Reporting/04-Accounting/MonthlyInvoiceM
 ## copy files ##
 fileloc = read.xlsx(paste0(drv.loc,"Data and Reporting/04-Accounting/",
                            "MonthlyInvoiceMigration/Data/FolderPaths.xlsx"))
-setwd("/Users/ylin/Google Drive/My Drive/Cohost/Accounting/* Monthly/")
+setwd("/Users/ylin/Google Drive/My Drive/* Monthly/")
 
 files_loc = merge(files, fileloc,by.x='property', by.y='listing',all.x=T) %>%
   select(property,loc,file,fullpath)
 
 files_loc$property[is.na(files_loc$loc)]
+
+# for(k in unique(files_loc$property))
+# {
+#   print(k)
+#   files_sel = files_loc %>% filter(property %in% k)
+#   tmp = paste0("mkdir '",files_sel$loc[1],"/Invoice/'")
+#   system(tmp)
+# }
 
 for(k in which(!is.na(files_loc$loc) & 
                !files_loc$property %in% c("Valta Realty","BookingCommission")))
