@@ -70,14 +70,14 @@ input_financial <- function(property_listing){
            PropertyTaxes=Assessment*0.01)
   
   estimates$SaleCost = rowSums(estimates[,c('Comission','TransferTax',
-                                            'ClosingCost','StagingCost')], na.rm =T)
+           'ClosingCost','StagingCost',"MortgageBalance")], na.rm =T)
   estimates$InvestmentSum = rowSums(estimates[,c('PurchasePrice','FF.E')],na.rm=T) #D20+D23
   estimates =estimates %>% 
     mutate(InvestYears = ifelse(is.na(YearPurchased),NA,AssessmentYear-YearPurchased),
            SaleCost = na_if(SaleCost, 0),
            InvestmentSum = na_if(InvestmentSum,0),
-           Netproceeding = Assessment-InvestmentSum-SaleCost,
-           CapitalGainTax = Netproceeding*0.15,
+           NetProceeds = Assessment-MortgageBalance-SaleCost,
+           CapitalGainTax = (Assessment-InvestmentSum-SaleCost)*0.15,
            ROI = (Assessment-InvestmentSum-SaleCost)/InvestmentSum/InvestYears,
            ROI_pct = ifelse(is.na(ROI),NA,paste0(round(ROI*100,2),"%")))
   
@@ -418,7 +418,8 @@ property_desc <- function(Listing,estimates){
   tmp$Categ[idx] = 3
   
   idx = tmp$Description %in% c("Comission","TransferTax","ClosingCost",
-                               "StagingCost","SaleCost","Netproceeding","CapitalGainTax")
+                               "StagingCost","MortgageBalance","SaleCost",
+                               "NetProceeds","CapitalGainTax")
   tmp$Category[idx] = 'Cost of Sales'
   tmp$Categ[idx] = 4
   
@@ -426,7 +427,7 @@ property_desc <- function(Listing,estimates){
   tmp$Category[idx] = 'Fixed Cost'
   tmp$Categ[idx] = 5
   
-  idx = tmp$Description %in% c("RentZillow","RentRedfin","LTRrent")
+  idx = tmp$Description %in% c("RentZillow","RentRedfin","LTRrent","VacancyRate")
   tmp$Category[idx] = 'LTR rent'
   tmp$Categ[idx]= 6 
   
@@ -439,9 +440,9 @@ property_desc <- function(Listing,estimates){
   tmp$Note[tmp$Description %in% "Comission"] = "Assessment * 4.5%"
   tmp$Note[tmp$Description %in% "PropertyTaxes"] = "Assessment * 1%"
   tmp$Note[tmp$Description %in% "SaleCost"] = "Comission + TransferTax + ClosingCost + StagingCost"
-  tmp$Note[tmp$Description %in% "Netproceeding"] = "Assessment-PurchasePrice-FF.E-SaleCost"
-  tmp$Note[tmp$Description %in% "CapitalGainTax"] = "Netproceeding*0.15"
-  tmp$Note[tmp$Description %in% "ROI"]  = "Netproceeding/(PurchasePrice+FF.E)/(YearPurchased-YearBuilt)"
+  tmp$Note[tmp$Description %in% "NetProceeds"] = "Assessment - MortgageBalance - SaleCost"
+  tmp$Note[tmp$Description %in% "CapitalGainTax"] = "(Final Assessment - PurchasePrice - SalesCost)*0.15"
+  tmp$Note[tmp$Description %in% "ROI"]  = "CapitalGainTax/(PurchasePrice + FF.E)/(YearPurchased-YearBuilt)"
   tmp
 }
 
@@ -532,21 +533,63 @@ format_yearly_expense <- function(Listing,yearly,wb_out){
 
 format_property <- function(Listing,table1,wb_out){
   grid_tpl <- read_grid(wb_out, "Property")
-  for(k in grid_tpl$X2[-(1)]) 
-    grid_tpl[grid_tpl$X2 %in% k,'X4'] = 
+  for(k in grid_tpl$X2[-(1:2)]) 
+    grid_tpl[grid_tpl$X2 %in% k,'X3'] = 
         table1[table1$Description %in% k,'Value']
+  addlines = data.frame(X1=NA)
+  grid_tpl = rbind.fill(grid_tpl[1,],addlines,grid_tpl[-1,])
   writeData(wb_out, "Property", x = grid_tpl, colNames = FALSE)
+  for(i in 16:35)
+    writeData(wb_out, "Property", x = as.numeric(grid_tpl$X3[i]), 
+              startCol = "C",startRow =i)
+  
+  formulas <- c("AVERAGE(C21:C22)", "C23*0.004", "C23*0.005",
+                "C23*0.045","SUM(C24:C27)","C23-C28-C29",
+                "(C23-C16-C28)*0.15","C23*0.01")
+  names(formulas) = c("C23","C25","C26","C27",'C28',"C30","C31","C32")
+  for(i in 1:length(formulas))
+     writeFormula(wb_out, "Property",x=formulas[i],startCol = "C",
+                 startRow = as.integer(sub("C","",names(formulas)[i])))
   wb_out
 }
 
 format_Financials<- function(Listing,table1,wb_out){
   grid_tpl <- read_grid(wb_out, "Financials")
-  addlines = data.frame(Type=NA)
-  table1 = rbind.fill(table1[1,],addlines,table1[1,],table1[-1,])
-  table1[,-(1:2)] = apply(table1[,-(1:2)],2,function(x) 
-    ifelse(x %in% c("NA%","NA"),NA,x))
-  grid_tpl[-(1:2),-(1:3)] = table1[,-(1:2)]
+  for(k in grid_tpl$X2[c(4:10,15:17)]) 
+    grid_tpl[grid_tpl$X2 %in% k,paste0('X',4:5)] = 
+      table1[table1$Expense %in% k,3:4]
+  grid_tpl[11,paste0('X',4:5)] = 
+    table1[table1$Expense %in% "Other Owner Expense",3:4]
+  addlines = data.frame(X1=NA)
+  grid_tpl = rbind.fill(grid_tpl[1:18,],addlines,grid_tpl[-(1:18),])
+  
   writeData(wb_out, "Financials", x = grid_tpl, colNames = FALSE)
+  for(j in 4:5)
+    for(i in 4:15)
+      writeData(wb_out, "Financials", x = as.numeric(grid_tpl[i,paste0("X",j)]), 
+              startCol = LETTERS[j],startRow =i)
+  
+  formulasE = c("'Property'!C35*12*(1-'Property'!C36)",
+                "SUM(E5:E11)", "E4-E12","E13/E4","SUM(E15:E17)",
+                "E4-E12-E18","E20/E4","E20/('Property'!$C$16+'Property'!$C$19)",
+                "(E20-E22)/('Property'!$C$16+'Property'!$C$19-'Property'!$C$29)",
+ "('Property'!$C$23-'Property'!$C$16-'Property'!$C$28)/('Property'!$C$16)/('Property'!$C$19-'Property'!$C$15)",
+                "E23+E25")
+  names(formulasE) = c("E4","E12","E13","E14","E18","E20","E21","E23","E24","E25","E26")            
+  for(i in 1:length(formulasE))
+    writeFormula(wb_out, "Financials",x=formulasE[i],startCol = "E",
+                 startRow = as.integer(sub("E","",names(formulasE)[i])))
+  
+  formulasD = c("SUM(D5:D11)", "D4-D12","D13/D4","SUM(D15:D17)",
+                "D4-D12-D18","D20/D4","D20/('Property'!$C$16+'Property'!$C$19)",
+                "(D20-D22)/('Property'!$C$16+'Property'!$C$19-'Property'!$C$29)",
+    "('Property'!$C$23-'Property'!$C$16-'Property'!$C$28)/('Property'!$C$16)/('Property'!$C$19-'Property'!$C$15)",
+                "D23+D25")
+  names(formulasD) = c("D12","D13","D14","D18","D20","D21","D23","D24","D25","D26")
+  for(i in 1:length(formulasD))
+    writeFormula(wb_out, "Financials",x=formulasD[i],startCol = "D",
+                 startRow = as.integer(sub("D","",names(formulasD)[i])))
+  
   wb_out
 }
 

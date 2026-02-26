@@ -1,7 +1,7 @@
 setwd("/Users/ylin/Google Drive/My Drive/* Monthly/Financial Analysis/2025/")
 source("/Users/ylin/ValtaWork/Accounting/FinancialStatements/Functions_2025.R")
 YearSel = 2025
-manualpath = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting//MonthlyInvoiceMigration/Data/FolderPaths.xlsx")
+manualpath = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/MonthlyInvoiceMigration/Data/FolderPaths.xlsx")
 manualloc = "/Users/ylin/Google Drive/My Drive/* Monthly/"
 files = data.frame(file=list.files(path="./Yearly Statements/",
               pattern = ".xlsx"))
@@ -11,6 +11,16 @@ files$Property[grepl("Microsoft",files$Property)] =
   c("Microsoft 14615-D303","Microsoft 14620-E205","Microsoft 14645-C19")
 files = files %>% filter(!duplicated(Property) & !Property %in% "xlsx")
 estimates = input_financial(property_listing)
+estimates = estimates %>% 
+  mutate(Final = as.numeric(Final)) %>%
+  mutate(REET = Final*ifelse(Property %in% "OSBR",0.0025,0.005),
+         state_rate = ifelse(Final<=525000,Final*0.011,
+           ifelse(Final<=1525000,525000*0.011+(Final-525000)*0.0128,
+             ifelse(Final<=3025000,525000*0.011+(1525000-525000)*0.0128 + (Final-1525000)*0.0275,
+              525000*0.011+(1525000-525000)*0.0128 + (3025000-1525000)*0.0275 + (Final-3025000)*0.03)))) %>%
+  mutate(TransferTax = REET+state_rate,
+         VacancyRate=0.05)
+  
 for(k in files$Property[-c(6,11,14,15,38,44,57,63)]) 
 {
   print(k)
@@ -51,5 +61,4 @@ for(k in files$Property[-c(6,11,14,15,38,44,57,63)])
   wb_out = format_monthly(k,tables_write$Monthly,wb_out)
   saveWorkbook(wb_out, paste0("./Yearly Financial/2025 FinancialAnalysisReport-",k,".xlsx"), 
                overwrite = TRUE)
-  
 } 
