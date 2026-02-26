@@ -555,41 +555,65 @@ format_property <- function(Listing,table1,wb_out){
 
 format_Financials<- function(Listing,table1,wb_out){
   grid_tpl <- read_grid(wb_out, "Financials")
-  for(k in grid_tpl$X2[c(4:10,15:17)]) 
+  table1 = rbind.fill(table1[1,],data.frame(Expense=c("Fee","Net Rent")),table1[-1,])
+  for(k in grid_tpl$X2[c(4:12,17:19)]) 
     grid_tpl[grid_tpl$X2 %in% k,paste0('X',4:5)] = 
       table1[table1$Expense %in% k,3:4]
-  grid_tpl[11,paste0('X',4:5)] = 
+  grid_tpl[13,paste0('X',4:5)] = 
     table1[table1$Expense %in% "Other Owner Expense",3:4]
   addlines = data.frame(X1=NA)
-  grid_tpl = rbind.fill(grid_tpl[1:18,],addlines,grid_tpl[-(1:18),])
+  grid_tpl = rbind.fill(grid_tpl[1:20,],addlines,grid_tpl[-(1:20),])
   
   writeData(wb_out, "Financials", x = grid_tpl, colNames = FALSE)
   for(j in 4:5)
-    for(i in 4:15)
-      writeData(wb_out, "Financials", x = as.numeric(grid_tpl[i,paste0("X",j)]), 
+   {
+     for(i in c(4:15,17:22,24))
+       writeData(wb_out, "Financials", x = as.integer(grid_tpl[i,paste0("X",j)]), 
               startCol = LETTERS[j],startRow =i)
+    for(i in c(16,23,25:28))
+      writeData(wb_out, "Financials", x = as.integer(grid_tpl[i,paste0("X",j)]), 
+                startCol = LETTERS[j],startRow =i)
+  }
+  formulasD = c("D6" ="D4-D5",
+                "D14"="SUM(D7:D13)",
+                "D15"="D6-D14",
+                "D16"="D15/D6",
+                "D17"="'Property'!$C$32",
+                "D18"="'Property'!$C$33",
+                "D19"="'Property'!$C$34", 
+                "D20"="SUM(D17:D19)",
+                "D22"="D6-D14-D20",
+                "D23"="D22/D6",
+                "D25"="D22/('Property'!$C$16+'Property'!$C$19)",
+                "D26"="(D22-D24)/('Property'!$C$16+'Property'!$C$19-'Property'!$C$29)",
+                "D27"= "('Property'!$C$23-'Property'!$C$16-'Property'!$C$28)/('Property'!$C$16)/('Property'!$C$20-'Property'!$C$15)",
+                "D28"="D25+D27")
   
-  formulasE = c("'Property'!C35*12*(1-'Property'!C36)",
-                "SUM(E5:E11)", "E4-E12","E13/E4","SUM(E15:E17)",
-                "E4-E12-E18","E20/E4","E20/('Property'!$C$16+'Property'!$C$19)",
-                "(E20-E22)/('Property'!$C$16+'Property'!$C$19-'Property'!$C$29)",
- "('Property'!$C$23-'Property'!$C$16-'Property'!$C$28)/('Property'!$C$16)/('Property'!$C$19-'Property'!$C$15)",
-                "E23+E25")
-  names(formulasE) = c("E4","E12","E13","E14","E18","E20","E21","E23","E24","E25","E26")            
-  for(i in 1:length(formulasE))
-    writeFormula(wb_out, "Financials",x=formulasE[i],startCol = "E",
-                 startRow = as.integer(sub("E","",names(formulasE)[i])))
-  
-  formulasD = c("SUM(D5:D11)", "D4-D12","D13/D4","SUM(D15:D17)",
-                "D4-D12-D18","D20/D4","D20/('Property'!$C$16+'Property'!$C$19)",
-                "(D20-D22)/('Property'!$C$16+'Property'!$C$19-'Property'!$C$29)",
-    "('Property'!$C$23-'Property'!$C$16-'Property'!$C$28)/('Property'!$C$16)/('Property'!$C$19-'Property'!$C$15)",
-                "D23+D25")
-  names(formulasD) = c("D12","D13","D14","D18","D20","D21","D23","D24","D25","D26")
   for(i in 1:length(formulasD))
     writeFormula(wb_out, "Financials",x=formulasD[i],startCol = "D",
                  startRow = as.integer(sub("D","",names(formulasD)[i])))
   
+  formulasE = c("E4"="'Property'!$C$35*12",
+                "E6" ="E4-E5",
+                "E12" = "E6*0.12",
+                "E13" = "D13",
+                "E14"="SUM(E7:E13)",
+                "E15"="E6-E14",
+                "E16"="E15/E6",
+                "E17"="'Property'!$C$32",
+                "E18"="'Property'!$C$33",
+                "E19"="'Property'!$C$34", 
+                "E20"="SUM(E17:E19)",
+                "E22"="E6-E14-E20",
+                "E23"="E22/E6",
+                "E25"="E22/('Property'!$C$16+'Property'!$C$19)",
+                "E26"="(E22-E24)/('Property'!$C$16+'Property'!$C$19-'Property'!$C$29)",
+                "E27"= "('Property'!$C$23-'Property'!$C$16-'Property'!$C$28)/('Property'!$C$16)/('Property'!$C$20-'Property'!$C$15)",
+                "E28"="E25+E27")
+  
+  for(i in 1:length(formulasE))
+    writeFormula(wb_out, "Financials",x=formulasE[i],startCol = "E",
+                 startRow = as.integer(sub("E","",names(formulasE)[i])))
   wb_out
 }
 

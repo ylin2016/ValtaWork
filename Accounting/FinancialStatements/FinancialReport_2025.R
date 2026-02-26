@@ -21,7 +21,7 @@ estimates = estimates %>%
   mutate(TransferTax = REET+state_rate,
          VacancyRate=0.05)
   
-for(k in files$Property[-c(6,11,14,15,38,44,57,63)]) 
+for(k in files$Property[-c(2,6,11,14,15,37,38,44,57,63)]) 
 {
   print(k)
   dat = read.xlsx(paste0("./Yearly Statements/",
