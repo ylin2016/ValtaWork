@@ -148,7 +148,7 @@ inspections_input= function(fileloc,filemonth,employee){
     join(employee %>% select(Nick.name,`Bi-mo.inspection`) %>%
            mutate(Cohost = Nick.name)) %>%
     join(cohost %>% select(Property,BEDROOMS)) %>%
-    mutate(Bimonthly = ifelse(BEDROOMS %in% 1,40,ifelse(BEDROOMS %in% 2,60,80))) %>%
+    mutate(Bimonthly = 80) %>% #ifelse(BEDROOMS %in% 1,40,ifelse(BEDROOMS %in% 2,60,80))) %>%
     mutate(CohostPayOut = Bimonthly) %>%
     arrange(Cohost,Property)
   print(table(inspections$BEDROOMS,exclude=NULL))
@@ -346,10 +346,12 @@ update_summarysheet = function(sum_cohost,sum_property){
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
   
   sum_cohost= sum_cohost %>% 
-    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia"),NA,
+    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia","Shaya"),NA,
         ifelse(Cohost %in% "Crystal",
-               length(unique(sum_property$Property[sum_property$Cohost %in% "Crystal"]))*150,
-           ifelse(Cohost %in% "Shaya", 1600,CohostPayOut))))
+               length(unique(sum_property$Property[sum_property$Cohost %in% "Crystal"]))*150 +
+                 sum_cohost$Bimonthly[sum_cohost$Cohost %in% "Crystal"]*80,
+          ifelse(Cohost %in% "Shaya", 
+             sum_cohost$Bimonthly[sum_cohost$Cohost %in% "Shaya"]*80, CohostPayOut))))
   all_sheets$Cohost = rbind.fill(sum_cohost,
                     all_sheets$Cohost %>% filter(!Month %in% substr(enddate,1,7))) %>%
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
@@ -423,7 +425,7 @@ cleaner_sheets = function(cleansheet,newcleaner=NULL){
                  na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
     }else{
       filename = paste0(cleaning_loc,k,'.xlsx')
-      sheet_names =excel_sheets(filename)
+      sheet_names = excel_sheets(filename)
       all_sheets = lapply(sheet_names, function(s) {
         read_excel(filename, sheet = s)
       })

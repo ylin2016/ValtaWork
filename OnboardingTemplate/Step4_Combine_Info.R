@@ -62,61 +62,20 @@ names(files) = allfiles$Listing
 for(k in allfiles$Listing)
 {
   print(k)
+  urls = get_sheet_hyperlinks(paste0("./PropertyInformation/",k,'.xlsx'), sheet = 3)
   files[[k]] = read.xlsx(paste0("./PropertyInformation/",k,'.xlsx'),
                          sheet='Property',startRow = 2) 
+  files[[k]] = files[[k]] %>%
+    mutate(order = 1:nrow(files[[k]]),
+           cell = paste0("B",order+3))
+  files[[k]] = merge(files[[k]],urls %>% select(cell,target),
+                     by='cell',all.x = T) %>% arrange(order)
 }
 filescombined = NULL
 for(k in allfiles$Listing)
   filescombined =rbind.fill(filescombined,
-                            data.frame(Property=k,files[[k]]))
-
-write.xlsx(filescombined,"masterfile_combined.xlsx", colWidths = c("auto",10,rep(20,4)),
-           firstActiveRow = 2,withFilter = T)
-#########################################################################################
-## 1/13/26: Read in after modified
-filescombined = read.xlsx("masterfile_combined.xlsx")
-#filescombined$rnk =1:nrow(filescombined)
-filescombined = filescombined[,1:7]
-# Find links from master file for airbnb link and showmojo
-xlsx <- "/Users/ylin/Google Drive/My Drive/** Properties ** -- Valta/Listings, Team & Vendor Master Sheet.xlsx"
-
-
-links <- get_sheet_hyperlinks(xlsx, sheet = 1)
-links_sel <- links %>%
-  mutate(
-    col_letters = str_extract(cell, "^[A-Z]+"),
-    row_num     = as.integer(str_extract(cell, "\\d+$"))
-  ) %>%
-  filter(col_letters %in% c("AJ","AK","AV")) %>%
-  select(col_letters, row_num, target)
-
-links_wide <- links_sel %>%
-  mutate(col_letters = paste0(col_letters, "_url")) %>%
-  pivot_wider(names_from = col_letters, values_from = target)
-
-df <- read.xlsx(xlsx, sheet = 1)  # use the SAME sheet number you used to extract hyperlinks
-
-df2 <- df %>% select(Property,Access,`Backup.Access.(default.lockbox:.3012)`,
-                     Airbnb.Link,Airbnb.Custom.Link, Showmojo) %>%
-  mutate(excel_row = row_number() + 1) %>%   # +1 because Excel row 1 is header
-  left_join(links_wide, by = c("excel_row" = "row_num")) %>%
-  select(-excel_row)
-
-access = df2 %>% select(Property,Access) %>% mutate(Field ="Maintenance – Access - Guest Access Type")
-backup = df2 %>% select(Property,`Backup.Access.(default.lockbox:.3012)`) %>%
-  mutate(Field ="Maintenance – Access – Backup Code")
-airlinks = df2 %>% select(Property,Airbnb.Link,AJ_url,AK_url) %>%
-  mutate(Field = "Account Link")
-showmojo = df2 %>% select(Property,Showmojo,AV_url) %>% 
-  mutate(Field ="Maintenance – Access – Guest Access Code")
-
-colnames(access) = colnames(backup) = c("Property","Info","Field")
-colnames(airlinks) = c("Property","Info","url","url2","Field")
-colnames(showmojo) = c("Property","Info","url","Field")
-
-addinfo = rbind.fill(access,backup,airlinks,showmojo)
-filescombined = merge(filescombined,addinfo,by=c("Property","Field"),all.x=T) %>%
-  arrange(rnk)
+                            data.frame(Property=k,files[[k]]) %>% 
+                              select(-order) %>% select(-cell))
 
 write.xlsx(filescombined,"masterfile_combined.xlsx", colWidths = c("auto",10,rep(20,4)),
            firstActiveRow = 2,withFilter = T)

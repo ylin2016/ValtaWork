@@ -25,8 +25,8 @@ get_sheet_hyperlinks <- function(xlsx, sheet) {
   sheet_xml <- file.path(td, "xl", "worksheets", paste0("sheet", sheet, ".xml"))
   rels_xml  <- file.path(td, "xl", "worksheets", "_rels", paste0("sheet", sheet, ".xml.rels"))
   
-  sx <- read_xml(sheet_xml)
-  rx <- read_xml(rels_xml)
+  sx <- xml2::read_xml(sheet_xml)
+  rx <- xml2::read_xml(rels_xml)
   
   ns_sheet <- c(
     x = "http://schemas.openxmlformats.org/spreadsheetml/2006/main",
@@ -34,28 +34,28 @@ get_sheet_hyperlinks <- function(xlsx, sheet) {
   )
   ns_rels <- c(r = "http://schemas.openxmlformats.org/package/2006/relationships")
   
-  hnodes <- xml_find_all(sx, ".//x:hyperlink", ns = ns_sheet)
+  hnodes <- xml2::xml_find_all(sx, ".//x:hyperlink", ns = ns_sheet)
   
   # IMPORTANT: r:id is namespaced; read it explicitly
-  rid <- xml_attr(hnodes, "r:id", ns = ns_sheet)
+  rid <- xml2::xml_attr(hnodes, "r:id", ns = ns_sheet)
   if (all(is.na(rid) | rid == "")) {
     # fallback in case some files store it without prefix (rare)
-    rid <- xml_attr(hnodes, "id")
+    rid <- xml2::xml_attr(hnodes, "id")
   }
   
   hl <- tibble(
-    cell     = xml_attr(hnodes, "ref"),
+    cell     = xml2::xml_attr(hnodes, "ref"),
     rid      = rid,
-    location = xml_attr(hnodes, "location")
+    location = xml2::xml_attr(hnodes, "location")
   )
   
-  rnodes <- xml_find_all(rx, ".//r:Relationship", ns = ns_rels)
+  rnodes <- xml2::xml_find_all(rx, ".//r:Relationship", ns = ns_rels)
   
   rels <- tibble(
-    rid    = xml_attr(rnodes, "Id"),
-    target = xml_attr(rnodes, "Target"),
-    type   = xml_attr(rnodes, "Type"),
-    mode   = xml_attr(rnodes, "TargetMode")
+    rid    = xml2::xml_attr(rnodes, "Id"),
+    target = xml2::xml_attr(rnodes, "Target"),
+    type   = xml2::xml_attr(rnodes, "Type"),
+    mode   = xml2::xml_attr(rnodes, "TargetMode")
   ) %>%
     filter(grepl("/hyperlink$", type))
   
@@ -105,6 +105,7 @@ for(k in listings[c(70,72:81,83,84)])#[-c(2:11,15,37,50,53,64,65,71)]) 23
   
   links0 <- get_sheet_hyperlinks(paste0("./PropertyInformation/",k,'.xlsx'),
                                  sheet = 3)
+  links0 = links0 %>% filter(!duplicated(cell))
   links = grid_tpl %>%  filter(grepl("Link|link",X1)) %>%
     mutate(name =sapply(X1,function(x) {
              y=unlist(strsplit(x,"–"));trimws(y[length(y)])})) %>%
@@ -112,7 +113,7 @@ for(k in listings[c(70,72:81,83,84)])#[-c(2:11,15,37,50,53,64,65,71)]) 23
            cell=paste0("B",order))
   links = merge(links,data.sel,by='name',all.x=T)
   links = merge(links,links0[,c('cell','target')],by='cell',all.x=T)
-  links = links %>% mutate(url = ifelse(is.na(url),target,url)) %>% filter(!is.na(url))
+  links = links %>% filter(!is.na(url))
   
   writeData(wb_out, "Property", x = grid_tpl[,!colnames(grid_tpl) %in% 'order'], 
             colNames = FALSE)
