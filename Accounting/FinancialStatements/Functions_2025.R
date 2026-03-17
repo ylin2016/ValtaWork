@@ -593,7 +593,7 @@ format_Financials<- function(Listing,table1,wb_out){
     writeFormula(wb_out, "Financials",x=formulasD[i],startCol = "D",
                  startRow = as.integer(sub("D","",names(formulasD)[i])))
   
-  formulasE = c("E4"="'Property'!$C$35*12",
+  formulasE = c("E4"="'Property'!$C$35*12*(1-'Property'!$C$36)",
                 "E6" ="E4-E5",
                 "E12" = "E6*0.12",
                 "E13" = "D13",
