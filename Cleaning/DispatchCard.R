@@ -91,7 +91,7 @@ dispatch[dispatch$Cleaning.Date %in% '2025-07-31',c("Car2P2","Car2P3")] =
 # 5/25 dispatch card wrong, it was for 5/23
 # 5/30 dispatch card have 3 cleaners, we paid 2 only
 
-# No scheduled clean for Seattle 10057 Upper on 2026-01-26
+# 1/26/2026: No scheduled clean for Seattle 10057 Upper
 dispatch[dispatch$Cleaning.Date %in% '2026-01-26',"Car1P4"] = NA
          
 data_dispatch = NULL
@@ -142,8 +142,10 @@ tmp = dispatch %>% select(Cleaning.Date,nunit) %>%
   join(data_dispatch %>% group_by(Cleaning.Date) %>% 
          reframe(nunit1=length(unique(Listing))))
 tmp %>% filter(nunit!=nunit1) %>% arrange(Cleaning.Date)
-#2025-10-15     8      7: it is ok as Clyde hill 8830 shown in car 1 &2 for joint work
-#2025-10-11    12     11: it is ok as Kirkland 8017 shown in car 1 &2 for joint work
+#2025-10-15     8   7: it is ok as Clyde hill 8830 shown in car 1 &2 for joint work
+#2025-10-11    12   11: it is ok as Kirkland 8017 shown in car 1 &2 for joint work
+#2026-01-26    11   10:  No scheduled clean for Seattle 10057 Upper
+#2026-02-15    13   14:  Seatac 12834 turn to upper & lower
 ##-----------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
@@ -201,7 +203,7 @@ dispatch_monthly = data_all %>% filter(Rate>0) %>%
 #        Income from STR and Residential
 #--------------------------------------------------------------------------------
 months = unique(substr(data$Cleaning.Date,1,7))
-#months = months[-length(months)]
+months = months[-length(months)]
 ## cleaning per listing
 payout = vector('list', length(months)+5)
 names(payout)=c(paste0('2025-0',1:5),months)
@@ -269,28 +271,50 @@ Incomes_monthly = rbind.fill(IncomeSTR, IncomeResid %>%
          Type = paste(Type,collapse = "/"))
 
 # compare dispatch card and Incomes #time per listing per month
+STR_monthly = IncomeSTR %>% group_by(yearmonth,Listing) %>% 
+      reframe(Times=sum(as.integer(Times)))
+Res_monthly = IncomeResid %>% group_by(yearmonth,Listing) %>% 
+  reframe(Times.Res=n())
 
-both = merge(dispatch_monthly,Incomes_monthly,by=c("yearmonth","Listing"),all=T)
-both %>% filter(yearmonth %in% '2026-02' & (Times.x!=Times.y | is.na(Times.y)|is.na(Times.x)))
-#Beachwood 2 missing 1 residential cleaning 
-#Kirkland 8017 missing 2 residential cleaning 
-#Redmond 14707 missing 2 residential cleaning 
+both = merge(dispatch_monthly,STR_monthly,by=c("yearmonth","Listing"),
+             all=T,suffixes = c(".disp",'.str'))
+both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
+    mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
+           diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-#data_all %>% filter(yearmonth %in% '2026-01' & Listing %in% 'Bellevue 1420')
-both %>% filter(yearmonth %in% '2026-02' & 
-                  (Times.x!=Times.y | is.na(Times.y) |is.na(Times.x)))
-data_all %>% filter(yearmonth %in% '2026-02' & Listing %in% "Seattle 906 Lower")
-
+both %>% filter(yearmonth %in% '2026-02' & diff!=0)
 2025-11
 Beachwood 1 scheduled + cleaned on 11/2 and 11/3, what reason?
 Kirkland 8017 were cleaned 4 times in Nov, we only pay 3 times?
 2025-10 
 
+2026-01
+#Beachwood 2 missing 1 residential cleaning. Good in Feb
+#Kirkland 8017 missing 2 residential cleaning. Good in Feb
+#Redmond 14707 missing 2 residential cleaning 
+
 2026-02
-Bellevue 1420： scheduled 2, cleaned 1, owner stay
-Bellevue 4616: scheduled 3, pay 2
-Bellevue 14507U1: scheduled 1, no pay 
-Microsoft 14615-D303: re-cleaning once
+#Bellevue 1420： scheduled 2, cleaned 1, owner stay, OK
+# Bothell 3528        1 ->2   one is carpet
+# Microsoft 14615-D303: re-cleaning once, OK
+Bellevue 14507U1: 1 ->NA 
+Bellevue 4616: 3->2
+Bothell 18006: 1 ->NA
+Elektra 1314        5 -> NA 
+Elektra 1514        3 -> NA
+Elektra 510         1 -> NA
+Elektra 909         5 -> NA 
+Issaquah 2450       1 -> NA
+Medina 2213        5 -> 3
+Seattle 6064       2 -> 1
+Redmond 14707     2 ->NA
+ 
+month12 = both %>% filter(yearmonth %in% c('2026-02','2026-01')) %>% 
+  group_by(Listing) %>%
+  reframe(across(where(is.numeric), sum,na.rm=T)) %>% 
+  mutate(diff = Times.disp-Times.pay) 
+month12 %>% filter(diff!=0)
+
 #-------------------------------------------------------------------------------
 Valtapay = data.frame(yearmonth = names(payout),
                       ValtaPaid = unlist(lapply(payout,function(x)
