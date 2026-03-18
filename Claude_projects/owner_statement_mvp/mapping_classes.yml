@@ -1,0 +1,896 @@
+- qbo_class_id: '522143'
+  qbo_class_name: Listings:Ashford 137
+  property_id: ashford_137
+  property_name: Ashford 137
+  owner_id: owner_ashford_137
+  owner_name: Ashford 137 Owner
+  owner_email: ''
+- qbo_class_id: '522145'
+  qbo_class_name: Listings:Auburn 29123
+  property_id: auburn_29123
+  property_name: Auburn 29123
+  owner_id: owner_auburn_29123
+  owner_name: Auburn 29123 Owner
+  owner_email: ''
+- qbo_class_id: '689692'
+  qbo_class_name: Listings:Bainbridge 11143
+  property_id: bainbridge_11143
+  property_name: Bainbridge 11143
+  owner_id: owner_bainbridge_11143
+  owner_name: Bainbridge 11143 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001794669'
+  qbo_class_name: Listings:Beachwood
+  property_id: beachwood
+  property_name: Beachwood
+  owner_id: owner_beachwood
+  owner_name: Beachwood Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492202'
+  qbo_class_name: Listings:Beachwood 1
+  property_id: beachwood_1
+  property_name: Beachwood 1
+  owner_id: owner_beachwood_1
+  owner_name: Beachwood 1 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492176'
+  qbo_class_name: Listings:Beachwood 10
+  property_id: beachwood_10
+  property_name: Beachwood 10
+  owner_id: owner_beachwood_10
+  owner_name: Beachwood 10 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001764898'
+  qbo_class_name: Listings:Beachwood 2
+  property_id: beachwood_2
+  property_name: Beachwood 2
+  owner_id: owner_beachwood_2
+  owner_name: Beachwood 2 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001514510'
+  qbo_class_name: Listings:Beachwood 3
+  property_id: beachwood_3
+  property_name: Beachwood 3
+  owner_id: owner_beachwood_3
+  owner_name: Beachwood 3 Owner
+  owner_email: ''
+- qbo_class_id: '517130'
+  qbo_class_name: Listings:Beachwood 4
+  property_id: beachwood_4
+  property_name: Beachwood 4
+  owner_id: owner_beachwood_4
+  owner_name: Beachwood 4 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001590423'
+  qbo_class_name: Listings:Beachwood 5
+  property_id: beachwood_5
+  property_name: Beachwood 5
+  owner_id: owner_beachwood_5
+  owner_name: Beachwood 5 Owner
+  owner_email: ''
+- qbo_class_id: '517494'
+  qbo_class_name: Listings:Beachwood 6
+  property_id: beachwood_6
+  property_name: Beachwood 6
+  owner_id: owner_beachwood_6
+  owner_name: Beachwood 6 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001769601'
+  qbo_class_name: Listings:Beachwood 7
+  property_id: beachwood_7
+  property_name: Beachwood 7
+  owner_id: owner_beachwood_7
+  owner_name: Beachwood 7 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001514509'
+  qbo_class_name: Listings:Beachwood 8
+  property_id: beachwood_8
+  property_name: Beachwood 8
+  owner_id: owner_beachwood_8
+  owner_name: Beachwood 8 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001793399'
+  qbo_class_name: Listings:Beachwood 9
+  property_id: beachwood_9
+  property_name: Beachwood 9
+  owner_id: owner_beachwood_9
+  owner_name: Beachwood 9 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001813930'
+  qbo_class_name: Listings:Bellevue 10409
+  property_id: bellevue_10409
+  property_name: Bellevue 10409
+  owner_id: owner_bellevue_10409
+  owner_name: Bellevue 10409 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492189'
+  qbo_class_name: Listings:Bellevue 13020
+  property_id: bellevue_13020
+  property_name: Bellevue 13020
+  owner_id: owner_bellevue_13020
+  owner_name: Bellevue 13020 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001736182'
+  qbo_class_name: Listings:Bellevue 1326
+  property_id: bellevue_1326
+  property_name: Bellevue 1326
+  owner_id: owner_bellevue_1326
+  owner_name: Bellevue 1326 Owner
+  owner_email: ''
+- qbo_class_id: '627552'
+  qbo_class_name: Listings:Bellevue 1420
+  property_id: bellevue_1420
+  property_name: Bellevue 1420
+  owner_id: owner_bellevue_1420
+  owner_name: Bellevue 1420 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001640665'
+  qbo_class_name: Listings:Bellevue 14507
+  property_id: bellevue_14507
+  property_name: Bellevue 14507
+  owner_id: owner_bellevue_14507
+  owner_name: Bellevue 14507 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001640666'
+  qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 1
+  property_id: bellevue_14507_unit_1
+  property_name: Bellevue 14507 Unit 1
+  owner_id: owner_bellevue_14507_unit_1
+  owner_name: Bellevue 14507 Unit 1 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001640667'
+  qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 2
+  property_id: bellevue_14507_unit_2
+  property_name: Bellevue 14507 Unit 2
+  owner_id: owner_bellevue_14507_unit_2
+  owner_name: Bellevue 14507 Unit 2 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001640668'
+  qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 3
+  property_id: bellevue_14507_unit_3
+  property_name: Bellevue 14507 Unit 3
+  owner_id: owner_bellevue_14507_unit_3
+  owner_name: Bellevue 14507 Unit 3 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001640669'
+  qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 4
+  property_id: bellevue_14507_unit_4
+  property_name: Bellevue 14507 Unit 4
+  owner_id: owner_bellevue_14507_unit_4
+  owner_name: Bellevue 14507 Unit 4 Owner
+  owner_email: ''
+- qbo_class_id: '510198'
+  qbo_class_name: Listings:Bellevue 14621- G307
+  property_id: bellevue_14621_g307
+  property_name: Bellevue 14621- G307
+  owner_id: owner_bellevue_14621_g307
+  owner_name: Bellevue 14621- G307 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492197'
+  qbo_class_name: Listings:Bellevue 1621
+  property_id: bellevue_1621
+  property_name: Bellevue 1621
+  owner_id: owner_bellevue_1621
+  owner_name: Bellevue 1621 Owner
+  owner_email: ''
+- qbo_class_id: '588893'
+  qbo_class_name: Listings:Bellevue 16237
+  property_id: bellevue_16237
+  property_name: Bellevue 16237
+  owner_id: owner_bellevue_16237
+  owner_name: Bellevue 16237 Owner
+  owner_email: ''
+- qbo_class_id: '688900'
+  qbo_class_name: Listings:Bellevue 16310-A3
+  property_id: bellevue_16310_a3
+  property_name: Bellevue 16310-A3
+  owner_id: owner_bellevue_16310_a3
+  owner_name: Bellevue 16310-A3 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001552025'
+  qbo_class_name: Listings:Bellevue 1940
+  property_id: bellevue_1940
+  property_name: Bellevue 1940
+  owner_id: owner_bellevue_1940
+  owner_name: Bellevue 1940 Owner
+  owner_email: ''
+- qbo_class_id: '510199'
+  qbo_class_name: Listings:Bellevue 2243
+  property_id: bellevue_2243
+  property_name: Bellevue 2243
+  owner_id: owner_bellevue_2243
+  owner_name: Bellevue 2243 Owner
+  owner_email: ''
+- qbo_class_id: '544835'
+  qbo_class_name: Listings:Bellevue 242
+  property_id: bellevue_242
+  property_name: Bellevue 242
+  owner_id: owner_bellevue_242
+  owner_name: Bellevue 242 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001739498'
+  qbo_class_name: Listings:Bellevue 300
+  property_id: bellevue_300
+  property_name: Bellevue 300
+  owner_id: owner_bellevue_300
+  owner_name: Bellevue 300 Owner
+  owner_email: ''
+- qbo_class_id: '637578'
+  qbo_class_name: Listings:Bellevue 321
+  property_id: bellevue_321
+  property_name: Bellevue 321
+  owner_id: owner_bellevue_321
+  owner_name: Bellevue 321 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492154'
+  qbo_class_name: Listings:Bellevue 514
+  property_id: bellevue_514
+  property_name: Bellevue 514
+  owner_id: owner_bellevue_514
+  owner_name: Bellevue 514 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001673559'
+  qbo_class_name: Listings:Bellevue 601
+  property_id: bellevue_601
+  property_name: Bellevue 601
+  owner_id: owner_bellevue_601
+  owner_name: Bellevue 601 Owner
+  owner_email: ''
+- qbo_class_id: '695031'
+  qbo_class_name: Listings:Bellevue 701
+  property_id: bellevue_701
+  property_name: Bellevue 701
+  owner_id: owner_bellevue_701
+  owner_name: Bellevue 701 Owner
+  owner_email: ''
+- qbo_class_id: '587292'
+  qbo_class_name: Listings:Bothell 11131
+  property_id: bothell_11131
+  property_name: Bothell 11131
+  owner_id: owner_bothell_11131
+  owner_name: Bothell 11131 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001755154'
+  qbo_class_name: Listings:Burien 14407 Middle
+  property_id: burien_14407_middle
+  property_name: Burien 14407 Middle
+  owner_id: owner_burien_14407_middle
+  owner_name: Burien 14407 Middle Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001755153'
+  qbo_class_name: Listings:Burien 14407 Top
+  property_id: burien_14407_top
+  property_name: Burien 14407 Top
+  owner_id: owner_burien_14407_top
+  owner_name: Burien 14407 Top Owner
+  owner_email: ''
+- qbo_class_id: '677869'
+  qbo_class_name: Listings:Edmonds 7819
+  property_id: edmonds_7819
+  property_name: Edmonds 7819
+  owner_id: owner_edmonds_7819
+  owner_name: Edmonds 7819 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492211'
+  qbo_class_name: Listings:Elektra 1004
+  property_id: elektra_1004
+  property_name: Elektra 1004
+  owner_id: owner_elektra_1004
+  owner_name: Elektra 1004 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492212'
+  qbo_class_name: Listings:Elektra 1108
+  property_id: elektra_1108
+  property_name: Elektra 1108
+  owner_id: owner_elektra_1108
+  owner_name: Elektra 1108 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492167'
+  qbo_class_name: Listings:Elektra 1115
+  property_id: elektra_1115
+  property_name: Elektra 1115
+  owner_id: owner_elektra_1115
+  owner_name: Elektra 1115 Owner
+  owner_email: ''
+- qbo_class_id: '706489'
+  qbo_class_name: Listings:Elektra 1203
+  property_id: elektra_1203
+  property_name: Elektra 1203
+  owner_id: owner_elektra_1203
+  owner_name: Elektra 1203 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001795968'
+  qbo_class_name: Listings:Elektra 1305
+  property_id: elektra_1305
+  property_name: Elektra 1305
+  owner_id: owner_elektra_1305
+  owner_name: Elektra 1305 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492155'
+  qbo_class_name: Listings:Elektra 703
+  property_id: elektra_703
+  property_name: Elektra 703
+  owner_id: owner_elektra_703
+  owner_name: Elektra 703 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492201'
+  qbo_class_name: Listings:Elektra 809
+  property_id: elektra_809
+  property_name: Elektra 809
+  owner_id: owner_elektra_809
+  owner_name: Elektra 809 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492203'
+  qbo_class_name: Listings:Hoodsport 26060
+  property_id: hoodsport_26060
+  property_name: Hoodsport 26060
+  owner_id: owner_hoodsport_26060
+  owner_name: Hoodsport 26060 Owner
+  owner_email: ''
+- qbo_class_id: '522144'
+  qbo_class_name: Listings:Hoquiam 21
+  property_id: hoquiam_21
+  property_name: Hoquiam 21
+  owner_id: owner_hoquiam_21
+  owner_name: Hoquiam 21 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492163'
+  qbo_class_name: Listings:Issaquah 2642
+  property_id: issaquah_2642
+  property_name: Issaquah 2642
+  owner_id: owner_issaquah_2642
+  owner_name: Issaquah 2642 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001794670'
+  qbo_class_name: Listings:Jing's listings
+  property_id: jing_s_listings
+  property_name: Jing's listings
+  owner_id: owner_jing_s_listings
+  owner_name: Jing's listings Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001767130'
+  qbo_class_name: Listings:Keaau 15-1542
+  property_id: keaau_15_1542
+  property_name: Keaau 15-1542
+  owner_id: owner_keaau_15_1542
+  owner_name: Keaau 15-1542 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492164'
+  qbo_class_name: Listings:Kirkland 10219
+  property_id: kirkland_10219
+  property_name: Kirkland 10219
+  owner_id: owner_kirkland_10219
+  owner_name: Kirkland 10219 Owner
+  owner_email: ''
+- qbo_class_id: '656442'
+  qbo_class_name: Listings:Kirkland 11006-815
+  property_id: kirkland_11006_815
+  property_name: Kirkland 11006-815
+  owner_id: owner_kirkland_11006_815
+  owner_name: Kirkland 11006-815 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001701500'
+  qbo_class_name: Listings:Kirkland 11321
+  property_id: kirkland_11321
+  property_name: Kirkland 11321
+  owner_id: owner_kirkland_11321
+  owner_name: Kirkland 11321 Owner
+  owner_email: ''
+- qbo_class_id: '588892'
+  qbo_class_name: Listings:Kirkland 8017
+  property_id: kirkland_8017
+  property_name: Kirkland 8017
+  owner_id: owner_kirkland_8017
+  owner_name: Kirkland 8017 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492210'
+  qbo_class_name: Listings:Kirkland 8252-D201
+  property_id: kirkland_8252_d201
+  property_name: Kirkland 8252-D201
+  owner_id: owner_kirkland_8252_d201
+  owner_name: Kirkland 8252-D201 Owner
+  owner_email: ''
+- qbo_class_id: '618434'
+  qbo_class_name: Listings:Lake Stevens 7626
+  property_id: lake_stevens_7626
+  property_name: Lake Stevens 7626
+  owner_id: owner_lake_stevens_7626
+  owner_name: Lake Stevens 7626 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492204'
+  qbo_class_name: Listings:Lilliwaup 28610
+  property_id: lilliwaup_28610
+  property_name: Lilliwaup 28610
+  owner_id: owner_lilliwaup_28610
+  owner_name: Lilliwaup 28610 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492151'
+  qbo_class_name: Listings
+  property_id: listings
+  property_name: Listings
+  owner_id: owner_listings
+  owner_name: Listings Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492172'
+  qbo_class_name: Listings:Longbranch 6821
+  property_id: longbranch_6821
+  property_name: Longbranch 6821
+  owner_id: owner_longbranch_6821
+  owner_name: Longbranch 6821 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492262'
+  qbo_class_name: Listings:Longbranch 6821 Lower
+  property_id: longbranch_6821_lower
+  property_name: Longbranch 6821 Lower
+  owner_id: owner_longbranch_6821_lower
+  owner_name: Longbranch 6821 Lower Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492173'
+  qbo_class_name: Listings:Longbranch 6821 Upper
+  property_id: longbranch_6821_upper
+  property_name: Longbranch 6821 Upper
+  owner_id: owner_longbranch_6821_upper
+  owner_name: Longbranch 6821 Upper Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001491551'
+  qbo_class_name: Listings:Mercer 2449
+  property_id: mercer_2449
+  property_name: Mercer 2449
+  owner_id: owner_mercer_2449
+  owner_name: Mercer 2449 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492206'
+  qbo_class_name: Listings:Mercer 3627
+  property_id: mercer_3627
+  property_name: Mercer 3627
+  owner_id: owner_mercer_3627
+  owner_name: Mercer 3627 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492208'
+  qbo_class_name: Listings:Mercer 3627 ADU
+  property_id: mercer_3627_adu
+  property_name: Mercer 3627 ADU
+  owner_id: owner_mercer_3627_adu
+  owner_name: Mercer 3627 ADU Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492207'
+  qbo_class_name: Listings:Mercer 3627 Main
+  property_id: mercer_3627_main
+  property_name: Mercer 3627 Main
+  owner_id: owner_mercer_3627_main
+  owner_name: Mercer 3627 Main Owner
+  owner_email: ''
+- qbo_class_id: '689691'
+  qbo_class_name: Listings:Mercer 3925
+  property_id: mercer_3925
+  property_name: Mercer 3925
+  owner_id: owner_mercer_3925
+  owner_name: Mercer 3925 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492166'
+  qbo_class_name: Listings:Microsoft 14615-D303
+  property_id: microsoft_14615_d303
+  property_name: Microsoft 14615-D303
+  owner_id: owner_microsoft_14615_d303
+  owner_name: Microsoft 14615-D303 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492156'
+  qbo_class_name: Listings:Microsoft 14620-E205
+  property_id: microsoft_14620_e205
+  property_name: Microsoft 14620-E205
+  owner_id: owner_microsoft_14620_e205
+  owner_name: Microsoft 14620-E205 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492169'
+  qbo_class_name: Listings:Microsoft 14645-C19
+  property_id: microsoft_14645_c19
+  property_name: Microsoft 14645-C19
+  owner_id: owner_microsoft_14645_c19
+  owner_name: Microsoft 14645-C19 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547055'
+  qbo_class_name: Listings:OSBR
+  property_id: osbr
+  property_name: OSBR
+  owner_id: owner_osbr
+  owner_name: OSBR Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001770304'
+  qbo_class_name: Listings:OSBR 1
+  property_id: osbr_1
+  property_name: OSBR 1
+  owner_id: owner_osbr_1
+  owner_name: OSBR 1 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547340'
+  qbo_class_name: Listings:OSBR 10
+  property_id: osbr_10
+  property_name: OSBR 10
+  owner_id: owner_osbr_10
+  owner_name: OSBR 10 Owner
+  owner_email: ''
+- qbo_class_id: '515449'
+  qbo_class_name: Listings:OSBR 11
+  property_id: osbr_11
+  property_name: OSBR 11
+  owner_id: owner_osbr_11
+  owner_name: OSBR 11 Owner
+  owner_email: ''
+- qbo_class_id: '590693'
+  qbo_class_name: Listings:OSBR 12
+  property_id: osbr_12
+  property_name: OSBR 12
+  owner_id: owner_osbr_12
+  owner_name: OSBR 12 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001770313'
+  qbo_class_name: Listings:OSBR 2
+  property_id: osbr_2
+  property_name: OSBR 2
+  owner_id: owner_osbr_2
+  owner_name: OSBR 2 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547333'
+  qbo_class_name: Listings:OSBR 3
+  property_id: osbr_3
+  property_name: OSBR 3
+  owner_id: owner_osbr_3
+  owner_name: OSBR 3 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547334'
+  qbo_class_name: Listings:OSBR 4
+  property_id: osbr_4
+  property_name: OSBR 4
+  owner_id: owner_osbr_4
+  owner_name: OSBR 4 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547335'
+  qbo_class_name: Listings:OSBR 5
+  property_id: osbr_5
+  property_name: OSBR 5
+  owner_id: owner_osbr_5
+  owner_name: OSBR 5 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547336'
+  qbo_class_name: Listings:OSBR 6
+  property_id: osbr_6
+  property_name: OSBR 6
+  owner_id: owner_osbr_6
+  owner_name: OSBR 6 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547337'
+  qbo_class_name: Listings:OSBR 7
+  property_id: osbr_7
+  property_name: OSBR 7
+  owner_id: owner_osbr_7
+  owner_name: OSBR 7 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547338'
+  qbo_class_name: Listings:OSBR 8
+  property_id: osbr_8
+  property_name: OSBR 8
+  owner_id: owner_osbr_8
+  owner_name: OSBR 8 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547339'
+  qbo_class_name: Listings:OSBR 9
+  property_id: osbr_9
+  property_name: OSBR 9
+  owner_id: owner_osbr_9
+  owner_name: OSBR 9 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492157'
+  qbo_class_name: Listings:Poulsbo 13976
+  property_id: poulsbo_13976
+  property_name: Poulsbo 13976
+  owner_id: owner_poulsbo_13976
+  owner_name: Poulsbo 13976 Owner
+  owner_email: ''
+- qbo_class_id: '689693'
+  qbo_class_name: Listings:Poulsbo 3866
+  property_id: poulsbo_3866
+  property_name: Poulsbo 3866
+  owner_id: owner_poulsbo_3866
+  owner_name: Poulsbo 3866 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492158'
+  qbo_class_name: Listings:Poulsbo 3956
+  property_id: poulsbo_3956
+  property_name: Poulsbo 3956
+  owner_id: owner_poulsbo_3956
+  owner_name: Poulsbo 3956 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492175'
+  qbo_class_name: Listings:Poulsbo 563
+  property_id: poulsbo_563
+  property_name: Poulsbo 563
+  owner_id: owner_poulsbo_563
+  owner_name: Poulsbo 563 Owner
+  owner_email: ''
+- qbo_class_id: '1000000001'
+  qbo_class_name: Listings:Redmond 11641
+  property_id: redmond_11641
+  property_name: Redmond 11641
+  owner_id: owner_redmond_11641
+  owner_name: Redmond 11641 Owner
+  owner_email: ''
+- qbo_class_id: '658546'
+  qbo_class_name: Listings:Redmond 14707
+  property_id: redmond_14707
+  property_name: Redmond 14707
+  owner_id: owner_redmond_14707
+  owner_name: Redmond 14707 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492165'
+  qbo_class_name: Listings:Redmond 15357
+  property_id: redmond_15357
+  property_name: Redmond 15357
+  owner_id: owner_redmond_15357
+  owner_name: Redmond 15357 Owner
+  owner_email: ''
+- qbo_class_id: '575624'
+  qbo_class_name: Listings:Redmond 16012
+  property_id: redmond_16012
+  property_name: Redmond 16012
+  owner_id: owner_redmond_16012
+  owner_name: Redmond 16012 Owner
+  owner_email: ''
+- qbo_class_id: '577145'
+  qbo_class_name: Listings:Redmond 18641
+  property_id: redmond_18641
+  property_name: Redmond 18641
+  owner_id: owner_redmond_18641
+  owner_name: Redmond 18641 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492195'
+  qbo_class_name: Listings:Redmond 7579
+  property_id: redmond_7579
+  property_name: Redmond 7579
+  owner_id: owner_redmond_7579
+  owner_name: Redmond 7579 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001653158'
+  qbo_class_name: Listings:Sammamish 2009
+  property_id: sammamish_2009
+  property_name: Sammamish 2009
+  owner_id: owner_sammamish_2009
+  owner_name: Sammamish 2009 Owner
+  owner_email: ''
+- qbo_class_id: '695032'
+  qbo_class_name: Listings:Sammamish 5124-1
+  property_id: sammamish_5124_1
+  property_name: Sammamish 5124-1
+  owner_id: owner_sammamish_5124_1
+  owner_name: Sammamish 5124-1 Owner
+  owner_email: ''
+- qbo_class_id: '1000000003'
+  qbo_class_name: Listings:Sammamish 5124-2
+  property_id: sammamish_5124_2
+  property_name: Sammamish 5124-2
+  owner_id: owner_sammamish_5124_2
+  owner_name: Sammamish 5124-2 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001491554'
+  qbo_class_name: Listings:Seatac 12834
+  property_id: seatac_12834
+  property_name: Seatac 12834
+  owner_id: owner_seatac_12834
+  owner_name: Seatac 12834 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001491556'
+  qbo_class_name: Listings:Seatac 12834 Lower
+  property_id: seatac_12834_lower
+  property_name: Seatac 12834 Lower
+  owner_id: owner_seatac_12834_lower
+  owner_name: Seatac 12834 Lower Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001491557'
+  qbo_class_name: Listings:Seatac 12834 Upper
+  property_id: seatac_12834_upper
+  property_name: Seatac 12834 Upper
+  owner_id: owner_seatac_12834_upper
+  owner_name: Seatac 12834 Upper Owner
+  owner_email: ''
+- qbo_class_id: '692581'
+  qbo_class_name: Listings:Seattle 10057 Lower
+  property_id: seattle_10057_lower
+  property_name: Seattle 10057 Lower
+  owner_id: owner_seattle_10057_lower
+  owner_name: Seattle 10057 Lower Owner
+  owner_email: ''
+- qbo_class_id: '689690'
+  qbo_class_name: Listings:Seattle 10057 Upper
+  property_id: seattle_10057_upper
+  property_name: Seattle 10057 Upper
+  owner_id: owner_seattle_10057_upper
+  owner_name: Seattle 10057 Upper Owner
+  owner_email: ''
+- qbo_class_id: '692580'
+  qbo_class_name: Listings:Seattle 10057 Whole
+  property_id: seattle_10057_whole
+  property_name: Seattle 10057 Whole
+  owner_id: owner_seattle_10057_whole
+  owner_name: Seattle 10057 Whole Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001615459'
+  qbo_class_name: Listings:Seattle 1117
+  property_id: seattle_1117
+  property_name: Seattle 1117
+  owner_id: owner_seattle_1117
+  owner_name: Seattle 1117 Owner
+  owner_email: ''
+- qbo_class_id: '1000000004'
+  qbo_class_name: Listings:Seattle 11331
+  property_id: seattle_11331
+  property_name: Seattle 11331
+  owner_id: owner_seattle_11331
+  owner_name: Seattle 11331 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001651204'
+  qbo_class_name: Listings:Seattle 115
+  property_id: seattle_115
+  property_name: Seattle 115
+  owner_id: owner_seattle_115
+  owner_name: Seattle 115 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492171'
+  qbo_class_name: Listings:Seattle 1424C
+  property_id: seattle_1424c
+  property_name: Seattle 1424C
+  owner_id: owner_seattle_1424c
+  owner_name: Seattle 1424C Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492170'
+  qbo_class_name: Listings:Seattle 1430B
+  property_id: seattle_1430b
+  property_name: Seattle 1430B
+  owner_id: owner_seattle_1430b
+  owner_name: Seattle 1430B Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492168'
+  qbo_class_name: Listings:Seattle 1502
+  property_id: seattle_1502
+  property_name: Seattle 1502
+  owner_id: owner_seattle_1502
+  owner_name: Seattle 1502 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492153'
+  qbo_class_name: Listings:Seattle 1512
+  property_id: seattle_1512
+  property_name: Seattle 1512
+  owner_id: owner_seattle_1512
+  owner_name: Seattle 1512 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492196'
+  qbo_class_name: Listings:Seattle 1623
+  property_id: seattle_1623
+  property_name: Seattle 1623
+  owner_id: owner_seattle_1623
+  owner_name: Seattle 1623 Owner
+  owner_email: ''
+- qbo_class_id: '687377'
+  qbo_class_name: Listings:Seattle 206
+  property_id: seattle_206
+  property_name: Seattle 206
+  owner_id: owner_seattle_206
+  owner_name: Seattle 206 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492159'
+  qbo_class_name: Listings:Seattle 3617
+  property_id: seattle_3617
+  property_name: Seattle 3617
+  owner_id: owner_seattle_3617
+  owner_name: Seattle 3617 Owner
+  owner_email: ''
+- qbo_class_id: '649767'
+  qbo_class_name: Listings:Seattle 4201
+  property_id: seattle_4201
+  property_name: Seattle 4201
+  owner_id: owner_seattle_4201
+  owner_name: Seattle 4201 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492160'
+  qbo_class_name: Listings:Seattle 710
+  property_id: seattle_710
+  property_name: Seattle 710
+  owner_id: owner_seattle_710
+  owner_name: Seattle 710 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492162'
+  qbo_class_name: Listings:Seattle 710 ADU
+  property_id: seattle_710_adu
+  property_name: Seattle 710 ADU
+  owner_id: owner_seattle_710_adu
+  owner_name: Seattle 710 ADU Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001775452'
+  qbo_class_name: Listings:Seattle 8415
+  property_id: seattle_8415
+  property_name: Seattle 8415
+  owner_id: owner_seattle_8415
+  owner_name: Seattle 8415 Owner
+  owner_email: ''
+- qbo_class_id: '613445'
+  qbo_class_name: Listings:Seattle 9021
+  property_id: seattle_9021
+  property_name: Seattle 9021
+  owner_id: owner_seattle_9021
+  owner_name: Seattle 9021 Owner
+  owner_email: ''
+- qbo_class_id: '605774'
+  qbo_class_name: Listings:Seattle 906 Lower
+  property_id: seattle_906_lower
+  property_name: Seattle 906 Lower
+  owner_id: owner_seattle_906_lower
+  owner_name: Seattle 906 Lower Owner
+  owner_email: ''
+- qbo_class_id: '696831'
+  qbo_class_name: Listings:Seattle 906 Upper
+  property_id: seattle_906_upper
+  property_name: Seattle 906 Upper
+  owner_id: owner_seattle_906_upper
+  owner_name: Seattle 906 Upper Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001707454'
+  qbo_class_name: Listings:Seattle 9750
+  property_id: seattle_9750
+  property_name: Seattle 9750
+  owner_id: owner_seattle_9750
+  owner_name: Seattle 9750 Owner
+  owner_email: ''
+- qbo_class_id: '578356'
+  qbo_class_name: Listings:Seattle 9750 Monthly
+  property_id: seattle_9750_monthly
+  property_name: Seattle 9750 Monthly
+  owner_id: owner_seattle_9750_monthly
+  owner_name: Seattle 9750 Monthly Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492191'
+  qbo_class_name: Listings:Shelton 250
+  property_id: shelton_250
+  property_name: Shelton 250
+  owner_id: owner_shelton_250
+  owner_name: Shelton 250 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492192'
+  qbo_class_name: Listings:Shelton 310
+  property_id: shelton_310
+  property_name: Shelton 310
+  owner_id: owner_shelton_310
+  owner_name: Shelton 310 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492193'
+  qbo_class_name: Listings:Shelton 310 Upper
+  property_id: shelton_310_upper
+  property_name: Shelton 310 Upper
+  owner_id: owner_shelton_310_upper
+  owner_name: Shelton 310 Upper Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001547053'
+  qbo_class_name: Listings:Tacoma 7811
+  property_id: tacoma_7811
+  property_name: Tacoma 7811
+  owner_id: owner_tacoma_7811
+  owner_name: Tacoma 7811 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492150'
+  qbo_class_name: Valta Realty
+  property_id: valta_realty
+  property_name: Valta Realty
+  owner_id: owner_valta_realty
+  owner_name: Valta Realty Owner
+  owner_email: ''
+- qbo_class_id: '696689'
+  qbo_class_name: Listings:Woodinville 18625
+  property_id: woodinville_18625
+  property_name: Woodinville 18625
+  owner_id: owner_woodinville_18625
+  owner_name: Woodinville 18625 Owner
+  owner_email: ''
+- qbo_class_id: '2100000000001492205'
+  qbo_class_name: Listings:Woodinville 19319
+  property_id: woodinville_19319
+  property_name: Woodinville 19319
+  owner_id: owner_woodinville_19319
+  owner_name: Woodinville 19319 Owner
+  owner_email: ''

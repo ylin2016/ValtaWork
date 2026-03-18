@@ -1,0 +1,16 @@
+app:
+  db_path: "./data/owner_statement.sqlite"
+  timezone: "America/Los_Angeles"
+
+qbo:
+  base_url: "https://quickbooks.api.intuit.com"
+  minorversion: 75
+  realm_id: "9130356236278636"
+
+statement_policy:
+  default_basis: "cash"
+  default_pm_fee_type: "percent"
+  default_pm_fee_rate: 0.16
+  default_pm_fee_base: "net_booking_revenue"
+  default_reserve_target: 0
+  taxes_included_in_revenue: false
