@@ -23,10 +23,10 @@ employee = tmp$employee
 ######## booking records ########
 confirmed = confirmed_input(fileloc,filemonth) 
 
-ownerfile = "/Users/ylin/Google Drive/My Drive/* Monthly/0-Process & Template/Owner_stay_records.xlsx"
+ownerfile = "/Users/ylin/Google Drive/My Drive/* Monthly/0-Process & Template/OwnerStay_NoCleaningFee_Records.xlsx"
 owners = read.xlsx(ownerfile)
 ownerstay = confirmed %>% filter(Source %in% "owner" | Earnings %in% 0) 
-rbind(owners,ownerstay )%>% write.xlsx(ownerfile)
+#rbind(owners,ownerstay )%>% write.xlsx(ownerfile)
 
 confirmed = confirmed %>% filter(!(Source %in% "owner"| Earnings %in% 0)) #227 
 
@@ -39,7 +39,7 @@ dups = duplicated_reservations_lastmonth(confirmed,prior1="2025-12-01")
 #combResvId = c(combResvId,dups[1:2])
 #only 3 need to combine
 confirmed = update_duplicated_confirmed(confirmed,combResvId)
-dim(confirmed) #227
+dim(confirmed) #225
 
 ##-----------------------------------------------------------------------------------
 ######## add trip data ########
@@ -57,7 +57,7 @@ trips.all = combine_trips(trips)
 View(trips.all) #17
 ##-----------------------------------------------------------------------------------
 reservations = combine_reservations(confirmed,cancelled)
-dim(reservations) #285
+dim(reservations) #283
 
 #==========No recorded backup this month   =============================
 # tmp = add_backups(fileloc, filemonth,reservations,employee)
@@ -80,7 +80,7 @@ output = update_summarysheet(output$Cohost,output$Property)
 
 ## cohost sheets update
 newemplyee = c("Chengcen")
-cohost_sheets(reservations,employee,newemplyee)
+cohost_sheets(reservations,employee)
 
 write.xlsx(output,paste0(filesave,"Property_Cohost_Summary.xlsx"),
            firstActiveRow = 2,withFilter = T)
@@ -101,7 +101,7 @@ cleaning.output = cleaning_sheets_summary(reservations,enddate)
 ##================= write separate file for cleaner =================
 newcleaner =c("Owner(Chengcen)")
 #cleaner_thisyear = c("Owner(Sophia)","Brittany")
-cleaner_sheets(cleaning.output$CleaningSheet,newcleaner)
+cleaner_sheets(cleaning.output$CleaningSheet)
 
 # add Counts for Maria's sheet 
 filename= "./Cohost's reservation sheets/CleaningSheet_Maria.xlsx"

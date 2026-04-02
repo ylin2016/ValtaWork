@@ -271,7 +271,7 @@ cohost_sheets = function(reservations,employee,newemplyee=NA){
       }else{
            all_sheets$`2026` = all_sheets$`2026` %>% filter(!Month %in% substr(enddate,1,7)) %>%
             mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
-                   CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
+                   CheckOut = as.Date(CheckOut,origin= '1899-12-30'))
           colnames(all_sheets$`2026`)[colnames(all_sheets$`2026`) %in% 'Property'] = 'Listing'
           all_sheets$`2026` = rbind.fill(temp,all_sheets$`2026`)  
       }
@@ -346,12 +346,12 @@ update_summarysheet = function(sum_cohost,sum_property){
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
   
   sum_cohost= sum_cohost %>% 
-    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia","Shaya"),NA,
+    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia"),NA,
         ifelse(Cohost %in% "Crystal",
                length(unique(sum_property$Property[sum_property$Cohost %in% "Crystal"]))*150 +
                  sum_cohost$Bimonthly[sum_cohost$Cohost %in% "Crystal"]*80,
           ifelse(Cohost %in% "Shaya", 
-             sum_cohost$Bimonthly[sum_cohost$Cohost %in% "Shaya"]*80, CohostPayOut))))
+             sum_cohost$Bimonthly[sum_cohost$Cohost %in% "Shaya"]*80+800, CohostPayOut))))
   all_sheets$Cohost = rbind.fill(sum_cohost,
                     all_sheets$Cohost %>% filter(!Month %in% substr(enddate,1,7))) %>%
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
@@ -433,13 +433,13 @@ cleaner_sheets = function(cleansheet,newcleaner=NULL){
       temp = cleansheet %>% filter(Cleaner.lead %in% k) %>% 
         select(all_of(output.val))
       
-      if(grepl("-01",unique(temp$Month))) {
+     if(grepl("-01",unique(temp$Month))) {
         all_sheets$`2026` = temp
         all_sheets = all_sheets[c('2026',sheet_names)]
       }else{
            all_sheets$`2026` = all_sheets$`2026` %>% filter(!Month %in% substr(enddate,1,7)) %>%
             mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
-               CheckOut = as.Date(as.integer(CheckOut),origin= '1899-12-30'))
+               CheckOut = as.Date(CheckOut,origin= '1899-12-30'))
         all_sheets$`2026` = rbind.fill(temp,all_sheets$`2026`)
       }
       write.xlsx(all_sheets,paste0(cleaning_loc,k,'.xlsx'),
