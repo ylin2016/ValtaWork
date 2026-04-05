@@ -3,7 +3,8 @@ library(dplyr)
 library(lubridate)
 library(openxlsx)
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/DeferRevenue/")
-data = read.csv("./Data/Guesty_gt30d_reservation-20260303.csv")
+dates ="20260404"
+data = read.csv(paste0("./Data/Guesty_gt30d_reservation-",dates,".csv"))
 data$From = as.Date(data$CHECK.IN)
 data$To = as.Date(data$CHECK.OUT)
 
@@ -56,4 +57,4 @@ for(i in 1:nrow(data))
                     ranges)
   res = rbind(res,temp[c(1,3,2,4:nrow(temp)),])
 }
-write.csv(res,'Reservation_gt30d_MonthlyPay_20260303.csv',row.names=F,na='')
+write.csv(res,paste0('Reservation_gt30d_MonthlyPay_',dates,'.csv'),row.names=F,na='')

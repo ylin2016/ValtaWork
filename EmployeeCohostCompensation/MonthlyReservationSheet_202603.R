@@ -24,14 +24,36 @@ employee = tmp$employee
 ######## booking records ########
 confirmed = confirmed_input(fileloc,filemonth) 
 
-#ownerfile = "/Users/ylin/Google Drive/My Drive/* Monthly/0-Process & Template/OwnerStay_NoCleaningFee_Records.xlsx"
-#owners = read.xlsx(ownerfile)
-#ownerstay = confirmed %>% filter(grepl('owner|Owner',Source)| Earnings %in% 0) 
-#rbind(owners,ownerstay ) %>% write.xlsx(ownerfile)
+ownerfile = "/Users/ylin/Google Drive/My Drive/* Monthly/0-Process & Template/OwnerStay_NoCleaningFee_Records.xlsx"
+sheet_names = excel_sheets(ownerfile)
+all_sheets = lapply(sheet_names, function(s) {
+  read_excel(ownerfile, sheet = s)
+})
+names(all_sheets) <- sheet_names
+ownerstay = confirmed %>% filter(grepl('owner|Owner',Source)| Earnings %in% 0) 
+all_sheets[[1]] = rbind.fill(all_sheets[[1]],ownerstay) %>% 
+                               select(-c("Backup","Cleaner","CohostPayOut")) %>%
+          mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
+                        CheckOut = as.Date(CheckOut,origin= '1899-12-30'))
 
-confirmed = confirmed %>% filter(!(grepl('owner|Owner',Source)| Earnings %in% 0)) #193
+nocleaning = confirmed %>% 
+  filter(Cleaning.fare==0 & 
+           !Source %in% c("Expedia","Expedia Affiliate Network"))
+dat = read.csv(paste0(fileloc,'Guesty_booking_confirmed_',filemonth,'.csv'))
+nocleaning = merge(nocleaning,dat %>% select(CONFIRMATION.CODE,TOTAL.PAYOUT,TOTAL.PAID),
+                   by.x="Confirmation.Code",by.y="CONFIRMATION.CODE") %>% 
+              select(-c("Backup","Cleaner","CohostPayOut","Earnings","Status"))
 
-cancelled = cancelled_input(fileloc,filemonth) #58
+all_sheets[[2]] = rbind.fill(all_sheets[[2]],nocleaning)  %>%
+  mutate(CheckIn = as.Date(CheckIn,origin= '1899-12-30'),
+                CheckOut = as.Date(CheckOut,origin= '1899-12-30'))
+         
+write.xlsx(all_sheets,ownerfile,
+           na.strings=c(NA,""),firstActiveRow = 2,withFilter = T)
+
+confirmed = confirmed %>% filter(!(grepl('owner|Owner',Source)| Earnings %in% 0)) #272
+
+cancelled = cancelled_input(fileloc,filemonth) #64
 
 ##-----------------------------------------------------------------------------------
 ## !! check the checkin out time
@@ -39,8 +61,8 @@ combResvId = duplicated_reservations_thismonth(confirmed)
 dups = duplicated_reservations_lastmonth(confirmed,prior1="2026-02-01")
 #combResvId = c(combResvId,dups[1:2])
 #only 3 need to combine
-confirmed = update_duplicated_confirmed(confirmed,combResvId)
-dim(confirmed) #271
+#confirmed = update_duplicated_confirmed(confirmed,combResvId)
+dim(confirmed) #272
 
 ##-----------------------------------------------------------------------------------
 ######## add trip data ########
@@ -59,7 +81,7 @@ trips.all = combine_trips(trips,inspections)
 View(trips.all) #17
 ##-----------------------------------------------------------------------------------
 reservations = combine_reservations(confirmed,cancelled)
-dim(reservations) #335
+dim(reservations) #336
 
 #==========No recorded backup this month   =============================
 # tmp = add_backups(fileloc, filemonth,reservations,employee)
