@@ -1,75 +1,19 @@
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/05-Cleaning/")
-## source("/Users/ylin/ValtaWork/Cleaning/DispatchCard.R")
+source("/Users/ylin/ValtaWork/Cleaning/DispatchCard_functions.R")
 ## !!! Cleaning fee use the ones on payout record to label each cleaning, 
 ## not the ones on property_cohost file
-
-library(plyr)
-library(dplyr)
-library(tidyr)
-library(openxlsx)
-library(lubridate)
-library(reshape2)
-
 #--------------------------------------------------------------------------------
 #        dispatch card
 #--------------------------------------------------------------------------------
-## Pay Cleaner records: payments and # clean per property
-payfile2025 = "./Data/Maria cleaning payment process_2025.xlsx"
-payfile2026 = "./Data/Maria cleaning payment process_copied20260117.xlsx"
+dispatch = read_dispatch()
 
-dispatch = read.xlsx("./Data/Maria Cleaning Dispatch Card.xlsx") %>%
-        mutate(Cleaning.Date= as.Date(Cleaning.Date,origin='1899-12-30'))
-colnames(dispatch)[-c(1:3)] = c("Team1",paste0("Car1P",1:5),"Car1Add",
-                                "Team2",paste0("Car2P",1:5),"Car2Add",
-                                "Team3",paste0("Car3P",1:4),"Car3Add",
-                                "Team4",paste0("Car4P",1:4),"Car4Add")
-
-dispatch[,-(1:3)] = apply(dispatch[,-(1:3)],2,function(x) 
-  ifelse(x %in% "Other specify:",NA,x))
-
-for(i in 1: nrow(dispatch))
-{
-  nunit = 0
-  for(j in 1:4)
-  {
-    units = dispatch[i,setdiff(grep(paste0("Car",j),colnames(dispatch)),
-                               grep(paste0("Car",j,"Add"),colnames(dispatch)))]
-    nunit = nunit + sum(!units %in% c(NA,"NA","Other specify:","Specify other:"))
-    if(!is.na(dispatch[i,paste0("Car",j,"Add")])){
-       if(dispatch$Cleaning.Date[i]>="2025-10-02" & 
-          !grepl("[.]",dispatch[i,paste0("Car",j,"Add")])){
-         units.add = unlist(strsplit(dispatch[i,paste0("Car",j,"Add")],","))
-         units.add = trimws(units.add)
-         nunit = nunit + length(units.add)
-         car.sel = dispatch[i,grepl(paste0("Car",j,"P"),colnames(dispatch))]
-         num = length(car.sel[!is.na(car.sel)])
-         num = (num+1) : (num+length(units.add))
-         dispatch[i,paste0("Car",j,"P",num)] = units.add
-       }else{
-         units.add = unlist(strsplit(dispatch[i,paste0("Car",j,"Add")],";"))
-       
-         for(k in units.add)
-         {
-          
-          num=as.integer(unlist(strsplit(k,"[.,]"))[1])
-          unit.sel = trimws(unlist(strsplit(k,"[.,]"))[2])
-          if(!is.na(num)) {
-            dispatch[i,paste0("Car",j,"P",num)] = unit.sel
-            nunit = nunit + 1
-          }
-         }
-      }
-    }
-  }
-  dispatch[i,'nunit'] = nunit
-}
 ## Manual correct: no 8/1 1717, 8/19 510,
 dispatch[dispatch$Cleaning.Date %in% '2025-08-01','Car2P4'] = NA
 dispatch[dispatch$Cleaning.Date %in% '2025-08-19',
          c("Car1P3","Car1P4","Car1P5")] = c("Seattle 1117","Redmond 7579",NA)
 
-#  remove : 2025-05-28 Bellevue 188
-#.          2025-07-07 Seattle 3511    
+# remove : 2025-05-28 Bellevue 188
+#          2025-07-07 Seattle 3511    
 #           2025-07-26 Elektra 510
 #           2025-07-31 Sammamish 23718
 
@@ -90,51 +34,11 @@ dispatch[dispatch$Cleaning.Date %in% '2025-07-31',c("Car2P2","Car2P3")] =
   c("Mercer 3627 Main",NA)
 # 5/25 dispatch card wrong, it was for 5/23
 # 5/30 dispatch card have 3 cleaners, we paid 2 only
-
 # 1/26/2026: No scheduled clean for Seattle 10057 Upper
 dispatch[dispatch$Cleaning.Date %in% '2026-01-26',"Car1P4"] = NA
-         
-data_dispatch = NULL
-for(i in 1: nrow(dispatch))
- for(j in 1:4)
- {
-  units = dispatch[i,setdiff(grep(paste0("Car",j),colnames(dispatch)),
-                             grep(paste0("Car",j,"Add"),colnames(dispatch)))]
-  names = names(units)[!is.na(units)]
-  units = units[!is.na(units)]
-  ppls = trimws(unlist(strsplit(dispatch[i,paste0("Team",j)],",")))
-  if(length(units)>0) 
-    data_dispatch = rbind(data_dispatch,
-                          data.frame(Cleaning.Date = dispatch$Cleaning.Date[i],
-                               cleaner = rep(ppls,each=length(units)),Listing=units,
-                               Car.arrange=names))
- }
+   
+data_dispatch = format_dispatch(dispatch)   
 
-data_dispatch$Listing = sub("Bothell 18005","Bothell 18006",data_dispatch$Listing)
-data_dispatch$Listing = sub("Kirland 13805","Kirkland 13805",data_dispatch$Listing)
-data_dispatch = data_dispatch %>% arrange(Cleaning.Date,Car.arrange,cleaner) %>%
-  mutate(cleaner = ifelse(cleaner %in% c("HIlda","Hilda"),"Hilda G",cleaner),
-         Listing = sub("#|Island ","",Listing))
-txt =c("Seattle 906","Clyde hill 8830", "Clyde Hill 8830 (Gustavo not included)","1203",
-       "Bellevue 1638 Residential","Issaquah 2450 Residential Cleaning",
-       "Seattle 10057 lower","Seattle 10057 upper","Seattle 710 adu",
-       "Bellevue 4616 (Flavio","Issquah 1627","Seatac")
-chg = c("Seattle 906 Lower","Clyde Hill 8830","Clyde Hill 8830","Elektra 1203",
-        "Bellevue 1638","Issaquah 2450","Seattle 10057 Lower","Seattle 10057 Upper","Seattle 710 ADU",
-        "Bellevue 4616","Issaquah 1627","Seatac 12834")
-
-for(k in 1:length(txt))
-  data_dispatch$Listing[data_dispatch$Listing %in% txt[k]] = chg[k]
-
-#data_dispatch$Listing[data_dispatch$Listing %in% "12520 Bellevue"] = "Bellevue 12520"
-#setdiff(data_dispatch$Listing,c(Residential$Listing,property$Listing))
-
-## put Seatac 12834 to upper & lower to match pay records
-add= data_dispatch %>% filter(Listing %in% "Seatac 12834")
-add$Listing = "Seatac 12834 Lower"
-data_dispatch = rbind(data_dispatch %>% 
-                        mutate(Listing = ifelse(Listing %in% "Seatac 12834",
-                        "Seatac 12834 Upper",Listing)),add)
 ##-----------------------------------------------------------------
 ## check data_dispatch : dispatch card vs. organized data_dispatch (find error in dispatch card)
 ##-----------------------------------------------------------------
@@ -151,22 +55,7 @@ tmp %>% filter(nunit!=nunit1) %>% arrange(Cleaning.Date)
 #--------------------------------------------------------------------------------
 ## ---  pay Cleaners ------
 #--------------------------------------------------------------------------------
-payCleaner = rbind.fill(read.xlsx(payfile2026,sheet = "Payment", startRow = 3),
-                   read.xlsx(payfile2026,sheet = "Payment2025", startRow = 3)) %>%
-  filter(!grepl("Maria", Payment.date)) 
-
-# Standardize payment dates
-payCleaner = payCleaner %>%
-  mutate(Week = as.Date(`Week.(Fri)`, origin = '1899-12-30'),
-         Day = as.Date(Day, origin = '1899-12-30'),
-         PayDay = as.Date(as.integer(Payment.date), origin = '1899-12-30'),
-         Cleaner = ifelse(Cleaner %in% "Hilda G ","Hilda G",Cleaner))
-
-## add the missing payment
-added = payCleaner %>%  filter(Day %in% '2025-05-30' & Cleaner %in% "Gustavo")
-added$Cleaner = "Ileana T"
-payCleaner = rbind(payCleaner,added) %>% 
-        mutate(yearmonth=substr(Day,1,7))
+payCleaner = pay_cleaner_record(payfile2026)
 
 ##-----------------------------------------------------------------
 ## check data_dispatch: daily dispatch #cleaners <> pay #cleaners
@@ -178,6 +67,8 @@ daily = data_dispatch %>% group_by(Cleaning.Date) %>%
           ncleaner= length(unique(cleaner))) 
 daily = merge(daily,daily_cleaners,by.x ="Cleaning.Date",by.y="Day",all.x=T)
 daily %>% filter(ncleaner.x!=ncleaner.y)
+#5    2026-03-06     4          4          5  : loan deduction
+#6    2026-03-13     5          5          6 : loan deduction
 ##-----------------------------------------------------------------
 
 data = merge(data_dispatch,payCleaner %>% group_by(Day,Cleaner) %>%
@@ -203,44 +94,12 @@ dispatch_monthly = data_all %>% filter(Rate>0) %>%
 #        Income from STR and Residential
 #--------------------------------------------------------------------------------
 months = unique(substr(data$Cleaning.Date,1,7))
-months = months[-length(months)]
-## cleaning per listing
-payout = vector('list', length(months)+5)
-names(payout)=c(paste0('2025-0',1:5),months)
+months = months#[-length(months)]
 
-# Read payout data for months 1-10
-for(i in c(paste0('2025-0',1:5),months)) {
-  if(i=='2025-12'|grepl("2026",i)){
-    tmp = read.xlsx(payfile2026, sheet = i)
-  }else{
-    tmp = read.xlsx(payfile2025, sheet = sub("-0","-",i))  
-  }
-  
-  # Extract relevant payout information
-  indv = tmp[c(1:(grep("Total payment", tmp[,1])[1]),
-               grep("payout", tmp[,1]), grep("Due", tmp[,1])), 1:5]
-  colnames(indv) = c("Listing", "Cleaning.fee", "Times", "Total", "PayDate")
-  payout[[i]] = indv %>% filter(Total!=0)
-}
+payout = read_payout(payfile2026,payfile2025,months)
 
 # ----  STR Income Based on payment to get #clean, by month summary
-IncomeSTR = NULL
-for(k in months)
-{
-  x=payout[[k]]
-  IncomeSTR = rbind(IncomeSTR,
-                        data.frame(yearmonth=k,
-                                   x[!is.na(x$Times) & !x$Listing %in% "Total payment",
-                                     c("Listing","Times","Cleaning.fee","Total")]))
-}
-
-IncomeSTR$Listing = sub("#|Island ","",IncomeSTR$Listing) 
-txt = c("Redmond Gull val 7(Redmond 7579)","Bellevue C19","Bellevue D303","Bellevue E205")
-chg = c("Redmond 7579","Microsoft 14645-C19","Microsoft 14615-D303","Microsoft 14620-E205")
-for(k in 1:length(txt)) 
-  IncomeSTR$Listing[IncomeSTR$Listing %in% txt[k]]= chg[k]
-IncomeSTR$CleaningIncome= IncomeSTR$Total
-IncomeSTR$Type = "STR"
+IncomeSTR = str_income(payout,months)
 
 #################### temp fix ############################
 IncomeSTR[IncomeSTR$yearmonth %in% '2025-09' & 
@@ -249,16 +108,7 @@ IncomeSTR[IncomeSTR$yearmonth %in% '2025-09' &
 ##########################################################
 
 #----  Residential Cleaning Income:
-Resid25=read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx",sheet = "2025")
-Resid26=read.xlsx("./Data/Valta Homes Residential Cleaning Schedule and Payment Record.xlsx",sheet = "2026")
-IncomeResid =  rbind.fill(Resid25[,colnames(Resid26)[1:5]],Resid26) %>%
-  select(Service.Date,Listing,residential.fee=Maria) %>%
-  filter(!is.na(Service.Date)) %>%
-  mutate(Service.Date = as.Date(as.integer(Service.Date), origin = '1899-12-30'),
-         yearmonth = substr(Service.Date,1,7),
-         Type ="Residential",
-         Listing = ifelse(Listing %in% "Seattle 10057", "Seattle 10057 Whole",Listing))  %>%
-  filter(!is.na(Service.Date))
+IncomeResid = residential_income()
 
 Incomes_monthly = rbind.fill(IncomeSTR, IncomeResid %>% 
                     mutate(yearmonth = substr(Service.Date,1,7)) %>%
@@ -282,34 +132,37 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
     mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-both %>% filter(yearmonth %in% '2026-02' & diff!=0)
-2025-11
+both %>% filter(yearmonth %in% '2026-03' & diff!=0)
+## 2026-03
+Kirkland 11321, 8017 on 3/21 and 3/22 twice
+8415 on 3/22 and 3/23 twice
+
+Bothell 18006    1 - NA -NA
+Issaquah 1627    NA -NA - 1
+Sammamish 1627
+
+## 2025-11
 Beachwood 1 scheduled + cleaned on 11/2 and 11/3, what reason?
 Kirkland 8017 were cleaned 4 times in Nov, we only pay 3 times?
-2025-10 
+## 2025-10 
 
-2026-01
+## 2026-01
 #Beachwood 2 missing 1 residential cleaning. Good in Feb
 #Kirkland 8017 missing 2 residential cleaning. Good in Feb
 #Redmond 14707 missing 2 residential cleaning 
 
-2026-02
-#Bellevue 1420： scheduled 2, cleaned 1, owner stay, OK
+## 2026-02
+# Bellevue 1420： scheduled 2, cleaned 1, owner stay, OK
 # Bothell 3528        1 ->2   one is carpet
 # Microsoft 14615-D303: re-cleaning once, OK
 Bellevue 14507U1: 1 ->NA 
-Bellevue 4616: 3->2
-Bothell 18006: 1 ->NA
-Elektra 1314        5 -> NA 
-Elektra 1514        3 -> NA
-Elektra 510         1 -> NA
-Elektra 909         5 -> NA 
-Issaquah 2450       1 -> NA
-Medina 2213        5 -> 3
-Seattle 6064       2 -> 1
-Redmond 14707     2 ->NA
- 
-month12 = both %>% filter(yearmonth %in% c('2026-02','2026-01')) %>% 
+Elektra 1314        5 -> 6 
+Elektra 1514        3 -> 2
+Elektra 909         5 -> 4
+Issaquah 917        1 -> 2
+Kirkland 8017       2 -1- 2
+
+month12 = both %>% filter(yearmonth %in% c('2026-03','2026-02','2026-01')) %>% 
   group_by(Listing) %>%
   reframe(across(where(is.numeric), sum,na.rm=T)) %>% 
   mutate(diff = Times.disp-Times.pay) 
