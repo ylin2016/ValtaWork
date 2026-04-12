@@ -43,7 +43,7 @@ owners = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Acco
 
 ## Owner Payout Checking....
 payout= read.xlsx("/Users/ylin/Google Drive/My Drive/Accounting/01-OwnerPayout Records.xlsx",
-                   sheet="2026.02") 
+                   sheet="2026.03") 
 colnames(payout)[c(3,10)] =c("Listing","PayoutName_old")
 payout= payout %>% filter(!is.na(Date) & !is.na(Payout)) 
 
@@ -59,36 +59,36 @@ both = merge(owners %>% select(Property,Name),
 
 ## ======================================================
 ### create ACH file
-paydate ="20260312"
+paydate ="20260414"
 payouts = merge(payout %>% select(Listing,Property,Owner,Payout,MCR,PayoutName),
                 owners %>% select(Property,Rounting, account.number),
                 by="Property",all.x=T) 
-add = payouts %>% filter(Owner %in% 'Valta Homes')
-add$Owner = add$PayoutName
-add$Payout = 855.37
-payouts = rbind(payouts,add) %>%
-          mutate(PayoutName = ifelse(Owner %in% 'Valta Homes','Valta Homes',PayoutName)) %>%
+#add = payouts %>% filter(Owner %in% 'Valta Homes')
+#add$Owner = add$PayoutName
+#add$Payout = 855.37
+payouts = payouts %>% #rbind(payouts,add) %>%
+           mutate(PayoutName = ifelse(Owner %in% 'Valta Homes','Valta Homes',PayoutName)) %>%
           mutate(filename = ifelse(is.na(Rounting),NA,
-                   paste(paydate,Property,PayoutName,"Owner Payout",Payout,sep="_"))) 
+            paste(paydate,Property,PayoutName,"Owner Payout",Payout,sep="_"))) 
 #payouts[payouts$Listing %in% "Seattle 1512" & payouts$Owner %in% "Valta Homes LLC",
 #        c("PayoutName","Rounting","account.number","filename")] = c("Valta Homes LLC",rep(NA,3))
 
 
-sum(payouts$Payout) #118217.3=855.37+117361.97 Feb #118247/61 #154556.68/58
+sum(payouts$Payout) #Mar: 124675.21 #118217.3=855.37+117361.97 Feb #118247/61 #154556.68/58
 sum(payouts$Payout[payouts$Owner %in% 'Valta Homes']) #417.8 Feb #328.36
 sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) 
 #117799.5/57 Feb #117918.69/60
 
 samplefile = read.csv("./Data/ACHsamplefile.csv")
 
-BatchId = 2603 
+BatchId = 2604
 
 remains = payouts %>% 
   filter((Owner %in% "Valta Homes"))#|
             # Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
             #                "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
-achfile = payouts %>% 
-          filter(!(Owner %in% "Valta Homes" | Property %in% "Lake Stevens 7626"))#|
+achfile = payouts # %>% 
+         # filter(!(Owner %in% "Valta Homes" | Property %in% "Lake Stevens 7626"))#|
                    #  Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
                     #        "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
 #Feb: onhold Lake stevens
@@ -111,7 +111,7 @@ achfile = achfile %>% filter(!is.na(File.creation.date))
 #2026.1.11: 58 , sophia and ValtaHome is not $1126.02 
 
 
-samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","260310")
+samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","260409")
 samplefile$X[4] = BatchId # need to change every time
 samplefile$Total.trxn[2] = samplefile$X.1[4] = nrow(achfile)
 samplefile$Total.ACH.credit.amount[4] = substr(paydate,3,8) # delivery date = paydate
@@ -128,7 +128,7 @@ View(output)
 # 114,603.54 = 118217.3-3196.00-417.8 Feb
 # 115,644.52 Jan
 # 148,073.88 Dec
-write.table(output,"./ACHfile_filled/ACHfile_filled_202603.csv",
+write.table(output,"./ACHfile_filled/ACHfile_filled_202604.csv",
             row=F,col = F,na="",sep=",",quo=F)
 
 ## add Trxn in Batch to csv
@@ -136,7 +136,7 @@ write.table(output,"./ACHfile_filled/ACHfile_filled_202603.csv",
 ## check payments
 
 reports = read.csv('./Report/Owner_payout_202603.csv')
-reports$Amount = as.numeric(gsub("[$, ]","",reports$Amount))
+reports$Amount = -as.numeric(gsub("[$, ]","",reports$Amount))
 
-both = merge(payout,reports[,c("Recipient","Amount")],by.x="Payout",by.y="Amount",all.x=T)
-both %>% select(Listing,Recipient,Payout,Paid.Record) %>% View()
+both = merge(payout,reports[,c("Pay.to","Amount")],by.x="Payout",by.y="Amount",all.x=T)
+both %>% select(Listing,Pay.to,Payout,Paid.Record) %>% View()
