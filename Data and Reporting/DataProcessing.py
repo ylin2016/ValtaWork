@@ -3,7 +3,7 @@ import re
 import glob
 import numpy as np
 import pandas as pd
-from datetime import datetime
+from datetime import date, datetime, timedelta
 pd.set_option("display.max_colwidth", None)
 pd.set_option("display.expand_frame_repr", False)
 # ---------------------------------------------------------------------
@@ -166,7 +166,9 @@ def import_data():
     guesty_2025.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
     # 2026 Guesty (exclude specific listings)
-    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-20260408.csv", na_values=["", " "])
+    today = date.today()#- timedelta(days=1)
+    curr_date = f"{today.year:04d}{today.month:02d}{today.day:02d}"
+    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-"+curr_date+".csv", na_values=["", " "])
     guesty_2026 = guesty_2026[~guesty_2026["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
     guesty_2026.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
