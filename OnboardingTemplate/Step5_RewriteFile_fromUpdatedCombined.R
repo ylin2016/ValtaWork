@@ -38,7 +38,8 @@ estimate_lines <- function(text, col_width_chars = 90) {
   lines <- strsplit(text, "\n")[[1]]
   sum(sapply(lines, function(x) ceiling(nchar(x) / col_width_chars)))
 }
-for(k in setdiff(listings,excluded)) 
+
+for(k in setdiff(listings,excluded)[-(1:70)])#[-c(69,70)]) 
 {
   print(k)
   wb_out = loadWorkbook("PropertyFormat.xlsx")
@@ -53,19 +54,21 @@ for(k in setdiff(listings,excluded))
     arrange(order) %>%
     mutate(X2=Main.listing)
 
-  if(!is.na(data.sel[1,"Child.listing.1"])) 
-   {
-    grid_tpl0$X3 = grid_tpl0$Child.listing.1
-    grid_tpl[2,3]="Child.listing"
-    }
+  # if(!is.na(data.sel[1,"Child.listing.1"])) 
+  #  {
+  #   grid_tpl0$X3 = grid_tpl0$Child.listing.1
+  #   grid_tpl[2,3]="Child.listing"
+  #   }
+  # 
+  # if(!is.na(data.sel[1,"Child.listing.2"])) 
+  #   {
+  #     grid_tpl = grid_tpl0[,c("X1","X2","X3","Child.listing.2")]
+  #     grid_tpl[2,4]="Child.listing"
+  #   }else{
+  #     grid_tpl = grid_tpl0[,1:3]
+  #   }
   
-  if(!is.na(data.sel[1,"Child.listing.2"])) 
-    {
-      grid_tpl = grid_tpl0[,c("X1","X2","X3","Child.listing.2")]
-      grid_tpl[2,4]="Child.listing"
-    }else{
-      grid_tpl = grid_tpl0[,1:3]
-    }
+  grid_tpl = grid_tpl0[,1:3]
   grid_tpl[2,2]="Main.listing"
   addlines = data.frame(X1=NA)
   grid_tpl = rbind.fill(grid_tpl[1,,drop=F],addlines, grid_tpl[-1,])
@@ -88,24 +91,25 @@ for(k in setdiff(listings,excluded))
       names(link2write) = links$X2[i]
       class(link2write) <- "hyperlink"
       writeData(wb_out, "Property",link2write,startRow = links$order[i]+1 ,startCol = 2)
-    }
-    if(!is.na(data.sel[1,"Child.listing.1"]))
-    {
-      for(i in 1:nrow(links))
-      {
-        link2write = links$X3[i]
-        names(link2write) = links$name[i]
-        class(link2write) <- "hyperlink"
-        writeData(wb_out, "Property",link2write,startRow = links$order[i]+1 ,startCol = 3)
-      }
-    }
-  }
-  listingfile = loadWorkbook(paste0("./PropertyInformation/",k,'.xlsx'))
+    }}
+  #   if(!is.na(data.sel[1,"Child.listing.1"]))
+  #   {
+  #     for(i in 1:nrow(links))
+  #     {
+  #       link2write = links$X3[i]
+  #       names(link2write) = links$name[i]
+  #       class(link2write) <- "hyperlink"
+  #       writeData(wb_out, "Property",link2write,startRow = links$order[i]+1 ,startCol = 3)
+  #     }
+  #   }
+  # }
+  listingfile = loadWorkbook(paste0("./PropertyInformation/",
+                                    sub(" top| middle| Lower| Upper| Main| ADU| Whole","",k),'.xlsx'))
   owner <- readWorkbook(listingfile, sheet = "Owner", colNames = FALSE)
   owner = rbind.fill(owner[1,,drop=F],addlines,owner[-1,])
   writeData(wb_out, "Owner", x = owner, colNames = FALSE)
   
-  saveWorkbook(wb_out, paste0("./Output/",k,' Onboarding Sheets.xlsx'), overwrite = TRUE)
+  saveWorkbook(wb_out, paste0("./Output/",k,'.xlsx'), overwrite = TRUE)
 }  
 
 

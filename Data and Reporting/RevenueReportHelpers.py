@@ -250,8 +250,8 @@ def yoy_delta(monthly_tab, monthly, prev: str, curr: str) -> pd.DataFrame:
     perc_col = f"Rev_delta_{curr}_perc"
     monthly_tab = monthly_tab.assign(
         **{
-            delta_col: monthly_tab[f"Revenue_{curr}"] - monthly_tab[f"Revenue_{prev}"],
-            perc_col: (monthly_tab[f"Revenue_{curr}"] - monthly_tab[f"Revenue_{prev}"]) / monthly_tab[f"Revenue_{prev}"]
+            delta_col: monthly_tab[f"Revenue_occ_{curr}"] - monthly_tab[f"Revenue_occ_{prev}"],
+            perc_col: (monthly_tab[f"Revenue_occ_{curr}"] - monthly_tab[f"Revenue_occ_{prev}"]) / monthly_tab[f"Revenue_occ_{prev}"]
         }
     )
     # Append YoY increments back to monthly (per yearmonth)
@@ -288,7 +288,7 @@ def combine_osbr_beachwood(yearly_table):
     return yearly_table
 
 def yearrecords(monthly: pd.DataFrame, year_sel: str) -> pd.DataFrame:
-    values_to_wide = ["Revenue","ADR","OccRt"]
+    values_to_wide = ["Revenue_occ","Revenue","ADR","OccRt"]
     idx =(monthly["Year"]==year_sel) & (monthly["Type"]=="STR") & (monthly["Status"]=="Active")
     monthly_tab = monthly.loc[idx,["Listing","Month",*values_to_wide]]
     cols = [f"{m}_{year_sel}" for m in values_to_wide]
