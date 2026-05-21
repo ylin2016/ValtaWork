@@ -50,12 +50,15 @@ tmp %>% filter(nunit!=nunit1) %>% arrange(Cleaning.Date)
 #2025-10-11    12   11: it is ok as Kirkland 8017 shown in car 1 &2 for joint work
 #2026-01-26    11   10:  No scheduled clean for Seattle 10057 Upper
 #2026-02-15    13   14:  Seatac 12834 turn to upper & lower
+#2026-04-29     6   5: it is ok as Clyde hill 8830 shown in car 1 &2 for joint work
 ##-----------------------------------------------------------------
 
 #--------------------------------------------------------------------------------
 ## ---  pay Cleaners ------
 #--------------------------------------------------------------------------------
 payCleaner = pay_cleaner_record(payfile2026)
+loans = payCleaner %>% filter(Rate<0)
+payCleaner = payCleaner %>% filter(Rate>0)
 
 ##-----------------------------------------------------------------
 ## check data_dispatch: daily dispatch #cleaners <> pay #cleaners
@@ -69,6 +72,9 @@ daily = merge(daily,daily_cleaners,by.x ="Cleaning.Date",by.y="Day",all.x=T)
 daily %>% filter(ncleaner.x!=ncleaner.y)
 #5    2026-03-06     4          4          5  : loan deduction
 #6    2026-03-13     5          5          6 : loan deduction
+#     2026-04-10     3          2          5 : loan deduction
+#     2026-04-17     8          6          7 : loan deduction
+#.    2026-04-24     4          4          5 : loan deduction
 ##-----------------------------------------------------------------
 
 data = merge(data_dispatch,payCleaner %>% group_by(Day,Cleaner) %>%
@@ -105,6 +111,8 @@ IncomeSTR = str_income(payout,months)
 IncomeSTR[IncomeSTR$yearmonth %in% '2025-09' & 
             IncomeSTR$Listing %in% "Mercer 3627 ADU",-1] =
   c("Mercer 3627 Main",2,130,260,260,"STR")
+
+
 ##########################################################
 
 #----  Residential Cleaning Income:
@@ -132,18 +140,25 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
     mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-both %>% filter(yearmonth %in% '2026-03' & diff!=0)
-## 2026-03
-Kirkland 11321, 8017 on 3/21 and 3/22 twice
-8415 on 3/22 and 3/23 twice
+both %>% filter(yearmonth %in% '2026-04' & diff!=0)
+## 2026-04
+# Bellevue 1326          7         6  guest extend on 4/28
+# Bellevue 16237
+# Bellevue 634          2 - NA - 1: reclean once
+# Bellevue 15306 1 
+# Seattle 5544 1 
 
-Bothell 18006    1 - NA -NA
-Issaquah 1627    NA -NA - 1
-Sammamish 1627
+## 2026-03
+#Kirkland 11321, 8017 on 3/21 and 3/22 twice
+#8415 on 3/22 and 3/23 twice
+
+#Bothell 18006    1 - NA -NA
+#Issaquah 1627    NA -NA - 1
+#Sammamish 1627
 
 ## 2025-11
-Beachwood 1 scheduled + cleaned on 11/2 and 11/3, what reason?
-Kirkland 8017 were cleaned 4 times in Nov, we only pay 3 times?
+#Beachwood 1 scheduled + cleaned on 11/2 and 11/3, what reason?
+#Kirkland 8017 were cleaned 4 times in Nov, we only pay 3 times?
 ## 2025-10 
 
 ## 2026-01
