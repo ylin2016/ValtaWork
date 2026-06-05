@@ -1,7 +1,6 @@
 import argparse
 from pathlib import Path
 import secrets
-import pandas as pd
 import calendar
 import json
 import uuid
@@ -14,6 +13,7 @@ from .qbo_sync import sync_qbo_expenses
 from .guesty_adapter import import_guesty_bookings_csv
 from .statement_engine import create_run, build_statements
 from .excel_writer import create_template, write_statement
+from .booking_fees import get_booking_fees
 from .utils import sha256_file
 
 def upsert_from_mapping(conn, mapping_items: list[dict]):
@@ -24,6 +24,22 @@ def upsert_from_mapping(conn, mapping_items: list[dict]):
                        VALUES (?, ?, ?)""", (owner_id, m.get("owner_name",""), m.get("owner_email","")))
         cur.execute("""INSERT OR REPLACE INTO properties(property_id, property_name, owner_id, qbo_class_id, qbo_class_name, guesty_listing_id, is_active)
                        VALUES (?, ?, ?, ?, ?, ?, 1)""", (m["property_id"], m.get("property_name",""), owner_id, m["qbo_class_id"], m.get("qbo_class_name"), m.get("guesty_listing_id")))
+        # Write pm_fee_rate into owner_contracts if present in mapping
+        if m.get("pm_fee_rate") is not None:
+            pid = m["property_id"]
+            rate = float(m["pm_fee_rate"])
+            existing = cur.execute(
+                "SELECT contract_id FROM owner_contracts WHERE property_id=? LIMIT 1", (pid,)
+            ).fetchone()
+            if existing:
+                cur.execute("UPDATE owner_contracts SET pm_fee_rate=? WHERE contract_id=?",
+                            (rate, existing[0]))
+            else:
+                cur.execute("""INSERT INTO owner_contracts
+                               (contract_id, property_id, effective_start, statement_basis,
+                                pm_fee_type, pm_fee_rate, pm_fee_base, reserve_target)
+                               VALUES (?, ?, '2020-01-01', 'cash', 'percent', ?, 'net_booking_revenue', 0)""",
+                            (str(uuid.uuid4()), pid, rate))
     conn.commit()
 
 def exception_logger(conn):
@@ -111,88 +127,110 @@ def cmd_build(args):
     period_start = f"{y:04d}-{m:02d}-01"
     last_day = calendar.monthrange(y, m)[1]
     period_end = f"{y:04d}-{m:02d}-{last_day:02d}"
+    default_rate = float(cfg["statement_policy"]["default_pm_fee_rate"])
+
+    # Load mappings for owner flags
+    items = load_class_mapping(args.mapping_classes)
 
     run_id = create_run(conn, period_start, period_end, cfg["statement_policy"]["default_basis"])
     build_statements(conn, run_id, period_start, period_end,
-                     default_pm_fee_rate=float(cfg["statement_policy"]["default_pm_fee_rate"]),
+                     default_pm_fee_rate=default_rate,
                      default_reserve_target=float(cfg["statement_policy"]["default_reserve_target"]))
 
-    template_path = args.template
     out_dir = Path(args.output_dir)/period/"statements"
     out_dir.mkdir(parents=True, exist_ok=True)
 
     props = conn.execute("""SELECT p.*, o.owner_name, o.owner_email
                               FROM properties p JOIN owners o ON p.owner_id=o.owner_id
                               WHERE p.is_active=1""").fetchall()
-
+    generated = 0
     for p in props:
         pid = p["property_id"]
 
-        book = conn.execute(
-            """SELECT booking_id, vendor_customer, posting_date, amount
-               FROM ledger_lines
-               WHERE property_id=? AND posting_date>=? AND posting_date<=?
-                 AND category='INCOME' AND source='guesty' AND include_in_statement=1""",
-            (pid, period_start, period_end),
-        ).fetchall()
-        booking_df = pd.DataFrame([
-            [pid, r["booking_id"], r["vendor_customer"], "", r["posting_date"], "", "", "confirmed",
-             "", "", "", "", "", "", "", float(r["amount"]), ""]
-            for r in book
-        ], columns=["Property ID","Booking ID","Channel","Guest Name","Check-in","Check-out","Booked Date","Status",
-                    "Rent","Cleaning Fee","Other Fees","Discount","Refund","Taxes","Channel Fee","Net Booking Revenue","Notes"])
+        # PM fee rate: contract > config default
+        c = conn.execute("""SELECT pm_fee_rate FROM owner_contracts
+                            WHERE property_id=? AND effective_start<=?
+                              AND (effective_end IS NULL OR effective_end>=?)
+                            ORDER BY effective_start DESC LIMIT 1""",
+                         (pid, period_start, period_start)).fetchone()
+        pm_fee_rate = float(c["pm_fee_rate"]) if c and c["pm_fee_rate"] is not None else default_rate
 
-        exp = conn.execute(
-            """SELECT property_id, (SELECT qbo_class_id FROM properties WHERE property_id=ledger_lines.property_id) as qbo_class_id,
-                      source_object as txn_type, source_txn_id as txn_id, source_line_id as line_id,
-                      posting_date as txn_date, vendor_customer as vendor,
-                      qbo_account as account, category, subcategory, description, amount
-               FROM ledger_lines
-               WHERE property_id=? AND posting_date>=? AND posting_date<=?
-                 AND source='qbo' AND include_in_statement=1 AND category='EXPENSE'""",
-            (pid, period_start, period_end),
-        ).fetchall()
-        expenses_df = pd.DataFrame([
-            [r["property_id"], r["qbo_class_id"], r["txn_type"], r["txn_id"], r["line_id"], r["txn_date"],
-             r["vendor"], r["vendor"], r["account"], r["category"], r["subcategory"], r["description"], float(r["amount"]), "Y", ""]
-            for r in exp
-        ], columns=["Property ID","QBO Class ID","Txn Type","Txn ID","Line ID","Txn Date","Vendor","Payee","Account",
-                    "Category","Subcategory","Description / Memo","Amount","Include?","Notes"])
+        # Guesty bookings with fees and owner costs
+        guesty_rows = conn.execute("""
+            SELECT source_txn_id as booking_id, vendor_customer as guest_name,
+                   posting_date as checkin, service_date as checkout, amount as net_revenue
+            FROM ledger_lines
+            WHERE property_id=? AND posting_date>=? AND posting_date<=?
+              AND source='guesty' AND category='INCOME' AND include_in_statement=1
+            ORDER BY posting_date""", (pid, period_start, period_end)).fetchall()
 
-        fees = conn.execute(
-            """SELECT category, subcategory, description, amount
-               FROM ledger_lines
-               WHERE property_id=? AND posting_date=? AND source='manual' AND include_in_statement=1""",
-            (pid, period_end),
-        ).fetchall()
-        fees_df = pd.DataFrame([
-            [pid, r["category"], r["subcategory"], r["description"], float(r["amount"]), "Calc", "Y"]
-            for r in fees
-        ], columns=["Property ID","Type","Subcategory","Description","Amount","Source","Include?"])
+        bookings = []
+        for row in guesty_rows:
+            booking_dict = dict(row)
+            fees = get_booking_fees(conn, pid, booking_dict['booking_id'], period_start, period_end)
+            booking_dict.update(fees)
+            bookings.append(booking_dict)
 
-        setup = {
-            "Statement Period Start": period_start,
-            "Statement Period End": period_end,
-            "Property ID": pid,
-            "Property Name": p["property_name"],
-            "Owner Name": p["owner_name"],
-            "Owner Email": p["owner_email"],
-            "QBO Class ID": p["qbo_class_id"],
-            "Statement Version": "v1",
+        # QBO deposit income (lease rent, credits, etc.)
+        other_income = conn.execute("""
+            SELECT posting_date, description, vendor_customer, subcategory, amount
+            FROM ledger_lines
+            WHERE property_id=? AND posting_date>=? AND posting_date<=?
+              AND source='qbo' AND category='INCOME' AND include_in_statement=1
+            ORDER BY posting_date""", (pid, period_start, period_end)).fetchall()
+
+        # Owner-responsibility QBO expenses only (account contains 'Owner')
+        expense_rows = conn.execute("""
+            SELECT posting_date, description, vendor_customer, qbo_account, subcategory, amount
+            FROM ledger_lines
+            WHERE property_id=? AND posting_date>=? AND posting_date<=?
+              AND source='qbo' AND category='EXPENSE' AND include_in_statement=1
+              AND qbo_account LIKE '%Owner Expenses%'
+            ORDER BY subcategory, posting_date""", (pid, period_start, period_end)).fetchall()
+
+        expenses_by_subcat = {}
+        for exp in expense_rows:
+            key = exp["subcategory"] or "Other Expense"
+            expenses_by_subcat.setdefault(key, []).append(exp)
+
+        # Skip properties with zero activity this period
+        if not bookings and not other_income and not expense_rows:
+            continue
+
+        tot = conn.execute("""SELECT amount_due_to_owner FROM statement_property_totals
+                               WHERE run_id=? AND property_id=?""",
+                           (run_id, pid)).fetchone()
+        totals = {
+            "starting_balance": 0.0,
+            "net_income": float(tot["amount_due_to_owner"]) if tot else 0.0,
         }
 
-        out_path = out_dir/f"{pid}_owner_statement_{period}.xlsx"
-        write_statement(str(out_path), template_path, setup, booking_df, expenses_df, fees_df)
+        # Load property flags from mapping
+        owner_pays_cleaning = any(m["property_id"] == pid and m.get("owner_pays_cleaning")
+                                  for m in items)
+        owner_pays_taxes = any(m["property_id"] == pid and m.get("owner_pays_taxes")
+                              for m in items)
+        owner_pays_supplies = any(m["property_id"] == pid and m.get("owner_pays_supplies")
+                                 for m in items)
+
+        out_path = out_dir / f"{pid}_owner_statement_{period}.xlsx"
+        write_statement(
+            str(out_path), period,
+            {"property_id": pid, "property_name": p["property_name"]},
+            {"owner_name": p["owner_name"], "owner_email": p["owner_email"] or ""},
+            pm_fee_rate, bookings, other_income, expenses_by_subcat, totals,
+            owner_pays_cleaning=owner_pays_cleaning,
+            owner_pays_supplies=owner_pays_supplies,
+            owner_pays_taxes=owner_pays_taxes,
+        )
 
         sha = sha256_file(str(out_path))
-        conn.execute(
-            """INSERT OR REPLACE INTO statement_outputs(run_id, property_id, output_path, output_sha256)
-               VALUES (?, ?, ?, ?)""",
-            (run_id, pid, str(out_path), sha),
-        )
+        conn.execute("""INSERT OR REPLACE INTO statement_outputs(run_id, property_id, output_path, output_sha256)
+                        VALUES (?, ?, ?, ?)""", (run_id, pid, str(out_path), sha))
         conn.commit()
+        generated += 1
 
-    print(f"Statements generated for {period}: {out_dir}")
+    print(f"Statements generated for {period}: {generated} files → {out_dir}")
 
 def main():
     ap = argparse.ArgumentParser()

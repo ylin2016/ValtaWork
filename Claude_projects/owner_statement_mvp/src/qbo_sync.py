@@ -23,6 +23,19 @@ def classify_deposit_line(description: str, entity_name: str | None = None) -> t
 
     return "INCOME", "Other Deposit"
 
+def _all_pages(qbo, base_query: str, entity: str, page_size: int = 500) -> list:
+    """Fetch all pages of a QBO query result."""
+    results, pos = [], 1
+    while True:
+        res = qbo.query(base_query, start_position=pos, max_results=page_size)
+        page = res.get("QueryResponse", {}).get(entity, []) or []
+        results.extend(page)
+        if len(page) < page_size:
+            break
+        pos += page_size
+    return results
+
+
 def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], start_date: str, end_date: str, exceptions_cb=None):
     cur = conn.cursor()
 
@@ -32,8 +45,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
 
     # Expense
     q = f"select * from Purchase where TxnDate >= '{start_date}' and TxnDate <= '{end_date}'"
-    res = qbo.query(q, start_position=1, max_results=1000)
-    expenses = res.get("QueryResponse", {}).get("Purchase", []) or []
+    expenses = _all_pages(qbo, q, "Purchase")
     for e in expenses:
         txn_id = e.get("Id")
         txn_date = _parse_date(e.get("TxnDate"))
@@ -79,8 +91,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
 
     # Bill (accrual lines; if you want strict cash basis, add BillPayment linking next)
     qb = f"select * from Bill where TxnDate >= '{start_date}' and TxnDate <= '{end_date}'"
-    resb = qbo.query(qb, start_position=1, max_results=1000)
-    bills = resb.get("QueryResponse", {}).get("Bill", []) or []
+    bills = _all_pages(qbo, qb, "Bill")
     for b in bills:
         txn_id = b.get("Id")
         txn_date = _parse_date(b.get("TxnDate"))
@@ -126,8 +137,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
 
     # JournalEntry
     qj = f"select * from JournalEntry where TxnDate >= '{start_date}' and TxnDate <= '{end_date}'"
-    resj = qbo.query(qj, start_position=1, max_results=1000)
-    jes = resj.get("QueryResponse", {}).get("JournalEntry", []) or []
+    jes = _all_pages(qbo, qj, "JournalEntry")
     for j in jes:
         txn_id = j.get("Id")
         txn_date = _parse_date(j.get("TxnDate"))
@@ -172,8 +182,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
 
     # Deposit = bank deposits / receipts, useful for lease rent and security deposits
     qd = f"select * from Deposit where TxnDate >= '{start_date}' and TxnDate <= '{end_date}'"
-    resd = qbo.query(qd, start_position=1, max_results=1000)
-    deposits = resd.get("QueryResponse", {}).get("Deposit", []) or []
+    deposits = _all_pages(qbo, qd, "Deposit")
 
     for d in deposits:
         txn_id = d.get("Id")

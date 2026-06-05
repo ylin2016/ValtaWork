@@ -20,17 +20,27 @@ def build_statements(conn, run_id: str, period_start: str, period_end: str, defa
     for pr in props:
         pid = pr["property_id"]
 
-        gross_rev = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
+        # STR booking revenue (Guesty) — PM commission applies
+        guesty_rev = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
                               WHERE property_id=? AND posting_date>=? AND posting_date<=?
-                                AND include_in_statement=1 AND category='INCOME'""", (pid, period_start, period_end))
+                                AND include_in_statement=1 AND source='guesty' AND category='INCOME'""", (pid, period_start, period_end))
+
+        # Other income (QBO deposits: lease rent, credits, etc.) — no PM commission
+        other_income = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
+                              WHERE property_id=? AND posting_date>=? AND posting_date<=?
+                                AND include_in_statement=1 AND source='qbo' AND category='INCOME'""", (pid, period_start, period_end))
+
+        gross_rev = guesty_rev + other_income
 
         taxes = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
                           WHERE property_id=? AND posting_date>=? AND posting_date<=?
                             AND include_in_statement=1 AND category='TAX'""", (pid, period_start, period_end))
 
+        # Only owner-responsibility expenses (account contains 'Owner')
         expenses = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
                              WHERE property_id=? AND posting_date>=? AND posting_date<=?
-                               AND include_in_statement=1 AND category='EXPENSE'""", (pid, period_start, period_end))
+                               AND include_in_statement=1 AND category='EXPENSE'
+                               AND qbo_account LIKE '%Owner Expenses%'""", (pid, period_start, period_end))
 
         fees_other = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
                                WHERE property_id=? AND posting_date>=? AND posting_date<=?
@@ -51,7 +61,8 @@ def build_statements(conn, run_id: str, period_start: str, period_end: str, defa
         pm_fee_rate = float(c["pm_fee_rate"]) if c and c["pm_fee_rate"] is not None else float(default_pm_fee_rate)
         reserve_target = float(c["reserve_target"]) if c and c["reserve_target"] is not None else float(default_reserve_target)
 
-        pm_fee = -abs(gross_rev) * pm_fee_rate
+        # PM fee on STR bookings only (not on deposits or other QBO income)
+        pm_fee = -guesty_rev * pm_fee_rate if guesty_rev > 0 else 0.0
 
         if abs(pm_fee) > 0.0001:
             conn.execute(
