@@ -1,3 +1,5 @@
+## 6/10/2026: pay LTR using 3038 instead of 9967
+
 library(plyr)
 library(dplyr)
 library(tidyr)
@@ -47,10 +49,13 @@ payout= read.xlsx("/Users/ylin/Google Drive/My Drive/Accounting/01-OwnerPayout R
 colnames(payout)[c(3,10)] =c("Listing","PayoutName_old")
 payout= payout %>% filter(!is.na(Date) & !is.na(Payout)) 
 
-payout = merge(cohost %>% select(Listing, Property),payout,by="Listing",all.y=T) %>%
+payout = merge(cohost %>% select(Listing, Property,Type),payout,
+               by="Listing",all.y=T,suffixes = c("",".p")) %>%
           mutate(Property = ifelse(is.na(Property),Listing,Property))
 payout = merge(payout,owners %>% select(Property,PayoutName),
                by="Property",all.x=T) %>% mutate(Payout= as.numeric(Payout))
+payout$Type[payout$Listing %in% "Beachwood"] = "LTR"
+payout$Type[payout$Listing %in% "OSBR"] = "STR"
 
 ## check owner info
 both = merge(owners %>% select(Property,Name),
@@ -59,8 +64,8 @@ both = merge(owners %>% select(Property,Name),
 
 ## ======================================================
 ### create ACH file
-paydate ="20260512"
-payouts = merge(payout %>% select(Listing,Property,Owner,Payout,MCR,PayoutName),
+paydate ="20260612"
+payouts = merge(payout %>% select(Listing,Property,Type,Owner,Payout,MCR,PayoutName),
                 owners %>% select(Property,Rounting, account.number),
                 by="Property",all.x=T) 
 #add = payouts %>% filter(Owner %in% 'Valta Homes')
@@ -76,62 +81,80 @@ payouts = payouts %>% #rbind(payouts,add) %>%
 
 sum(payouts$Payout) #2026.04:145665.9
 #Mar: 124675.21 #118217.3=855.37+117361.97 Feb #118247/61 #154556.68/58
-sum(payouts$Payout[payouts$Owner %in% 'Valta Homes']) #417.8 Feb #328.36
-sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) 
+
+sum(payouts$Payout[payouts$Type %in% "STR"])
+sum(payouts$Payout[payouts$Type %in% "LTR"])
+
+#sum(payouts$Payout[payouts$Owner %in% 'Valta Homes']) #417.8 Feb #328.36
+#sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) 
 #117799.5/57 Feb #117918.69/60
 
 samplefile = read.csv("./Data/ACHsamplefile.csv")
+samplefile.LTR = read.csv("./Data/ACHsamplefile_LTR.csv")
 
-BatchId = 2605
+createACH <-function(achfile,achN=100,samplefile,BatchId,creation.date,paydate){
+  achfile = achfile %>%
+    mutate(Indicator=6,
+           TrxnCode=22,
+           IDnumber=1:nrow(achfile)) %>%
+    mutate(TrxnID=BatchId*achN+IDnumber, ## TrxnID is yearmonth+ranks
+           X.1=NA,Payout = Payout*100) %>%
+    #mutate(Payout=100) %>%
+    select(Indicator,TrxnCode,Rounting,account.number,
+                  Payout,IDnumber,PayoutName,TrxnID,filename,X.1) %>%
+    mutate(PayoutName = sub(", ","_",PayoutName),
+           filename=sub(", ","_",filename)) 
+  
+  colnames(achfile) = colnames(samplefile)
+  removed = achfile %>% filter(is.na(File.creation.date))
+  achfile = achfile %>% filter(!is.na(File.creation.date))
+  
+  samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O",creation.date)
+  samplefile$X[4] = BatchId # need to change every time
+  samplefile$Total.trxn[2] = samplefile$X.1[4] = nrow(achfile)
+  samplefile$Total.ACH.credit.amount[4] = substr(paydate,3,8) # delivery date = paydate
+  # money come in
+  samplefile$Total.ACH.debit.amount[2] = 0
+  samplefile$Batch.Count[4] = 0
+  
+  # payout to owner
+  samplefile$Total.ACH.debit.amount[4] = sum(achfile$Total.trxn)
+  samplefile$Total.ACH.credit.amount[2] = sum(achfile$Total.trxn)
+  
+  output = rbind(samplefile[1:5,],achfile)
+}
 
-remains = payouts %>% filter(grepl("Seattle 7434",Property))
- # filter((Owner %in% "Valta Homes"))#|
-            # Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
-            #                "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
-achfile = payouts %>% 
-          filter(!grepl("Seattle 7434",Property))
-          #filter(!(Owner %in% "Valta Homes" | Property %in% "Lake Stevens 7626"))#|
-                   #  Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
-                    #        "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
+#remains = payouts %>% filter(grepl("Seattle 7434",Property))
+# filter((Owner %in% "Valta Homes"))#|
+# Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
+#                "Bellevue 14507","Bellevue 16237"))) # check 11641,701 
+
+STR = payouts %>% filter(Type %in% "STR")
+#         filter(!grepl("Seattle 7434",Property))
+#filter(!(Owner %in% "Valta Homes" | Property %in% "Lake Stevens 7626"))#|
+#  Listing %in% c("Bellevue 701","Redmond 11641","Seattle 1512",
+#        "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
 #Feb: onhold Lake stevens
-#2026.04:145665.9: I paid 142889.9, ask xu to pay Seattle 7434 :2775.97
-achfile = achfile %>%
-  mutate(Indicator=6,
-         TrxnCode=22,
-         IDnumber=1:nrow(achfile)) %>%
-  mutate(TrxnID=BatchId*100+IDnumber, ## TrxnID is yearmonth+ranks
-         X.1=NA,Payout = Payout*100) %>%
-  #mutate(Payout=100) %>%
-  select(Indicator,TrxnCode,Rounting,account.number,
-                Payout,IDnumber,PayoutName,TrxnID,filename,X.1) %>%
-  mutate(PayoutName = sub(", ","_",PayoutName),
-         filename=sub(", ","_",filename)) 
 
-colnames(achfile) = colnames(samplefile)
-removed = achfile %>% filter(is.na(File.creation.date))
-achfile = achfile %>% filter(!is.na(File.creation.date))
+BatchId = 2606
+creation.date = "20260609"
+output = createACH(STR,100,samplefile,BatchId,creation.date,paydate)
 #2026.1.11: 58 , sophia and ValtaHome is not $1126.02 
-
-
-samplefile[2,c("File.ID..Modifier.","File.creation.date")] =c("O","260509")
-samplefile$X[4] = BatchId # need to change every time
-samplefile$Total.trxn[2] = samplefile$X.1[4] = nrow(achfile)
-samplefile$Total.ACH.credit.amount[4] = substr(paydate,3,8) # delivery date = paydate
-# money come in
-samplefile$Total.ACH.debit.amount[2] = 0
-samplefile$Batch.Count[4] = 0
-
-# payout to owner
-samplefile$Total.ACH.debit.amount[4] = sum(achfile$Total.trxn)
-samplefile$Total.ACH.credit.amount[2] = sum(achfile$Total.trxn)
-
-output = rbind(samplefile[1:5,],achfile)
 View(output) 
 # 114,603.54 = 118217.3-3196.00-417.8 Feb
 # 115,644.52 Jan
 # 148,073.88 Dec
-write.table(output,"./ACHfile_filled/ACHfile_filled_202605.csv",
+write.table(output,"./ACHfile_filled/ACHfile_filled_STR_202606.csv",
             row=F,col = F,na="",sep=",",quo=F)
+
+LTR = payouts %>% filter(Type %in% "LTR")
+output = createACH(LTR,200,samplefile.LTR,BatchId,creation.date,paydate)
+View(output) 
+write.table(output,"./ACHfile_filled/ACHfile_filled_LTR_202606.csv",
+            row=F,col = F,na="",sep=",",quo=F)
+
+
+
 
 ## add Trxn in Batch to csv
 
