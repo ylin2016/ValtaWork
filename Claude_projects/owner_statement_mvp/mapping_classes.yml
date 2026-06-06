@@ -17,8 +17,10 @@
   property_id: bainbridge_11143
   property_name: Bainbridge 11143
   owner_id: owner_bainbridge_11143
-  owner_name: Bainbridge 11143 Owner
-  owner_email: ''
+  owner_name: Margaret Dufresne
+  owner_email: margduf@gmail.com
+  pm_fee_rate: 0.18
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001794669'
   qbo_class_name: Listings:Beachwood
   property_id: beachwood
@@ -31,43 +33,49 @@
   property_id: beachwood_1
   property_name: Beachwood 1
   owner_id: owner_beachwood_1
-  owner_name: Beachwood 1 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001492176'
   qbo_class_name: Listings:Beachwood 10
   property_id: beachwood_10
   property_name: Beachwood 10
   owner_id: owner_beachwood_10
-  owner_name: Beachwood 10 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001764898'
   qbo_class_name: Listings:Beachwood 2
   property_id: beachwood_2
   property_name: Beachwood 2
   owner_id: owner_beachwood_2
-  owner_name: Beachwood 2 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001514510'
   qbo_class_name: Listings:Beachwood 3
   property_id: beachwood_3
   property_name: Beachwood 3
   owner_id: owner_beachwood_3
-  owner_name: Beachwood 3 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '517130'
   qbo_class_name: Listings:Beachwood 4
   property_id: beachwood_4
   property_name: Beachwood 4
   owner_id: owner_beachwood_4
-  owner_name: Beachwood 4 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001590423'
   qbo_class_name: Listings:Beachwood 5
   property_id: beachwood_5
   property_name: Beachwood 5
   owner_id: owner_beachwood_5
-  owner_name: Beachwood 5 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '517494'
   qbo_class_name: Listings:Beachwood 6
   property_id: beachwood_6
@@ -80,29 +88,34 @@
   property_id: beachwood_7
   property_name: Beachwood 7
   owner_id: owner_beachwood_7
-  owner_name: Beachwood 7 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001514509'
   qbo_class_name: Listings:Beachwood 8
   property_id: beachwood_8
   property_name: Beachwood 8
   owner_id: owner_beachwood_8
-  owner_name: Beachwood 8 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001793399'
   qbo_class_name: Listings:Beachwood 9
   property_id: beachwood_9
   property_name: Beachwood 9
   owner_id: owner_beachwood_9
-  owner_name: Beachwood 9 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001813930'
   qbo_class_name: Listings:Bellevue 10409
   property_id: bellevue_10409
   property_name: Bellevue 10409
   owner_id: owner_bellevue_10409
-  owner_name: Bellevue 10409 Owner
-  owner_email: ''
+  owner_name: Baoliang Shang
+  owner_email: paulshawn995@gmail.com
+  pm_fee_rate: 0.12
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492189'
   qbo_class_name: Listings:Bellevue 13020
   property_id: bellevue_13020
@@ -115,22 +128,26 @@
   property_id: bellevue_1326
   property_name: Bellevue 1326
   owner_id: owner_bellevue_1326
-  owner_name: Bellevue 1326 Owner
-  owner_email: ''
+  owner_name: Fang Zhang
+  owner_email: fangzh@umich.edu
+  pm_fee_rate: 0.18
 - qbo_class_id: '627552'
   qbo_class_name: Listings:Bellevue 1420
   property_id: bellevue_1420
   property_name: Bellevue 1420
   owner_id: owner_bellevue_1420
-  owner_name: Bellevue 1420 Owner
-  owner_email: ''
+  owner_name: Alan Parker Lue
+  owner_email: aparkerlue@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '2100000000001640665'
   qbo_class_name: Listings:Bellevue 14507
   property_id: bellevue_14507
   property_name: Bellevue 14507
   owner_id: owner_bellevue_14507
-  owner_name: Bellevue 14507 Owner
-  owner_email: ''
+  owner_name: Chrissie Yim
+  owner_email: chrissieyim@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001640666'
   qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 1
   property_id: bellevue_14507_unit_1
@@ -171,15 +188,17 @@
   property_id: bellevue_1621
   property_name: Bellevue 1621
   owner_id: owner_bellevue_1621
-  owner_name: Bellevue 1621 Owner
-  owner_email: ''
+  owner_name: Chrissie Yim
+  owner_email: chrissieyim@gmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '588893'
   qbo_class_name: Listings:Bellevue 16237
   property_id: bellevue_16237
   property_name: Bellevue 16237
   owner_id: owner_bellevue_16237
-  owner_name: Bellevue 16237 Owner
-  owner_email: ''
+  owner_name: Tushar Gupta
+  owner_email: tushki1405@gmail.com
+  pm_fee_rate: 0.24
 - qbo_class_id: '688900'
   qbo_class_name: Listings:Bellevue 16310-A3
   property_id: bellevue_16310_a3
@@ -199,15 +218,26 @@
   property_id: bellevue_2243
   property_name: Bellevue 2243
   owner_id: owner_bellevue_2243
-  owner_name: Bellevue 2243 Owner
+  owner_name: Manpreet Kaur
+  owner_email: manpkaur@gmail.com
+  pm_fee_rate: 0.18
+- qbo_class_id: '1000000011'
+  qbo_class_name: Listings:Bellevue 2323
+  property_id: bellevue_2323
+  property_name: Bellevue 2323
+  owner_id: owner_bellevue_2323
+  owner_name: Bellevue 2323 Owner
   owner_email: ''
 - qbo_class_id: '544835'
   qbo_class_name: Listings:Bellevue 242
   property_id: bellevue_242
   property_name: Bellevue 242
   owner_id: owner_bellevue_242
-  owner_name: Bellevue 242 Owner
-  owner_email: ''
+  owner_name: Jie Zhang
+  owner_email: jzhangknox@gmail.com
+  pm_fee_rate: 0.15
+  owner_pays_cleaning: true
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001739498'
   qbo_class_name: Listings:Bellevue 300
   property_id: bellevue_300
@@ -220,15 +250,18 @@
   property_id: bellevue_321
   property_name: Bellevue 321
   owner_id: owner_bellevue_321
-  owner_name: Bellevue 321 Owner
-  owner_email: ''
+  owner_name: Brandon Shimizu
+  owner_email: brandon@meadinvestments.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '2100000000001492154'
   qbo_class_name: Listings:Bellevue 514
   property_id: bellevue_514
   property_name: Bellevue 514
   owner_id: owner_bellevue_514
-  owner_name: Bellevue 514 Owner
-  owner_email: ''
+  owner_name: Jing Li
+  owner_email: seattlelijing@gmail.com
+  pm_fee_rate: 0.2
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001673559'
   qbo_class_name: Listings:Bellevue 601
   property_id: bellevue_601
@@ -241,8 +274,11 @@
   property_id: bellevue_701
   property_name: Bellevue 701
   owner_id: owner_bellevue_701
-  owner_name: Bellevue 701 Owner
-  owner_email: ''
+  owner_name: Sophia Li
+  owner_email: sophia2017tina@gmail.com
+  pm_fee_rate: 0.5
+  owner_pays_cleaning: true
+  owner_pays_supplies: true
 - qbo_class_id: '587292'
   qbo_class_name: Listings:Bothell 11131
   property_id: bothell_11131
@@ -255,78 +291,112 @@
   property_id: burien_14407_middle
   property_name: Burien 14407 Middle
   owner_id: owner_burien_14407_middle
-  owner_name: Burien 14407 Middle Owner
-  owner_email: ''
+  owner_name: Evan Matsumoto
+  owner_email: evan@mrnice.com
+  pm_fee_rate: 0.18
+  owner_pays_cleaning: true
 - qbo_class_id: '2100000000001755153'
   qbo_class_name: Listings:Burien 14407 Top
   property_id: burien_14407_top
   property_name: Burien 14407 Top
   owner_id: owner_burien_14407_top
-  owner_name: Burien 14407 Top Owner
-  owner_email: ''
+  owner_name: Evan Matsumoto
+  owner_email: evan@mrnice.com
+  pm_fee_rate: 0.18
+  owner_pays_cleaning: true
 - qbo_class_id: '677869'
   qbo_class_name: Listings:Edmonds 7819
   property_id: edmonds_7819
   property_name: Edmonds 7819
   owner_id: owner_edmonds_7819
-  owner_name: Edmonds 7819 Owner
-  owner_email: ''
+  owner_name: Mingmei Xu
+  owner_email: maggiexu618@hotmail.com
+  pm_fee_rate: 0.06
 - qbo_class_id: '2100000000001492211'
   qbo_class_name: Listings:Elektra 1004
   property_id: elektra_1004
   property_name: Elektra 1004
   owner_id: owner_elektra_1004
-  owner_name: Elektra 1004 Owner
-  owner_email: ''
+  owner_name: Jing Zhou
+  owner_email: jingzhou.wa@gmail.com
+  pm_fee_rate: 0.0
 - qbo_class_id: '2100000000001492212'
   qbo_class_name: Listings:Elektra 1108
   property_id: elektra_1108
   property_name: Elektra 1108
   owner_id: owner_elektra_1108
-  owner_name: Elektra 1108 Owner
-  owner_email: ''
+  owner_name: Jing Zhou
+  owner_email: jingzhou.wa@gmail.com
+  pm_fee_rate: 0.0
 - qbo_class_id: '2100000000001492167'
   qbo_class_name: Listings:Elektra 1115
   property_id: elektra_1115
   property_name: Elektra 1115
   owner_id: owner_elektra_1115
-  owner_name: Elektra 1115 Owner
-  owner_email: ''
+  owner_name: Jing Zhou
+  owner_email: jingzhou.wa@gmail.com
+  pm_fee_rate: 0.0
 - qbo_class_id: '706489'
   qbo_class_name: Listings:Elektra 1203
   property_id: elektra_1203
   property_name: Elektra 1203
   owner_id: owner_elektra_1203
-  owner_name: Elektra 1203 Owner
-  owner_email: ''
+  owner_name: SWAE1203 LLC
+  owner_email: lucialeung88@gmail.com
+  pm_fee_rate: 0.15
+  owner_pays_supplies: true
+- qbo_class_id: '1000000008'
+  qbo_class_name: Listings:Elektra 1212
+  property_id: elektra_1212
+  property_name: Elektra 1212
+  owner_id: owner_elektra_1212
+  owner_name: SWAE26 LLC
+  owner_email: lucialeung88@gmail.com
+  pm_fee_rate: 0.15
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001795968'
   qbo_class_name: Listings:Elektra 1305
   property_id: elektra_1305
   property_name: Elektra 1305
   owner_id: owner_elektra_1305
-  owner_name: Elektra 1305 Owner
+  owner_name: JAL Home LLC
+  owner_email: lucialeung88@gmail.com
+  pm_fee_rate: 0.15
+  owner_pays_supplies: true
+- qbo_class_id: '1000000012'
+  qbo_class_name: Listings:Elektra 1413
+  property_id: elektra_1413
+  property_name: Elektra 1413
+  owner_id: owner_elektra_1413
+  owner_name: Zexi Han
   owner_email: ''
+  pm_fee_rate: 0.15
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492155'
   qbo_class_name: Listings:Elektra 703
   property_id: elektra_703
   property_name: Elektra 703
   owner_id: owner_elektra_703
-  owner_name: Elektra 703 Owner
-  owner_email: ''
+  owner_name: Amanda Hui
+  owner_email: amandayhui@gmail.com
+  pm_fee_rate: 0.26
 - qbo_class_id: '2100000000001492201'
   qbo_class_name: Listings:Elektra 809
   property_id: elektra_809
   property_name: Elektra 809
   owner_id: owner_elektra_809
-  owner_name: Elektra 809 Owner
-  owner_email: ''
+  owner_name: Charles Cardinaux
+  owner_email: charles.cardinaux@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '2100000000001492203'
   qbo_class_name: Listings:Hoodsport 26060
   property_id: hoodsport_26060
   property_name: Hoodsport 26060
   owner_id: owner_hoodsport_26060
-  owner_name: Hoodsport 26060 Owner
-  owner_email: ''
+  owner_name: Suki E
+  owner_email: suetpoon388@hotmail.com
+  pm_fee_rate: 0.2
+  owner_pays_supplies: true
 - qbo_class_id: '522144'
   qbo_class_name: Listings:Hoquiam 21
   property_id: hoquiam_21
@@ -353,15 +423,20 @@
   property_id: keaau_15_1542
   property_name: Keaau 15-1542
   owner_id: owner_keaau_15_1542
-  owner_name: Keaau 15-1542 Owner
-  owner_email: ''
+  owner_name: Feifei Li
+  owner_email: feifei.li@gmail.com
+  pm_fee_rate: 0.14
+  owner_pays_cleaning: true
+  owner_pays_taxes: true
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492164'
   qbo_class_name: Listings:Kirkland 10219
   property_id: kirkland_10219
   property_name: Kirkland 10219
   owner_id: owner_kirkland_10219
-  owner_name: Kirkland 10219 Owner
-  owner_email: ''
+  owner_name: Yaoyun Shi
+  owner_email: adiabatic.investment@protonmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '656442'
   qbo_class_name: Listings:Kirkland 11006-815
   property_id: kirkland_11006_815
@@ -374,15 +449,26 @@
   property_id: kirkland_11321
   property_name: Kirkland 11321
   owner_id: owner_kirkland_11321
-  owner_name: Kirkland 11321 Owner
+  owner_name: Chenyu Dai & Jiachen Huang
+  owner_email: jdaaph@gmail.com
+  pm_fee_rate: 0.18
+- qbo_class_id: '1000000010'
+  qbo_class_name: Listings:Kirkland 13070
+  property_id: kirkland_13070
+  property_name: Kirkland 13070
+  owner_id: owner_kirkland_13070
+  owner_name: Zhongyan Qiu
   owner_email: ''
+  pm_fee_rate: 0.18
+  owner_pays_cleaning: true
 - qbo_class_id: '588892'
   qbo_class_name: Listings:Kirkland 8017
   property_id: kirkland_8017
   property_name: Kirkland 8017
   owner_id: owner_kirkland_8017
-  owner_name: Kirkland 8017 Owner
-  owner_email: ''
+  owner_name: Jianxin Chen
+  owner_email: qudit@me.com
+  pm_fee_rate: 0.18
 - qbo_class_id: '2100000000001492210'
   qbo_class_name: Listings:Kirkland 8252-D201
   property_id: kirkland_8252_d201
@@ -395,15 +481,18 @@
   property_id: lake_stevens_7626
   property_name: Lake Stevens 7626
   owner_id: owner_lake_stevens_7626
-  owner_name: Lake Stevens 7626 Owner
-  owner_email: ''
+  owner_name: Xiaosong Yang
+  owner_email: yangxiao@hotmail.com
+  pm_fee_rate: 0.06
 - qbo_class_id: '2100000000001492204'
   qbo_class_name: Listings:Lilliwaup 28610
   property_id: lilliwaup_28610
   property_name: Lilliwaup 28610
   owner_id: owner_lilliwaup_28610
-  owner_name: Lilliwaup 28610 Owner
-  owner_email: ''
+  owner_name: Coco Ren & Jing Zhou
+  owner_email: cocorenkeke@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492151'
   qbo_class_name: Listings
   property_id: listings
@@ -416,8 +505,10 @@
   property_id: longbranch_6821
   property_name: Longbranch 6821
   owner_id: owner_longbranch_6821
-  owner_name: Longbranch 6821 Owner
-  owner_email: ''
+  owner_name: Huijing Tao & Jing Zhou
+  owner_email: jeanmtg10@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492262'
   qbo_class_name: Listings:Longbranch 6821 Lower
   property_id: longbranch_6821_lower
@@ -437,8 +528,9 @@
   property_id: mercer_2449
   property_name: Mercer 2449
   owner_id: owner_mercer_2449
-  owner_name: Mercer 2449 Owner
-  owner_email: ''
+  owner_name: Na Si
+  owner_email: yu7593@sina.com
+  pm_fee_rate: 0.06
 - qbo_class_id: '2100000000001492206'
   qbo_class_name: Listings:Mercer 3627
   property_id: mercer_3627
@@ -451,8 +543,19 @@
   property_id: mercer_3627_adu
   property_name: Mercer 3627 ADU
   owner_id: owner_mercer_3627_adu
-  owner_name: Mercer 3627 ADU Owner
-  owner_email: ''
+  owner_name: Robert Foo
+  owner_email: 5034abo@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
+- qbo_class_id: '1000000009'
+  qbo_class_name: Listings:Mercer 3627 Lower
+  property_id: mercer_3627_lower
+  property_name: Mercer 3627 Lower
+  owner_id: owner_mercer_3627_lower
+  owner_name: Robert Foo
+  owner_email: 5034abo@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492207'
   qbo_class_name: Listings:Mercer 3627 Main
   property_id: mercer_3627_main
@@ -465,120 +568,152 @@
   property_id: mercer_3925
   property_name: Mercer 3925
   owner_id: owner_mercer_3925
-  owner_name: Mercer 3925 Owner
-  owner_email: ''
+  owner_name: Chengcen Zhao
+  owner_email: xglzcc@gmail.com
+  pm_fee_rate: 0.2
+  owner_pays_cleaning: true
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492166'
   qbo_class_name: Listings:Microsoft 14615-D303
   property_id: microsoft_14615_d303
   property_name: Microsoft 14615-D303
   owner_id: owner_microsoft_14615_d303
-  owner_name: Microsoft 14615-D303 Owner
-  owner_email: ''
+  owner_name: Jing Zhou
+  owner_email: jingzhou.wa@gmail.com
+  pm_fee_rate: 0.0
 - qbo_class_id: '2100000000001492156'
   qbo_class_name: Listings:Microsoft 14620-E205
   property_id: microsoft_14620_e205
   property_name: Microsoft 14620-E205
   owner_id: owner_microsoft_14620_e205
-  owner_name: Microsoft 14620-E205 Owner
+  owner_name: Yan Shen & Yaoming Sun
   owner_email: ''
+  pm_fee_rate: 0.0
 - qbo_class_id: '2100000000001492169'
   qbo_class_name: Listings:Microsoft 14645-C19
   property_id: microsoft_14645_c19
   property_name: Microsoft 14645-C19
   owner_id: owner_microsoft_14645_c19
-  owner_name: Microsoft 14645-C19 Owner
-  owner_email: ''
+  owner_name: Adam Chen
+  owner_email: adam.wpp@gmail.com
+  pm_fee_rate: 0.2
 - qbo_class_id: '2100000000001547055'
   qbo_class_name: Listings:OSBR
   property_id: osbr
   property_name: OSBR
   owner_id: owner_osbr
-  owner_name: OSBR Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001770304'
   qbo_class_name: Listings:OSBR 1
   property_id: osbr_1
   property_name: OSBR 1
   owner_id: owner_osbr_1
-  owner_name: OSBR 1 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547340'
   qbo_class_name: Listings:OSBR 10
   property_id: osbr_10
   property_name: OSBR 10
   owner_id: owner_osbr_10
-  owner_name: OSBR 10 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '515449'
   qbo_class_name: Listings:OSBR 11
   property_id: osbr_11
   property_name: OSBR 11
   owner_id: owner_osbr_11
-  owner_name: OSBR 11 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '590693'
   qbo_class_name: Listings:OSBR 12
   property_id: osbr_12
   property_name: OSBR 12
   owner_id: owner_osbr_12
-  owner_name: OSBR 12 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001770313'
   qbo_class_name: Listings:OSBR 2
   property_id: osbr_2
   property_name: OSBR 2
   owner_id: owner_osbr_2
-  owner_name: OSBR 2 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547333'
   qbo_class_name: Listings:OSBR 3
   property_id: osbr_3
   property_name: OSBR 3
   owner_id: owner_osbr_3
-  owner_name: OSBR 3 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547334'
   qbo_class_name: Listings:OSBR 4
   property_id: osbr_4
   property_name: OSBR 4
   owner_id: owner_osbr_4
-  owner_name: OSBR 4 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547335'
   qbo_class_name: Listings:OSBR 5
   property_id: osbr_5
   property_name: OSBR 5
   owner_id: owner_osbr_5
-  owner_name: OSBR 5 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547336'
   qbo_class_name: Listings:OSBR 6
   property_id: osbr_6
   property_name: OSBR 6
   owner_id: owner_osbr_6
-  owner_name: OSBR 6 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547337'
   qbo_class_name: Listings:OSBR 7
   property_id: osbr_7
   property_name: OSBR 7
   owner_id: owner_osbr_7
-  owner_name: OSBR 7 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547338'
   qbo_class_name: Listings:OSBR 8
   property_id: osbr_8
   property_name: OSBR 8
   owner_id: owner_osbr_8
-  owner_name: OSBR 8 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001547339'
   qbo_class_name: Listings:OSBR 9
   property_id: osbr_9
   property_name: OSBR 9
   owner_id: owner_osbr_9
-  owner_name: OSBR 9 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492157'
   qbo_class_name: Listings:Poulsbo 13976
   property_id: poulsbo_13976
@@ -591,43 +726,52 @@
   property_id: poulsbo_3866
   property_name: Poulsbo 3866
   owner_id: owner_poulsbo_3866
-  owner_name: Poulsbo 3866 Owner
-  owner_email: ''
+  owner_name: Margaret Dufresne
+  owner_email: margduf@gmail.com
+  pm_fee_rate: 0.18
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492158'
   qbo_class_name: Listings:Poulsbo 3956
   property_id: poulsbo_3956
   property_name: Poulsbo 3956
   owner_id: owner_poulsbo_3956
-  owner_name: Poulsbo 3956 Owner
-  owner_email: ''
+  owner_name: Feifei Li
+  owner_email: feifei.li@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492175'
   qbo_class_name: Listings:Poulsbo 563
   property_id: poulsbo_563
   property_name: Poulsbo 563
   owner_id: owner_poulsbo_563
-  owner_name: Poulsbo 563 Owner
-  owner_email: ''
+  owner_name: Jessi & Max
+  owner_email: jessi.sigander@gmail.com
+  pm_fee_rate: 0.22
+  owner_pays_supplies: true
 - qbo_class_id: '1000000001'
   qbo_class_name: Listings:Redmond 11641
   property_id: redmond_11641
   property_name: Redmond 11641
   owner_id: owner_redmond_11641
-  owner_name: Redmond 11641 Owner
-  owner_email: ''
+  owner_name: Kaiwen Gu
+  owner_email: gu.kaiwen@gmail.com
+  pm_fee_rate: 0.24
 - qbo_class_id: '658546'
   qbo_class_name: Listings:Redmond 14707
   property_id: redmond_14707
   property_name: Redmond 14707
   owner_id: owner_redmond_14707
-  owner_name: Redmond 14707 Owner
-  owner_email: ''
+  owner_name: Yuhui Mao & Zhongyan Qiu
+  owner_email: maoyuhuiuw@gmail.com
+  pm_fee_rate: 0.18
 - qbo_class_id: '2100000000001492165'
   qbo_class_name: Listings:Redmond 15357
   property_id: redmond_15357
   property_name: Redmond 15357
   owner_id: owner_redmond_15357
-  owner_name: Redmond 15357 Owner
-  owner_email: ''
+  owner_name: Jiaping Wang & Dan You
+  owner_email: jiapw.cg@gmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '575624'
   qbo_class_name: Listings:Redmond 16012
   property_id: redmond_16012
@@ -640,29 +784,35 @@
   property_id: redmond_18641
   property_name: Redmond 18641
   owner_id: owner_redmond_18641
-  owner_name: Redmond 18641 Owner
-  owner_email: ''
+  owner_name: Arvind Visvanathan
+  owner_email: arvind_visvanathan@hotmail.com
+  pm_fee_rate: 0.06
 - qbo_class_id: '2100000000001492195'
   qbo_class_name: Listings:Redmond 7579
   property_id: redmond_7579
   property_name: Redmond 7579
   owner_id: owner_redmond_7579
-  owner_name: Redmond 7579 Owner
-  owner_email: ''
+  owner_name: Adam Chen
+  owner_email: adam.wpp@gmail.com
+  pm_fee_rate: 0.2
 - qbo_class_id: '2100000000001653158'
   qbo_class_name: Listings:Sammamish 2009
   property_id: sammamish_2009
   property_name: Sammamish 2009
   owner_id: owner_sammamish_2009
-  owner_name: Sammamish 2009 Owner
-  owner_email: ''
+  owner_name: Liaoyuan Ning
+  owner_email: ningliaoyuan@gmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '695032'
   qbo_class_name: Listings:Sammamish 5124-1
   property_id: sammamish_5124_1
   property_name: Sammamish 5124-1
   owner_id: owner_sammamish_5124_1
-  owner_name: Sammamish 5124-1 Owner
-  owner_email: ''
+  owner_name: Sophia Li
+  owner_email: sophia2017tina@gmail.com
+  pm_fee_rate: 0.5
+  owner_pays_cleaning: true
+  owner_pays_supplies: true
 - qbo_class_id: '1000000003'
   qbo_class_name: Listings:Sammamish 5124-2
   property_id: sammamish_5124_2
@@ -696,50 +846,57 @@
   property_id: seattle_10057_lower
   property_name: Seattle 10057 Lower
   owner_id: owner_seattle_10057_lower
-  owner_name: Seattle 10057 Lower Owner
-  owner_email: ''
+  owner_name: Quinnlan Varcoe
+  owner_email: quinnlanvarcoe@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '689690'
   qbo_class_name: Listings:Seattle 10057 Upper
   property_id: seattle_10057_upper
   property_name: Seattle 10057 Upper
   owner_id: owner_seattle_10057_upper
-  owner_name: Seattle 10057 Upper Owner
-  owner_email: ''
+  owner_name: Quinnlan Varcoe
+  owner_email: quinnlanvarcoe@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '692580'
   qbo_class_name: Listings:Seattle 10057 Whole
   property_id: seattle_10057_whole
   property_name: Seattle 10057 Whole
   owner_id: owner_seattle_10057_whole
-  owner_name: Seattle 10057 Whole Owner
-  owner_email: ''
+  owner_name: Quinnlan Varcoe
+  owner_email: quinnlanvarcoe@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '2100000000001615459'
   qbo_class_name: Listings:Seattle 1117
   property_id: seattle_1117
   property_name: Seattle 1117
   owner_id: owner_seattle_1117
-  owner_name: Seattle 1117 Owner
-  owner_email: ''
+  owner_name: Dajiang Liu
+  owner_email: liudajiang0828@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '1000000004'
   qbo_class_name: Listings:Seattle 11331
   property_id: seattle_11331
   property_name: Seattle 11331
   owner_id: owner_seattle_11331
-  owner_name: Seattle 11331 Owner
-  owner_email: ''
+  owner_name: Ling Zhang
+  owner_email: zzzling_99@yahoo.com
+  pm_fee_rate: 0.06
 - qbo_class_id: '2100000000001651204'
   qbo_class_name: Listings:Seattle 115
   property_id: seattle_115
   property_name: Seattle 115
   owner_id: owner_seattle_115
-  owner_name: Seattle 115 Owner
-  owner_email: ''
+  owner_name: Chen Pan
+  owner_email: pchen_lily@hotmail.com
+  pm_fee_rate: 0.2
 - qbo_class_id: '2100000000001492171'
   qbo_class_name: Listings:Seattle 1424C
   property_id: seattle_1424c
   property_name: Seattle 1424C
   owner_id: owner_seattle_1424c
-  owner_name: Seattle 1424C Owner
-  owner_email: ''
+  owner_name: Angus Ni
+  owner_email: angus.f.ni@gmail.com
+  pm_fee_rate: 0.18
 - qbo_class_id: '2100000000001492170'
   qbo_class_name: Listings:Seattle 1430B
   property_id: seattle_1430b
@@ -752,8 +909,9 @@
   property_id: seattle_1502
   property_name: Seattle 1502
   owner_id: owner_seattle_1502
-  owner_name: Seattle 1502 Owner
-  owner_email: ''
+  owner_name: David Asuncion
+  owner_email: dasun102@gmail.com
+  pm_fee_rate: 0.22
 - qbo_class_id: '2100000000001492153'
   qbo_class_name: Listings:Seattle 1512
   property_id: seattle_1512
@@ -766,15 +924,18 @@
   property_id: seattle_1623
   property_name: Seattle 1623
   owner_id: owner_seattle_1623
-  owner_name: Seattle 1623 Owner
-  owner_email: ''
+  owner_name: Niya Zhang
+  owner_email: niya.zhang16@gmail.com
+  pm_fee_rate: 0.15
+  owner_pays_supplies: true
 - qbo_class_id: '687377'
   qbo_class_name: Listings:Seattle 206
   property_id: seattle_206
   property_name: Seattle 206
   owner_id: owner_seattle_206
-  owner_name: Seattle 206 Owner
-  owner_email: ''
+  owner_name: Jing Chen
+  owner_email: chenjing.ustc@hotmail.com
+  pm_fee_rate: 0.2
 - qbo_class_id: '2100000000001492159'
   qbo_class_name: Listings:Seattle 3617
   property_id: seattle_3617
@@ -787,50 +948,81 @@
   property_id: seattle_4201
   property_name: Seattle 4201
   owner_id: owner_seattle_4201
-  owner_name: Seattle 4201 Owner
-  owner_email: ''
+  owner_name: Brian McNaboe
+  owner_email: bmcnaboe@gmail.com
+  pm_fee_rate: 0.2
 - qbo_class_id: '2100000000001492160'
   qbo_class_name: Listings:Seattle 710
   property_id: seattle_710
   property_name: Seattle 710
   owner_id: owner_seattle_710
-  owner_name: Seattle 710 Owner
-  owner_email: ''
+  owner_name: Isabell Sheang
+  owner_email: isabellsheang@gmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '2100000000001492162'
   qbo_class_name: Listings:Seattle 710 ADU
   property_id: seattle_710_adu
   property_name: Seattle 710 ADU
   owner_id: owner_seattle_710_adu
-  owner_name: Seattle 710 ADU Owner
+  owner_name: Isabell Sheang
+  owner_email: isabellsheang@gmail.com
+  pm_fee_rate: 0.16
+- qbo_class_id: '1000000007'
+  qbo_class_name: Listings:Seattle 7434 Lower
+  property_id: seattle_7434_lower
+  property_name: Seattle 7434 Lower
+  owner_id: owner_seattle_7434_lower
+  owner_name: Dai Li
+  owner_email: li.lea.dai@gmail.com
+  pm_fee_rate: 0.2
+- qbo_class_id: '1000000006'
+  qbo_class_name: Listings:Seattle 7434 Upper
+  property_id: seattle_7434_upper
+  property_name: Seattle 7434 Upper
+  owner_id: owner_seattle_7434_upper
+  owner_name: Dai Li
+  owner_email: li.lea.dai@gmail.com
+  pm_fee_rate: 0.2
+- qbo_class_id: '1000000005'
+  qbo_class_name: Listings:Seattle 7434 Whole
+  property_id: seattle_7434_whole
+  property_name: Seattle 7434 Whole
+  owner_id: owner_seattle_7434_whole
+  owner_name: Seattle 7434 Whole Owner
   owner_email: ''
 - qbo_class_id: '2100000000001775452'
   qbo_class_name: Listings:Seattle 8415
   property_id: seattle_8415
   property_name: Seattle 8415
   owner_id: owner_seattle_8415
-  owner_name: Seattle 8415 Owner
-  owner_email: ''
+  owner_name: Baofu Wang
+  owner_email: cheapcoffeewbf@gmail.com
+  pm_fee_rate: 0.2
 - qbo_class_id: '613445'
   qbo_class_name: Listings:Seattle 9021
   property_id: seattle_9021
   property_name: Seattle 9021
   owner_id: owner_seattle_9021
-  owner_name: Seattle 9021 Owner
-  owner_email: ''
+  owner_name: Brianne Riley
+  owner_email: manager@chillhavenhomes.com
+  pm_fee_rate: 0.171
+  owner_pays_supplies: true
 - qbo_class_id: '605774'
   qbo_class_name: Listings:Seattle 906 Lower
   property_id: seattle_906_lower
   property_name: Seattle 906 Lower
   owner_id: owner_seattle_906_lower
-  owner_name: Seattle 906 Lower Owner
-  owner_email: ''
+  owner_name: Arsham Mesbah Shoolami
+  owner_email: theseattlewhalehouse@gmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '696831'
   qbo_class_name: Listings:Seattle 906 Upper
   property_id: seattle_906_upper
   property_name: Seattle 906 Upper
   owner_id: owner_seattle_906_upper
-  owner_name: Seattle 906 Upper Owner
-  owner_email: ''
+  owner_name: Arsham Mesbah Shoolami
+  owner_email: theseattlewhalehouse@gmail.com
+  pm_fee_rate: 0.16
 - qbo_class_id: '2100000000001707454'
   qbo_class_name: Listings:Seattle 9750
   property_id: seattle_9750
@@ -850,15 +1042,19 @@
   property_id: shelton_250
   property_name: Shelton 250
   owner_id: owner_shelton_250
-  owner_name: Shelton 250 Owner
-  owner_email: ''
+  owner_name: Angus Ni
+  owner_email: angus.f.ni@gmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492192'
   qbo_class_name: Listings:Shelton 310
   property_id: shelton_310
   property_name: Shelton 310
   owner_id: owner_shelton_310
-  owner_name: Shelton 310 Owner
-  owner_email: ''
+  owner_name: Suki E
+  owner_email: suetpoon388@hotmail.com
+  pm_fee_rate: 0.16
+  owner_pays_supplies: true
 - qbo_class_id: '2100000000001492193'
   qbo_class_name: Listings:Shelton 310 Upper
   property_id: shelton_310_upper
