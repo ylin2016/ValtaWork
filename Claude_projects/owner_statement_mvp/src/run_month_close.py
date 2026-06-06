@@ -13,8 +13,46 @@ from .qbo_sync import sync_qbo_expenses
 from .guesty_adapter import import_guesty_bookings_csv
 from .statement_engine import create_run, build_statements
 from .excel_writer import create_template, write_statement
-from .booking_fees import get_booking_fees
+from .booking_fees import get_qbo_fees, get_owner_costs
 from .utils import sha256_file
+
+def _calculate_implied_channel_fee(booking_id: str) -> float:
+    """
+    Calculate implied channel fee from original Guesty CSV:
+    ACCOMMODATION + PET + EXTRA PERSON - TOTAL PAYOUT (returns negative)
+    """
+    import pandas as pd
+    from pathlib import Path
+
+    csv_path = Path(__file__).parent.parent / "templates/Guesty_bookings_2026-05.csv"
+    if not csv_path.exists():
+        return 0.0
+
+    try:
+        df = pd.read_csv(str(csv_path), encoding='utf-8-sig')
+        rows = df[df['CONFIRMATION CODE'] == booking_id]
+        if rows.empty:
+            return 0.0
+
+        row = rows.iloc[0]
+
+        def to_float(v):
+            if pd.isna(v):
+                return 0.0
+            s = str(v).replace('$', '').replace(',', '').strip()
+            return float(s) if s else 0.0
+
+        accom = to_float(row['ACCOMMODATION FARE'])
+        extra = to_float(row['EXTRA PERSON FEE'])
+        pet = to_float(row['PET FEE'])
+        payout = to_float(row['TOTAL PAYOUT'])
+
+        invoice_total = accom + extra + pet
+        implied_fee = payout - invoice_total
+
+        return implied_fee if implied_fee < 0 else 0.0
+    except Exception as e:
+        return 0.0
 
 def upsert_from_mapping(conn, mapping_items: list[dict]):
     cur = conn.cursor()
@@ -167,8 +205,27 @@ def cmd_build(args):
         bookings = []
         for row in guesty_rows:
             booking_dict = dict(row)
-            fees = get_booking_fees(conn, pid, booking_dict['booking_id'], period_start, period_end)
-            booking_dict.update(fees)
+
+            # Get QBO fees (channel + stripe)
+            qbo_fees = get_qbo_fees(conn, pid, booking_dict['booking_id'], booking_dict['checkin'], booking_dict['checkout'], period_start, period_end)
+            channel_fee = qbo_fees['channel_fee']
+            stripe_fee = qbo_fees['stripe_fee']
+
+            # If no channel fee found in QBO, calculate implied from invoice data
+            if channel_fee == 0.0:
+                implied_channel = _calculate_implied_channel_fee(booking_dict['booking_id'])
+                if implied_channel != 0.0:
+                    channel_fee = implied_channel
+
+            # Get owner costs (cleaning, tax)
+            owner_costs = get_owner_costs(conn, pid, booking_dict['booking_id'], period_start, period_end)
+
+            # NET REVENUE = ACCOMMODATION + PET + EXTRA GUEST - CHANNEL FEE - STRIPE FEE
+            booking_dict['net_revenue'] = booking_dict['net_revenue'] + channel_fee + stripe_fee
+            booking_dict['total_channel_and_card_fees'] = channel_fee + stripe_fee
+            booking_dict['owner_cleaning_cost'] = owner_costs['owner_cleaning_cost']
+            booking_dict['owner_tax_cost'] = owner_costs['owner_tax_cost']
+
             bookings.append(booking_dict)
 
         # QBO deposit income (lease rent, credits, etc.)

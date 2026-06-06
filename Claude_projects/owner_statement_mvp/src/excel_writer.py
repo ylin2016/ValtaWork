@@ -1,6 +1,6 @@
 from pathlib import Path
 from datetime import datetime
-from openpyxl import Workbook, load_workbook
+from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
@@ -22,7 +22,6 @@ _THIN   = Side(style="thin", color="CCCCCC")
 _BORDER = Border(bottom=_THIN)
 
 CURRENCY = '$#,##0.00'
-NCOLS    = 11  # A–K
 FONT_SIZE = 14
 
 # ── helpers ───────────────────────────────────────────────────────────────────
@@ -42,18 +41,18 @@ def _cell(ws, row, col, value=None, bold=False, size=FONT_SIZE, color=None,
         ws.merge_cells(start_row=row, start_column=col, end_row=row, end_column=merge_to)
     return c
 
-def _section_row(ws, row, title):
+def _section_row(ws, row, title, ncols):
     ws.row_dimensions[row].height = 18
     c = ws.cell(row=row, column=1, value=title)
     c.font = Font(bold=True, color=_WHITE, size=FONT_SIZE)
     c.fill = _SECTION_FILL
     c.alignment = Alignment(horizontal="left", vertical="center", indent=1)
-    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=NCOLS)
+    ws.merge_cells(start_row=row, start_column=1, end_row=row, end_column=ncols)
     return row + 1
 
-def _col_header_row(ws, row, headers):
+def _col_header_row(ws, row, headers, ncols):
     ws.row_dimensions[row].height = 16
-    for i in range(1, NCOLS + 1):
+    for i in range(1, ncols + 1):
         c = ws.cell(row=row, column=i)
         if i <= len(headers):
             c.value = headers[i - 1]
@@ -62,9 +61,9 @@ def _col_header_row(ws, row, headers):
         c.alignment = Alignment(horizontal="center", vertical="center")
     return row + 1
 
-def _total_row(ws, row, label, amounts_by_col):
+def _total_row(ws, row, label, amounts_by_col, ncols):
     ws.row_dimensions[row].height = 16
-    for col in range(1, NCOLS + 1):
+    for col in range(1, ncols + 1):
         ws.cell(row=row, column=col).fill = _TOTAL_FILL
     _cell(ws, row, 1, label, bold=True, bg=_TOTAL_FILL)
     for col, val in amounts_by_col.items():
@@ -109,23 +108,38 @@ def create_template(path: str):
 def write_statement(output_path: str, period: str, property_info: dict,
                     owner_info: dict, pm_fee_rate: float, bookings: list,
                     other_income: list, expenses_by_subcat: dict, totals: dict,
-                    owner_pays_cleaning: bool = False, owner_pays_supplies: bool = False,
+                    owner_pays_cleaning: bool = False,
+                    owner_pays_supplies: bool = False,
                     owner_pays_taxes: bool = False):
     """
     Generate a single-sheet owner statement matching the PDF format.
 
     bookings: list of dicts with keys:
       - booking_id, guest_name, checkin, checkout, net_revenue
-      - booking_channel_fee, booking_stripe_fee (negative values)
+      - total_channel_and_card_fees (negative, deducted from net_rental)
       - owner_cleaning_cost, owner_tax_cost (negative values)
     """
     wb = Workbook()
     ws = wb.active
     ws.title = "Statement"
 
-    # column widths  A     B     C     D     E     F     G     H     I     J     K
-    for i, w in enumerate([18, 15, 28, 18, 18, 18, 18, 18, 18, 18, 10], start=1):
-        ws.column_dimensions[get_column_letter(i)].width = w
+    # Determine number of columns based on owner flags
+    ncols_revenue = 7  # Dates, Code, Guest, Net Rental Revenue, Management Commission, Net Owner Revenue, Commission %
+    if owner_pays_cleaning:
+        ncols_revenue += 1
+    if owner_pays_taxes:
+        ncols_revenue += 1
+
+    ncols_expenses = 7  # Date, Description (merged B-C), Type (merged D-E), F, Amount in G
+
+    # Column widths
+    ws.column_dimensions["A"].width = 18
+    ws.column_dimensions["B"].width = 15
+    ws.column_dimensions["C"].width = 28
+    ws.column_dimensions["D"].width = 18
+    ws.column_dimensions["E"].width = 18
+    ws.column_dimensions["F"].width = 18
+    ws.column_dimensions["G"].width = 18
 
     period_dt    = datetime.strptime(period, "%Y-%m")
     period_label = period_dt.strftime("%B %Y")
@@ -139,33 +153,33 @@ def write_statement(output_path: str, period: str, property_info: dict,
     ws.row_dimensions[row].height = 22
     _cell(ws, row, 1, "Valta Realty", bold=True, size=16)
     _cell(ws, row, 5, f"{period_label} - Summary",
-          bold=True, color=_WHITE, size=14, bg=_DARK_BLUE, align="center", merge_to=11)
+          bold=True, color=_WHITE, size=14, bg=_DARK_BLUE, align="center", merge_to=7)
     row += 1
 
     _cell(ws, row, 1, "4027 Beach Drive Southwest, Seattle, WA 98116", size=FONT_SIZE, color="595959")
     _cell(ws, row, 5, "Starting Balance", size=FONT_SIZE)
-    _cell(ws, row, 11, starting_bal, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _cell(ws, row, 7, starting_bal, size=FONT_SIZE, fmt=CURRENCY, align="right")
     row += 1
 
     _cell(ws, row, 1, "contact@valtarealty.com", size=FONT_SIZE, color="595959")
     _cell(ws, row, 5, "Net Income", bold=True, size=FONT_SIZE)
-    _cell(ws, row, 11, net_income, bold=True, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _cell(ws, row, 7, net_income, bold=True, size=FONT_SIZE, fmt=CURRENCY, align="right")
     row += 1
 
     _cell(ws, row, 5, "Current Balance", size=FONT_SIZE)
-    _cell(ws, row, 11, current_bal, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _cell(ws, row, 7, current_bal, size=FONT_SIZE, fmt=CURRENCY, align="right")
     row += 1
 
     ws.row_dimensions[row].height = 18
     _cell(ws, row, 1, property_info.get("property_name", ""), bold=True, size=14, merge_to=4)
     _cell(ws, row, 5, "Owner Payout", size=FONT_SIZE)
-    _cell(ws, row, 11, net_income, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _cell(ws, row, 7, net_income, size=FONT_SIZE, fmt=CURRENCY, align="right")
     row += 1
 
     _cell(ws, row, 1, "Owner", bold=True, size=FONT_SIZE, color="595959")
     _cell(ws, row, 2, owner_info.get("owner_name", ""), size=FONT_SIZE)
     _cell(ws, row, 5, "Ending Balance", bold=True, size=FONT_SIZE)
-    _cell(ws, row, 11, current_bal - net_income, bold=True, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _cell(ws, row, 7, current_bal - net_income, bold=True, size=FONT_SIZE, fmt=CURRENCY, align="right")
     row += 1
 
     _cell(ws, row, 1, "Email", bold=True, size=FONT_SIZE, color="595959")
@@ -176,21 +190,18 @@ def write_statement(output_path: str, period: str, property_info: dict,
 
     # ── NET REVENUE SECTION ───────────────────────────────────────────────────
     if bookings:
-        row = _section_row(ws, row, "Net Revenue Section")
+        row = _section_row(ws, row, "Net Revenue Section", ncols_revenue)
 
-        headers = [
-            "Reservation Dates", "Confirmation Code", "Guest Name",
-            "Net Rental Revenue", "Channel Fee", "Stripe Fee"
-        ]
+        headers = ["Reservation Dates", "Confirmation Code", "Guest Name", "Net Rental Revenue"]
         if owner_pays_cleaning:
             headers.append("Owner Cleaning Fee")
         if owner_pays_taxes:
             headers.append("Tax Paid to Owner")
         headers.extend(["Management Commission", "Net Owner Revenue", "Commission %"])
 
-        row = _col_header_row(ws, row, headers)
+        row = _col_header_row(ws, row, headers, ncols_revenue)
 
-        total_net_rental = total_channel = total_stripe = 0.0
+        total_net_rental = 0.0
         total_cleaning = total_tax = total_comm = total_owner = 0.0
 
         for i, b in enumerate(bookings):
@@ -198,13 +209,14 @@ def write_statement(output_path: str, period: str, property_info: dict,
             bg = _ALT if i % 2 else None
 
             net_rental = float(b.get("net_revenue") or 0)
-            channel_fee = float(b.get("booking_channel_fee") or 0)
-            stripe_fee = float(b.get("booking_stripe_fee") or 0)
             cleaning_fee = float(b.get("owner_cleaning_cost") or 0) if owner_pays_cleaning else 0.0
             tax_paid = float(b.get("owner_tax_cost") or 0) if owner_pays_taxes else 0.0
 
-            comm = -net_rental * pm_fee_rate
-            owner_rev = net_rental + channel_fee + stripe_fee + cleaning_fee + tax_paid + comm
+            # net_rental already has channel/stripe fees deducted (done in cmd_build)
+            net_rental_after_fees = net_rental
+
+            comm = -net_rental_after_fees * pm_fee_rate
+            owner_rev = net_rental_after_fees + cleaning_fee + tax_paid + comm
 
             col = 1
             _cell(ws, row, col, _fmt_dates(b["checkin"], b["checkout"]), bg=bg)
@@ -213,11 +225,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
             col += 1
             _cell(ws, row, col, b["guest_name"] or "", bg=bg)
             col += 1
-            _cell(ws, row, col, net_rental, fmt=CURRENCY, align="right", bg=bg)
-            col += 1
-            _cell(ws, row, col, channel_fee, fmt=CURRENCY, align="right", bg=bg)
-            col += 1
-            _cell(ws, row, col, stripe_fee, fmt=CURRENCY, align="right", bg=bg)
+            _cell(ws, row, col, net_rental_after_fees, fmt=CURRENCY, align="right", bg=bg)
             col += 1
             if owner_pays_cleaning:
                 _cell(ws, row, col, cleaning_fee, fmt=CURRENCY, align="right", bg=bg)
@@ -231,9 +239,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
             col += 1
             _cell(ws, row, col, -pm_fee_rate, fmt="0%", align="center", bg=bg)
 
-            total_net_rental += net_rental
-            total_channel += channel_fee
-            total_stripe += stripe_fee
+            total_net_rental += net_rental_after_fees
             total_cleaning += cleaning_fee
             total_tax += tax_paid
             total_comm += comm
@@ -242,15 +248,11 @@ def write_statement(output_path: str, period: str, property_info: dict,
 
         # Total row
         ws.row_dimensions[row].height = 16
-        for col in range(1, NCOLS + 1):
+        for col in range(1, ncols_revenue + 1):
             ws.cell(row=row, column=col).fill = _TOTAL_FILL
         _cell(ws, row, 1, "Total", bold=True, bg=_TOTAL_FILL)
         col = 4
         _cell(ws, row, col, total_net_rental, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-        col += 1
-        _cell(ws, row, col, total_channel, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-        col += 1
-        _cell(ws, row, col, total_stripe, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
         col += 1
         if owner_pays_cleaning:
             _cell(ws, row, col, total_cleaning, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
@@ -268,8 +270,8 @@ def write_statement(output_path: str, period: str, property_info: dict,
 
     # ── OTHER INCOME ──────────────────────────────────────────────────────────
     if other_income:
-        row = _section_row(ws, row, "Other Credits")
-        row = _col_header_row(ws, row, ["Date", "Description", "Type", "Amount"])
+        row = _section_row(ws, row, "Other Credits", 7)
+        row = _col_header_row(ws, row, ["Date", "Description", "Type", "Amount"], 7)
 
         total_oi = 0.0
         for i, oi in enumerate(other_income):
@@ -283,7 +285,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
             total_oi += amt
             row += 1
 
-        row = _total_row(ws, row, "Total:", {4: total_oi})
+        row = _total_row(ws, row, "Total:", {4: total_oi}, 7)
         row = _spacer(ws, row)
 
     # ── EXPENSE SECTIONS ──────────────────────────────────────────────────────
@@ -305,11 +307,10 @@ def write_statement(output_path: str, period: str, property_info: dict,
         if subcat == "Supplies" and owner_pays_supplies:
             continue
 
-        row = _section_row(ws, row, subcat)
+        row = _section_row(ws, row, subcat, 7)
 
-        # Expense header: Date | Description(B-C merged) | Type(D-E merged) | (F) | Amount(G)
         ws.row_dimensions[row].height = 16
-        for col in range(1, NCOLS + 1):
+        for col in range(1, 8):
             c = ws.cell(row=row, column=col)
             c.fill = _COL_HDR_FILL
             c.font = Font(bold=True, color=_WHITE, size=FONT_SIZE)
@@ -356,7 +357,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
 
         # Total row
         ws.row_dimensions[row].height = 16
-        for col in range(1, NCOLS + 1):
+        for col in range(1, 8):
             ws.cell(row=row, column=col).fill = _TOTAL_FILL
         _cell(ws, row, 1, "Total:", bold=True, bg=_TOTAL_FILL)
         _cell(ws, row, 7, total_exp, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)

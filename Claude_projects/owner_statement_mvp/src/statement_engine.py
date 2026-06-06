@@ -16,11 +16,18 @@ def _sum(conn, sql: str, params: tuple) -> float:
     return float(row[0] or 0.0)
 
 def build_statements(conn, run_id: str, period_start: str, period_end: str, default_pm_fee_rate: float = 0.171, default_reserve_target: float = 0.0):
+    # Clear any previous PM fees and reserves for this period before rebuilding
+    conn.execute("""DELETE FROM ledger_lines
+                    WHERE posting_date>=? AND posting_date<=?
+                      AND category IN ('FEE', 'RESERVE') AND source='manual'""",
+                 (period_start, period_end))
+    conn.commit()
+
     props = conn.execute("SELECT property_id FROM properties WHERE is_active=1").fetchall()
     for pr in props:
         pid = pr["property_id"]
 
-        # STR booking revenue (Guesty) — PM commission applies
+        # STR booking revenue (Guesty) — PM commission applies to GROSS (before channel fees)
         guesty_rev = _sum(conn, """SELECT SUM(amount) FROM ledger_lines
                               WHERE property_id=? AND posting_date>=? AND posting_date<=?
                                 AND include_in_statement=1 AND source='guesty' AND category='INCOME'""", (pid, period_start, period_end))

@@ -201,6 +201,13 @@
   owner_id: owner_bellevue_2243
   owner_name: Bellevue 2243 Owner
   owner_email: ''
+- qbo_class_id: '1000000011'
+  qbo_class_name: Listings:Bellevue 2323
+  property_id: bellevue_2323
+  property_name: Bellevue 2323
+  owner_id: owner_bellevue_2323
+  owner_name: Bellevue 2323 Owner
+  owner_email: ''
 - qbo_class_id: '544835'
   qbo_class_name: Listings:Bellevue 242
   property_id: bellevue_242
@@ -299,12 +306,26 @@
   owner_id: owner_elektra_1203
   owner_name: Elektra 1203 Owner
   owner_email: ''
+- qbo_class_id: '1000000008'
+  qbo_class_name: Listings:Elektra 1212
+  property_id: elektra_1212
+  property_name: Elektra 1212
+  owner_id: owner_elektra_1212
+  owner_name: Elektra 1212 Owner
+  owner_email: ''
 - qbo_class_id: '2100000000001795968'
   qbo_class_name: Listings:Elektra 1305
   property_id: elektra_1305
   property_name: Elektra 1305
   owner_id: owner_elektra_1305
   owner_name: Elektra 1305 Owner
+  owner_email: ''
+- qbo_class_id: '1000000012'
+  qbo_class_name: Listings:Elektra 1413
+  property_id: elektra_1413
+  property_name: Elektra 1413
+  owner_id: owner_elektra_1413
+  owner_name: Elektra 1413 Owner
   owner_email: ''
 - qbo_class_id: '2100000000001492155'
   qbo_class_name: Listings:Elektra 703
@@ -375,6 +396,13 @@
   property_name: Kirkland 11321
   owner_id: owner_kirkland_11321
   owner_name: Kirkland 11321 Owner
+  owner_email: ''
+- qbo_class_id: '1000000010'
+  qbo_class_name: Listings:Kirkland 13070
+  property_id: kirkland_13070
+  property_name: Kirkland 13070
+  owner_id: owner_kirkland_13070
+  owner_name: Kirkland 13070 Owner
   owner_email: ''
 - qbo_class_id: '588892'
   qbo_class_name: Listings:Kirkland 8017
@@ -452,6 +480,13 @@
   property_name: Mercer 3627 ADU
   owner_id: owner_mercer_3627_adu
   owner_name: Mercer 3627 ADU Owner
+  owner_email: ''
+- qbo_class_id: '1000000009'
+  qbo_class_name: Listings:Mercer 3627 Lower
+  property_id: mercer_3627_lower
+  property_name: Mercer 3627 Lower
+  owner_id: owner_mercer_3627_lower
+  owner_name: Mercer 3627 Lower Owner
   owner_email: ''
 - qbo_class_id: '2100000000001492207'
   qbo_class_name: Listings:Mercer 3627 Main
@@ -802,6 +837,27 @@
   property_name: Seattle 710 ADU
   owner_id: owner_seattle_710_adu
   owner_name: Seattle 710 ADU Owner
+  owner_email: ''
+- qbo_class_id: '1000000007'
+  qbo_class_name: Listings:Seattle 7434 Lower
+  property_id: seattle_7434_lower
+  property_name: Seattle 7434 Lower
+  owner_id: owner_seattle_7434_lower
+  owner_name: Seattle 7434 Lower Owner
+  owner_email: ''
+- qbo_class_id: '1000000006'
+  qbo_class_name: Listings:Seattle 7434 Upper
+  property_id: seattle_7434_upper
+  property_name: Seattle 7434 Upper
+  owner_id: owner_seattle_7434_upper
+  owner_name: Seattle 7434 Upper Owner
+  owner_email: ''
+- qbo_class_id: '1000000005'
+  qbo_class_name: Listings:Seattle 7434 Whole
+  property_id: seattle_7434_whole
+  property_name: Seattle 7434 Whole
+  owner_id: owner_seattle_7434_whole
+  owner_name: Seattle 7434 Whole Owner
   owner_email: ''
 - qbo_class_id: '2100000000001775452'
   qbo_class_name: Listings:Seattle 8415

@@ -1,64 +1,71 @@
 """
-Look up channel fees and owner costs (cleaning, tax) for each booking from QBO.
+Look up QBO fees (channel + stripe) and owner costs from QBO bills.
 """
-import re
 
-def extract_booking_id_from_description(desc):
-    """Extract booking confirmation code from QBO bill description."""
-    if not desc:
-        return None
-    # Try patterns: "code | 2026-05-01" or "code | 2026-05 to"
-    match = re.search(r'\b([A-Z0-9]{8,})\b', desc)
-    return match.group(1) if match else None
-
-def get_booking_fees(conn, property_id: str, booking_id: str, period_start: str, period_end: str) -> dict:
+def get_qbo_fees(conn, property_id: str, booking_id: str, checkin: str, checkout: str, period_start: str, period_end: str) -> dict:
     """
-    Fetch channel fees, stripe fees, owner cleaning, owner tax for a booking.
+    Fetch channel fees and stripe/credit card fees from QBO.
+    Tries direct booking_id match first, then date range match for platforms with numeric IDs.
     Returns: {
-        'booking_channel_fee': float (negative),
-        'booking_stripe_fee': float (negative),
+        'channel_fee': float (negative),
+        'stripe_fee': float (negative),
+    }
+    """
+    result = {'channel_fee': 0.0, 'stripe_fee': 0.0}
+
+    # Try direct booking_id match (works for VRBO/HA-*, Airbnb/HM*, etc.)
+    for row in conn.execute("""
+        SELECT qbo_account, amount FROM ledger_lines
+        WHERE property_id=? AND posting_date>=? AND posting_date<=?
+          AND source='qbo' AND source_object='Bill' AND category='EXPENSE'
+          AND description LIKE ?
+    """, (property_id, period_start, period_end, f'%{booking_id}%')).fetchall():
+        acct = str(row[0] or '')
+        amt = float(row[1])
+        if 'Channel Fees' in acct or 'channel' in acct.lower():
+            result['channel_fee'] += amt
+        elif 'Credit Card Fees' in acct or 'stripe' in acct.lower():
+            result['stripe_fee'] += amt
+
+    # For platforms with numeric IDs in QBO (Booking.com), match by date range
+    if result['channel_fee'] == 0.0 and result['stripe_fee'] == 0.0 and checkin and checkout:
+        for row in conn.execute("""
+            SELECT qbo_account, amount FROM ledger_lines
+            WHERE property_id=? AND posting_date=?
+              AND source='qbo' AND source_object='Bill' AND category='EXPENSE'
+              AND (description LIKE ? OR description LIKE ?)
+        """, (property_id, checkin, f'%{checkin}%{checkout}%', f'%{checkin}%')).fetchall():
+            acct = str(row[0] or '')
+            amt = float(row[1])
+            if 'Channel Fees' in acct or 'channel' in acct.lower():
+                result['channel_fee'] += amt
+            elif 'Credit Card Fees' in acct or 'stripe' in acct.lower():
+                result['stripe_fee'] += amt
+
+    return result
+
+
+def get_owner_costs(conn, property_id: str, booking_id: str, period_start: str, period_end: str) -> dict:
+    """
+    Fetch owner cleaning and tax costs from QBO.
+    Returns: {
         'owner_cleaning_cost': float (negative),
         'owner_tax_cost': float (negative),
     }
     """
-    result = {
-        'booking_channel_fee': 0.0,
-        'booking_stripe_fee': 0.0,
-        'owner_cleaning_cost': 0.0,
-        'owner_tax_cost': 0.0,
-    }
+    result = {'owner_cleaning_cost': 0.0, 'owner_tax_cost': 0.0}
 
-    # Channel fees (Booking.com, VRBO, etc.)
-    for row in conn.execute("""
-        SELECT amount FROM ledger_lines
-        WHERE property_id=? AND posting_date>=? AND posting_date<=?
-          AND source='qbo' AND source_object='Bill' AND category='EXPENSE'
-          AND (qbo_account LIKE '%Booking.com Commission%' OR qbo_account LIKE '%VRBO Commission%')
-          AND (description LIKE ? OR description LIKE ?)
-    """, (property_id, period_start, period_end, f'%{booking_id}%', f'%{booking_id}%')).fetchall():
-        result['booking_channel_fee'] += float(row[0])
-
-    # Stripe fees
+    # Owner cleaning
     for row in conn.execute("""
         SELECT amount FROM ledger_lines
         WHERE property_id=? AND posting_date>=? AND posting_date<=?
           AND source='qbo' AND category='EXPENSE'
-          AND qbo_account LIKE '%Stripe%'
-          AND description LIKE ?
-    """, (property_id, period_start, period_end, f'%{booking_id}%')).fetchall():
-        result['booking_stripe_fee'] += float(row[0])
-
-    # Owner cleaning costs (if owner pays)
-    for row in conn.execute("""
-        SELECT amount FROM ledger_lines
-        WHERE property_id=? AND posting_date>=? AND posting_date<=?
-          AND source='qbo' AND category='EXPENSE'
-          AND qbo_account LIKE '%Cleaning%'
+          AND qbo_account LIKE '%Owner Expenses%Cleaning%'
           AND description LIKE ?
     """, (property_id, period_start, period_end, f'%{booking_id}%')).fetchall():
         result['owner_cleaning_cost'] += float(row[0])
 
-    # Owner tax (if owner pays)
+    # Owner tax
     for row in conn.execute("""
         SELECT amount FROM ledger_lines
         WHERE property_id=? AND posting_date>=? AND posting_date<=?

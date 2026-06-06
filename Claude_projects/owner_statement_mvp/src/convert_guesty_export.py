@@ -65,18 +65,13 @@ def convert(input_file, output_file):
     out["refund"] = df["TOTAL REFUNDED"].apply(to_float)
     out["taxes"] = 0.0
 
-    # Net rental revenue (accommodation only, excluding cleaning):
-    # - Airbnb/direct: TOTAL PAYOUT - CLEANING FARE (Airbnb nets their commission before depositing)
-    # - VRBO, Booking.com, all other OTAs: ACCOMMODATION FARE + EXTRA PERSON FEE + PET FEE
-    #   (gross payout includes channel/stripe fees that belong to Valta, not owner)
-    _AIRBNB_LIKE = {"airbnb", "airbnb2", "manual", "owner", "website"}
-
+    # Store invoice components separately - channel fees will be deducted in run_month_close from QBO/implied
     def _net_revenue(row):
-        ch = str(row["SOURCE"]).strip().lower()
-        if ch in _AIRBNB_LIKE:
-            return max(0.0, to_float(row["TOTAL PAYOUT"]) - to_float(row["CLEANING FARE"]))
-        else:
-            return to_float(row["ACCOMMODATION FARE"]) + to_float(row["EXTRA PERSON FEE"]) + to_float(row["PET FEE"])
+        accom = to_float(row["ACCOMMODATION FARE"])
+        extra = to_float(row["EXTRA PERSON FEE"])
+        pet = to_float(row["PET FEE"])
+        # Return invoice subtotal (accommodation + extra + pet) - channel fees applied later
+        return max(0.0, accom + extra + pet)
 
     out["net_revenue"] = df.apply(_net_revenue, axis=1)
 
