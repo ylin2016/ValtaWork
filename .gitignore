@@ -96,3 +96,4 @@ Claude_projects/owner_statement_mvp/mapping_classes_stub.yml
 Claude_projects/owner_statement_mvp/data/*.csv
 .gitignore
 Claude_projects/wheelhouse_marketdata_download/
+Guesty_booking_2026-05.csv

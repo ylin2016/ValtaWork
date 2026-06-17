@@ -23,6 +23,7 @@ def import_guesty_bookings_csv(conn, csv_path: str):
         amount = float(r["net_revenue"])
         guest_name = str(r.get("guest_name") or "").strip()
         channel = str(r.get("channel") or "").strip()
+        status = str(r.get("status") or "confirmed").strip().lower()  # "confirmed" or "canceled"
 
         if prop not in known_props:
             unknown += 1
@@ -38,10 +39,10 @@ def import_guesty_bookings_csv(conn, csv_path: str):
                (ledger_id, source, source_object, source_txn_id, source_line_id, property_id,
                 booking_id, posting_date, service_date, category, subcategory, description,
                 vendor_customer, qbo_account, amount, include_in_statement, status, last_updated_at)
-               VALUES (?, 'guesty', 'Reservation', ?, NULL, ?, ?, ?, ?, 'INCOME', 'Net Booking Revenue',
-                       ?, ?, NULL, ?, 1, 'posted', ?)""",
+               VALUES (?, 'guesty', 'Reservation', ?, NULL, ?, ?, ?, ?, 'INCOME', ?,
+                       'Booking', ?, NULL, ?, 1, ?, ?)""",
             (str(uuid.uuid4()), booking_id, prop, booking_id, posting_date, service_date,
-             channel, guest_name, float(amount), now_iso()),
+             channel, guest_name, float(amount), status, now_iso()),
         )
         imported += 1
 

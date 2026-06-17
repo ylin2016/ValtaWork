@@ -98,10 +98,20 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
         vendor = (b.get("VendorRef") or {}).get("name")
         lines = b.get("Line", []) or []
         for idx, ln in enumerate(lines, start=1):
+            # Try AccountBasedExpenseLineDetail first (regular expenses)
             detail = ln.get("AccountBasedExpenseLineDetail") or {}
             class_ref = (detail.get("ClassRef") or {}).get("value")
             acct_name = ((detail.get("AccountRef") or {}).get("name"))
             amount = float(ln.get("Amount") or 0.0)
+
+            # If no AccountBasedExpenseLineDetail, try other line types (e.g., tax lines)
+            if not detail:
+                # Try ItemBasedExpenseLineDetail (for tax items, etc.)
+                detail = ln.get("ItemBasedExpenseLineDetail") or {}
+                class_ref = (detail.get("ClassRef") or {}).get("value")
+                item_ref = (detail.get("ItemRef") or {}).get("name")
+                acct_name = item_ref  # Use item name as account name for tax
+                amount = float(ln.get("Amount") or 0.0)
 
             if not class_ref:
                 exc("warning", "MISSING_CLASS", "Bill line missing ClassRef; excluded until classified.", b, line_id=str(idx))
@@ -176,6 +186,60 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                     ln.get("Description"),
                     acct_name,
                     signed,
+                    now_iso(),
+                ),
+            )
+
+    # Invoice (for tax charges and other guest-facing charges)
+    qi = f"select * from Invoice where TxnDate >= '{start_date}' and TxnDate <= '{end_date}'"
+    invoices = _all_pages(qbo, qi, "Invoice")
+    for inv in invoices:
+        txn_id = inv.get("Id")
+        txn_date = _parse_date(inv.get("TxnDate"))
+        customer = (inv.get("CustomerRef") or {}).get("name")
+        lines = inv.get("Line", []) or []
+        for idx, ln in enumerate(lines, start=1):
+            # Try SalesItemLineDetail first (item-based lines like tax items)
+            detail = ln.get("SalesItemLineDetail") or {}
+            class_ref = (detail.get("ClassRef") or {}).get("value")
+            item_ref = (detail.get("ItemRef") or {}).get("name")
+            acct_name = item_ref
+            amount = float(ln.get("Amount") or 0.0)
+
+            # If no SalesItemLineDetail, try other types
+            if not detail:
+                detail = ln.get("DescriptionLineDetail") or {}
+                acct_name = "Description Line"
+                amount = 0.0
+
+            if not class_ref:
+                exc("warning", "MISSING_CLASS", "Invoice line missing ClassRef; excluded until classified.", inv, line_id=str(idx))
+                continue
+            if class_ref not in property_map:
+                exc("warning", "CLASS_NOT_MAPPED", f"QBO Class {class_ref} not mapped to property_id.", inv, line_id=str(idx))
+                continue
+
+            property_id = property_map[class_ref]
+            category, subcat = apply_account_rules(acct_name or "", customer or "", account_rules)
+
+            cur.execute(
+                """INSERT INTO ledger_lines
+                   (ledger_id, source, source_object, source_txn_id, source_line_id, property_id,
+                    posting_date, category, subcategory, description, vendor_customer, qbo_account, amount,
+                    include_in_statement, status, last_updated_at)
+                   VALUES (?, 'qbo', 'Invoice', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, 'posted', ?)""",
+                (
+                    str(uuid.uuid4()),
+                    str(txn_id),
+                    str(idx),
+                    property_id,
+                    txn_date,
+                    category,
+                    subcat,
+                    ln.get("Description"),
+                    customer,
+                    acct_name,
+                    amount,
                     now_iso(),
                 ),
             )

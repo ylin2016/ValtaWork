@@ -4,6 +4,7 @@ import secrets
 import calendar
 import json
 import uuid
+import pandas as pd
 
 from .config import load_config
 from .db import connect, init_db
@@ -16,40 +17,35 @@ from .excel_writer import create_template, write_statement
 from .booking_fees import get_qbo_fees, get_owner_costs
 from .utils import sha256_file
 
-def _calculate_implied_channel_fee(booking_id: str) -> float:
+def _calculate_implied_channel_fee(booking_id: str, guesty_csv_path: str) -> float:
     """
-    Calculate implied channel fee from original Guesty CSV:
+    Calculate implied channel fee from converted Guesty CSV:
     ACCOMMODATION + PET + EXTRA PERSON - TOTAL PAYOUT (returns negative)
+    Formula: implied_channel_fee = total_payout - (accom + pet + extra)
     """
     import pandas as pd
     from pathlib import Path
 
-    csv_path = Path(__file__).parent.parent / "templates/Guesty_bookings_2026-05.csv"
+    csv_path = Path(guesty_csv_path)
     if not csv_path.exists():
         return 0.0
 
     try:
         df = pd.read_csv(str(csv_path), encoding='utf-8-sig')
-        rows = df[df['CONFIRMATION CODE'] == booking_id]
+        rows = df[df['booking_id'] == booking_id]
         if rows.empty:
             return 0.0
 
         row = rows.iloc[0]
 
-        def to_float(v):
-            if pd.isna(v):
-                return 0.0
-            s = str(v).replace('$', '').replace(',', '').strip()
-            return float(s) if s else 0.0
+        # Get values from converted CSV
+        rent = float(row.get('rent', 0))  # accom + extra + pet
+        total_payout = float(row.get('total_payout', 0))
 
-        accom = to_float(row['ACCOMMODATION FARE'])
-        extra = to_float(row['EXTRA PERSON FEE'])
-        pet = to_float(row['PET FEE'])
-        payout = to_float(row['TOTAL PAYOUT'])
+        # Channel fee = total_payout - (accom + pet + extra)
+        implied_fee = total_payout - rent
 
-        invoice_total = accom + extra + pet
-        implied_fee = payout - invoice_total
-
+        # Return negative value (fee is a cost)
         return implied_fee if implied_fee < 0 else 0.0
     except Exception as e:
         return 0.0
@@ -196,7 +192,8 @@ def cmd_build(args):
         # Guesty bookings with fees and owner costs
         guesty_rows = conn.execute("""
             SELECT source_txn_id as booking_id, vendor_customer as guest_name,
-                   posting_date as checkin, service_date as checkout, amount as net_revenue
+                   posting_date as checkin, service_date as checkout, amount as net_revenue,
+                   subcategory as channel, status as booking_status
             FROM ledger_lines
             WHERE property_id=? AND posting_date>=? AND posting_date<=?
               AND source='guesty' AND category='INCOME' AND include_in_statement=1
@@ -206,23 +203,56 @@ def cmd_build(args):
         for row in guesty_rows:
             booking_dict = dict(row)
 
-            # Get QBO fees (channel + stripe)
+            # Get QBO fees (channel + stripe + tax + deductions)
             qbo_fees = get_qbo_fees(conn, pid, booking_dict['booking_id'], booking_dict['checkin'], booking_dict['checkout'], period_start, period_end)
             channel_fee = qbo_fees['channel_fee']
             stripe_fee = qbo_fees['stripe_fee']
+            tax_fee = qbo_fees['tax']
+            #channel_fee_deduction = qbo_fees['channel_fee_deduction']
+            #stripe_fee_deduction = qbo_fees['stripe_fee_deduction']
 
-            # If no channel fee found in QBO, calculate implied from invoice data
+            # If no channel fee found in QBO, calculate implied from converted Guesty CSV
             if channel_fee == 0.0:
-                implied_channel = _calculate_implied_channel_fee(booking_dict['booking_id'])
+                guesty_csv = Path(args.csv) if hasattr(args, 'csv') else Path(__file__).parent.parent / "data/guesty_converted.csv"
+                implied_channel = _calculate_implied_channel_fee(booking_dict['booking_id'], str(guesty_csv))
                 if implied_channel != 0.0:
                     channel_fee = implied_channel
 
             # Get owner costs (cleaning, tax)
             owner_costs = get_owner_costs(conn, pid, booking_dict['booking_id'], period_start, period_end)
 
-            # NET REVENUE = ACCOMMODATION + PET + EXTRA GUEST - CHANNEL FEE - STRIPE FEE
-            booking_dict['net_revenue'] = booking_dict['net_revenue'] + channel_fee + stripe_fee
-            booking_dict['total_channel_and_card_fees'] = channel_fee + stripe_fee
+            # NET REVENUE calculation
+            # For cancelled bookings: net_revenue = total_payout (already set in convert_guesty_export)
+            # For confirmed bookings: apply QBO channel, stripe fees, and deductions
+            net_revenue = booking_dict['net_revenue']
+            channel = booking_dict.get('channel', '').upper()
+            booking_status = booking_dict.get('booking_status', 'posted').lower()
+
+            if booking_status == 'confirmed':
+                # For Booking.com: apply channel_fee + stripe_fee - tax from QBO (no deductions)
+                # For other channels: apply channel_fee + stripe_fee from QBO (no deductions)
+                # Note: QBO fees are already negative (costs), so we add them
+                if 'BOOKING.COM' in channel:
+                    if channel_fee != 0.0 or tax_fee != 0.0 or stripe_fee != 0.0:
+                        # Tax from QBO is already negative, so add it (subtracts from net_revenue)
+                        net_revenue = net_revenue - abs(channel_fee) - abs(stripe_fee) - abs(tax_fee)
+
+                        conn.execute("""UPDATE ledger_lines SET amount=?
+                                       WHERE source='guesty' AND source_txn_id=? AND category='INCOME'""",
+                                    (net_revenue, booking_dict['booking_id']))
+                        conn.commit()
+                else:
+                    if channel_fee != 0.0 or stripe_fee != 0.0:
+                        # QBO fees are already negative, so add them
+                        net_revenue = net_revenue - abs(channel_fee) - abs(stripe_fee)
+
+                        conn.execute("""UPDATE ledger_lines SET amount=?
+                                       WHERE source='guesty' AND source_txn_id=? AND category='INCOME'""",
+                                    (net_revenue, booking_dict['booking_id']))
+                        conn.commit()
+
+            booking_dict['net_revenue'] = net_revenue
+            booking_dict['total_channel_and_card_fees'] = abs(channel_fee) + abs(stripe_fee)
             booking_dict['owner_cleaning_cost'] = owner_costs['owner_cleaning_cost']
             booking_dict['owner_tax_cost'] = owner_costs['owner_tax_cost']
 
@@ -293,7 +323,6 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", default="config.yml")
     ap.add_argument("--schema", default="schema.sql")
-    ap.add_argument("--template", default="templates/owner_statement_template.xlsx")
     ap.add_argument("--mapping-classes", default="mapping_classes.yml")
     ap.add_argument("--mapping-accounts", default="mapping_accounts.yml")
     ap.add_argument("--output-dir", default="output")

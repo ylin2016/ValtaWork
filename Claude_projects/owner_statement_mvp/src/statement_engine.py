@@ -68,8 +68,8 @@ def build_statements(conn, run_id: str, period_start: str, period_end: str, defa
         pm_fee_rate = float(c["pm_fee_rate"]) if c and c["pm_fee_rate"] is not None else float(default_pm_fee_rate)
         reserve_target = float(c["reserve_target"]) if c and c["reserve_target"] is not None else float(default_reserve_target)
 
-        # PM fee on STR bookings only (not on deposits or other QBO income)
-        pm_fee = -guesty_rev * pm_fee_rate if guesty_rev > 0 else 0.0
+        # PM fee applied to both STR (guesty) and LTR (QBO deposits) revenues
+        pm_fee = -(guesty_rev + other_income) * pm_fee_rate if (guesty_rev + other_income) > 0 else 0.0
 
         if abs(pm_fee) > 0.0001:
             conn.execute(
