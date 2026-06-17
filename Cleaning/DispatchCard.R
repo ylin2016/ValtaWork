@@ -70,11 +70,8 @@ daily = data_dispatch %>% group_by(Cleaning.Date) %>%
           ncleaner= length(unique(cleaner))) 
 daily = merge(daily,daily_cleaners,by.x ="Cleaning.Date",by.y="Day",all.x=T)
 daily %>% filter(ncleaner.x!=ncleaner.y)
-#5    2026-03-06     4          4          5  : loan deduction
-#6    2026-03-13     5          5          6 : loan deduction
-#     2026-04-10     3          2          5 : loan deduction
-#     2026-04-17     8          6          7 : loan deduction
-#.    2026-04-24     4          4          5 : loan deduction
+# 2026-05-17    17          5          4 : Maria pay Maribel
+
 ##-----------------------------------------------------------------
 
 data = merge(data_dispatch,payCleaner %>% group_by(Day,Cleaner) %>%
@@ -100,7 +97,7 @@ dispatch_monthly = data_all %>% filter(Rate>0) %>%
 #        Income from STR and Residential
 #--------------------------------------------------------------------------------
 months = unique(substr(data$Cleaning.Date,1,7))
-months = months#[-length(months)]
+months = months[-length(months)]
 
 payout = read_payout(payfile2026,payfile2025,months)
 
@@ -140,12 +137,19 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
     mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-both %>% filter(yearmonth %in% '2026-04' & diff!=0)
+both %>% filter(yearmonth %in% '2026-05' & diff!=0)
+##2026-05
+# Elektra 203   : 1 dispatch, no payment, next month
+#Kirkland 1273: should be 13805  : 1 dispatch, no payment
+#Kirkland 13805 : No dispatch, 1 payment, cleaned, not on schedule though
+#Redmond 17310. : 1 dispatch, no payment, carpet cleaning,
+#Seattle 5544   : 5 dispatch card record, no payment at all
+
 ## 2026-04
 # Bellevue 1326          7         6  guest extend on 4/28
 # Bellevue 16237
-# Bellevue 634          2 - NA - 1: reclean once
-# Bellevue 15306 1 
+# Bellevue 634  : 2 - NA - 1: reclean once
+# Bellevue 15306: 1,  carpet cleaning
 # Seattle 5544 1 
 
 ## 2026-03
@@ -177,7 +181,7 @@ Elektra 909         5 -> 4
 Issaquah 917        1 -> 2
 Kirkland 8017       2 -1- 2
 
-month12 = both %>% filter(yearmonth %in% c('2026-03','2026-02','2026-01')) %>% 
+month12 = both %>% filter(yearmonth %in% c('2026-05','2026-04','2026-03','2026-02','2026-01')) %>% 
   group_by(Listing) %>%
   reframe(across(where(is.numeric), sum,na.rm=T)) %>% 
   mutate(diff = Times.disp-Times.pay) 

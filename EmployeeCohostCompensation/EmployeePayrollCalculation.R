@@ -53,10 +53,10 @@ ggplot(res,aes(data_collect,n,group = month,color=month)) +
   scale_x_datetime(date_break="15 days",labels = date_format("%m-%d")) +
   labs(x="date_collected",y="# of 5 star reviews",color="Created Month")
   
-k="20260516 guesty_reviews.xlsx"
+k="20260616 guesty_reviews.xlsx"
 
 ## Jackson's
-ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2026-04",month)) %>% 
+ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2026-05",month)) %>% 
   filter(!grepl("Cottage",nickname)) %>%
   group_by(month) %>% reframe(n=n())
 
