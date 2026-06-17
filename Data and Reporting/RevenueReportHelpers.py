@@ -91,17 +91,17 @@ def build_owner_payout_2425():
     # Recode property names
     txt = [
         "Microsoft 14645 C19","Microsoft 14620 E205","E205","D201",
-        "Kirkland D201","Kirkland 11321 - corrected","OSBR - All","OSBR",
+        "Kirkland D201","Kirkland 11321 - corrected","OSBR - All",
         "Burien 14407 Middle","Burien 14407 Top","Seatac 12834 - Lower",
         "Seatac 12834 - Upper","Bellevue 13020 - already paid","Seattle 906",
-        "1424c seattle",'1430b seattle',"C19 bellevue",
+        "1424c seattle",'1430b seattle',"C19 bellevue","Seattle 4027",
     ]
     change = [
         "Microsoft 14645-C19","Microsoft 14620-E205","Total","Kirkland 8252-D201",
-        "Kirkland 8252-D201","Kirkland 11321","Cottages All OSBR","Cottages All OSBR",
+        "Kirkland 8252-D201","Kirkland 11321","OSBR",
         "Burien 14407 middle","Burien 14407 top","Seatac 12834 Lower",
         "Seatac 12834 Upper","Bellevue 13020","Seattle 906 Lower",
-        "Seattle 1424C","Seattle 1430B","Microsoft 14645-C19",
+        "Seattle 1424C","Seattle 1430B","Microsoft 14645-C19","Beachwood",
     ]
     mapping = dict(zip(txt, change))
     owner_payout["Property"] = owner_payout["Property"].replace(mapping)
@@ -203,7 +203,35 @@ def build_owner_payout_26(endmonth):
     #ask = owner_wide["Listing"].str.contains(r"Beachwood", case=False, na=False)
     #owner_wide = pd.concat([owner_wide[~mask],comb_sum],ignore_index=True)
     return owner_payout, owner_wide
-   
+
+def child_occupancy_add_parent(daily,parent_listing, child_listings):
+    parent_daily = daily.loc[daily["Listing"]==parent_listing].copy()
+    child_parent_daily = []
+    for child in child_listings:
+        child_per_data = parent_daily.copy()
+        child_per_data["Listing"] = child
+        child_per_data["DailyListingPrice"] = child_per_data["DailyListingPrice"] / len(child_listings)
+        child_per_data["AvgDailyRate"] = child_per_data["AvgDailyRate"] / len(child_listings)
+        child_parent_daily.append(child_per_data)
+    
+    child_parent_daily = pd.concat(child_parent_daily, ignore_index=True)
+    child_parent_daily = child_parent_daily.drop_duplicates(subset=["Listing", "date"]).copy()
+
+    daily = pd.concat([daily,child_parent_daily], ignore_index=True)
+
+    child_daily = (daily.loc[daily["Listing"].isin(child_listings)].groupby(["date"], as_index=False)
+            .agg(
+                    DailyListingPrice=("DailyListingPrice", "sum"),
+                    AvgDailyRate=("AvgDailyRate", "sum")
+                ))
+    child_daily["yearmonth"] = to_yearmonth(child_daily["date"])
+    child_daily["Year"] = child_daily["date"].dt.strftime("%Y")
+    child_daily["Month"] = child_daily["date"].dt.strftime("%m")
+    child_daily["Listing"] = parent_listing
+    child_daily = child_daily.loc[~child_daily["date"].isin(parent_daily["date"])].copy()
+    daily = pd.concat([daily, child_daily], ignore_index=True)
+
+    return daily
 
 def cal_occupancy(data):
     """Calculate occupancy rate by listing and yearmonth."""
@@ -225,6 +253,10 @@ def cal_occupancy(data):
     daily["Year"] = daily["date"].dt.strftime("%Y")
     daily["Month"] = daily["date"].dt.strftime("%m")
 
+    daily = child_occupancy_add_parent(daily, parent_listing="Seattle 7434", child_listings=["Seattle 7434 Lower","Seattle 7434 Upper"])
+    daily = child_occupancy_add_parent(daily, parent_listing="Seattle 10057 Whole", child_listings=["Seattle 10057 Lower","Seattle 10057 Upper"])
+    daily = child_occupancy_add_parent(daily, parent_listing="Bellevue 2323 Whole", child_listings=["Bellevue 2323 Main","Bellevue 2323 ADU"])
+    
     # Occupancy & revenue (by stayed-nights)
     occ = (
         daily.groupby(["Listing","yearmonth","Year","Month"], as_index=False)
