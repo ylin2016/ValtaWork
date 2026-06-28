@@ -3,3 +3,6 @@ openpyxl>=3.1
 pyyaml>=6.0
 streamlit>=1.50
 altair>=5.0
+# Google Drive data loading (Streamlit Cloud deploy)
+google-api-python-client>=2.0
+google-auth>=2.0
