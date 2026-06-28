@@ -12,19 +12,34 @@ channel filters, which only affect the monthly/average views).
 """
 from __future__ import annotations
 
+import os
+
 import altair as alt
 import pandas as pd
 import streamlit as st
 
 from cumulative import cumulative_by_listing, cumulative_company, coverage_report
+from data_source import ensure_data
 from insights import (CATEGORIES, LOW, category_averages, low_score_reviews,
                       summarize, theme_counts)
-from load_reviews import load_reviews
+from load_reviews import build, load_reviews
 from metrics import (company_monthly, listing_overview, monthly_scores, pivot)
+from normalize import load_config, project_path
 
 st.set_page_config(page_title="Guest Reviews", layout="wide")
 ALL = "All listings (Company)"
 SCORE_COLS = ["overall_5"] + [f"{c}_5" for c in CATEGORIES]
+
+
+@st.cache_resource
+def _hydrate() -> bool:
+    """Once per container: pull data inputs from Google Drive if configured
+    (Streamlit Cloud), then build the SQLite if it isn't on disk yet. Local
+    runs with data/ already populated and a prebuilt DB skip both steps."""
+    ensure_data()
+    if not os.path.exists(project_path(load_config()["paths"]["db"])):
+        build(verbose=False)
+    return True
 
 
 @st.cache_data
@@ -79,6 +94,7 @@ def volume_chart(ms: pd.DataFrame):
 
 
 # ---------------------------------------------------------------- sidebar
+_hydrate()          # fetch data from Drive + build DB on first run (cloud)
 df = get_data()
 st.sidebar.title("Guest Reviews")
 listings = [ALL] + sorted(df["listing"].dropna().unique().tolist())
