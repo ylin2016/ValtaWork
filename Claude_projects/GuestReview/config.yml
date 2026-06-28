@@ -1,0 +1,51 @@
+# GuestReview MVP configuration
+
+paths:
+  reviews_xlsx: "data/20260616 guesty_reviews.xlsx"
+  baseline_xlsx: "data/Property_OverallRatings.xlsx"   # Airbnb lifetime-rating snapshot
+  listing_contacts: "data/Listing_contacts.csv"        # allow-list of managed listings
+  db: "data/reviews.sqlite"
+
+# Restrict ALL calculations to listings present in listing_contacts (Property col,
+# canonicalized). Set false to include every listing in the reviews file.
+restrict_to_contacts: true
+
+# Channel scale normalization -> everything expressed on a 0..5 scale.
+# divisor: raw score is divided by this to reach the 5-scale.
+#   Airbnb / Vrbo / Expedia etc. already report 1..5  -> divisor 1
+#   Booking.com reports 1..10 (sub-scores 2.5/5/7.5/10) -> divisor 2
+channels:
+  airbnb2:                {family: airbnb,  divisor: 1.0}
+  homeaway2-Vrbo:         {family: vrbo,    divisor: 1.0}
+  homeaway2-Expedia:      {family: expedia, divisor: 1.0}
+  homeaway2-HOMEAWAY_CA:  {family: vrbo,    divisor: 1.0}
+  homeaway2-Travelocity:  {family: vrbo,    divisor: 1.0}
+  bookingCom:             {family: booking, divisor: 2.0}
+
+# Score columns to normalize (raw column name -> tidy name)
+score_columns:
+  Overall:          overall
+  Accuracy:         accuracy
+  "Check in score": checkin
+  Cleanliness:      cleanliness
+  Communication:    communication
+  Location:         location
+  Value:            value
+
+categories: [accuracy, checkin, cleanliness, communication, location, value]
+
+# Cumulative Airbnb rating reconstruction
+cumulative:
+  snapshot_date: "2025-09-28"   # baseline as-of date; new reviews counted strictly after this
+  summary_start: "2025-10"      # first month shown in cumulative summary
+  channel_family: airbnb        # cumulative is Airbnb-only
+
+# Insights
+low_score_threshold: 4.0        # reviews with overall_5 < this are "low" (flagged)
+negative_themes:                # keyword -> theme, for tagging low-score public reviews
+  cleanliness: [dirty, clean, filthy, dust, smell, stain, mold, trash, garbage, bug, roach, ant]
+  checkin:     [check-in, checkin, check in, lockbox, code, key, access, arrival, late]
+  noise:       [noise, loud, noisy, thin wall, neighbor]
+  communication: [response, respond, communication, contact, reply, unresponsive]
+  amenities:   [wifi, internet, heat, ac, air conditioning, hot water, parking, tv, kitchen]
+  accuracy:    [photo, picture, description, misleading, expected, smaller, different]
