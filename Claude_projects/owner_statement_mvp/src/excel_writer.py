@@ -195,9 +195,10 @@ def write_statement(output_path: str, period: str, property_info: dict,
         headers = ["Reservation Dates", "Confirmation Code", "Guest Name", "Net Rental Revenue"]
         if owner_pays_cleaning:
             headers.append("Owner Cleaning Fee")
+        headers.append("Management Commission")
         if owner_pays_taxes:
-            headers.append("Tax Paid to Owner")
-        headers.extend(["Management Commission", "Net Owner Revenue", "Commission %"])
+            headers.append("Tax Paid to Owner")  # after MCR, per owner request
+        headers.extend(["Net Owner Revenue", "Commission %"])
 
         row = _col_header_row(ws, row, headers, ncols_revenue)
 
@@ -208,15 +209,18 @@ def write_statement(output_path: str, period: str, property_info: dict,
             ws.row_dimensions[row].height = 15
             bg = _ALT if i % 2 else None
 
-            net_rental = float(b.get("net_revenue") or 0)
-            cleaning_fee = float(b.get("owner_cleaning_cost") or 0) if owner_pays_cleaning else 0.0
-            tax_paid = float(b.get("owner_tax_cost") or 0) if owner_pays_taxes else 0.0
+            # Round every displayed figure to cents at source so the Total row equals the
+            # sum of the rounded cells shown (cells display via CURRENCY format, so summing
+            # unrounded floats would drift the total by a penny).
+            net_rental = round(float(b.get("net_revenue") or 0), 2)
+            cleaning_fee = round(float(b.get("owner_cleaning_cost") or 0), 2) if owner_pays_cleaning else 0.0
+            tax_paid = round(float(b.get("owner_tax_cost") or 0), 2) if owner_pays_taxes else 0.0
 
             # net_rental already has channel/stripe fees deducted (done in cmd_build)
             net_rental_after_fees = net_rental
 
-            comm = -net_rental_after_fees * pm_fee_rate
-            owner_rev = net_rental_after_fees + cleaning_fee + tax_paid + comm
+            comm = round(-net_rental_after_fees * pm_fee_rate, 2)
+            owner_rev = round(net_rental_after_fees + cleaning_fee + tax_paid + comm, 2)
 
             col = 1
             _cell(ws, row, col, _fmt_dates(b["checkin"], b["checkout"]), bg=bg)
@@ -230,11 +234,11 @@ def write_statement(output_path: str, period: str, property_info: dict,
             if owner_pays_cleaning:
                 _cell(ws, row, col, cleaning_fee, fmt=CURRENCY, align="right", bg=bg)
                 col += 1
+            _cell(ws, row, col, comm, fmt=CURRENCY, align="right", bg=bg)
+            col += 1
             if owner_pays_taxes:
                 _cell(ws, row, col, tax_paid, fmt=CURRENCY, align="right", bg=bg)
                 col += 1
-            _cell(ws, row, col, comm, fmt=CURRENCY, align="right", bg=bg)
-            col += 1
             _cell(ws, row, col, owner_rev, fmt=CURRENCY, align="right", bg=bg)
             col += 1
             _cell(ws, row, col, -pm_fee_rate, fmt="0%", align="center", bg=bg)
@@ -257,11 +261,11 @@ def write_statement(output_path: str, period: str, property_info: dict,
         if owner_pays_cleaning:
             _cell(ws, row, col, total_cleaning, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
             col += 1
+        _cell(ws, row, col, total_comm, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
+        col += 1
         if owner_pays_taxes:
             _cell(ws, row, col, total_tax, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
             col += 1
-        _cell(ws, row, col, total_comm, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-        col += 1
         _cell(ws, row, col, total_owner, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
         col += 1
         _cell(ws, row, col, -pm_fee_rate, bold=True, fmt="0%", align="center", bg=_TOTAL_FILL)
@@ -277,7 +281,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
         for i, oi in enumerate(other_income):
             ws.row_dimensions[row].height = 15
             bg = _ALT if i % 2 else None
-            amt = float(oi["amount"] or 0)
+            amt = round(float(oi["amount"] or 0), 2)
             _cell(ws, row, 1, oi["posting_date"], bg=bg)
             _cell(ws, row, 2, (oi["description"] or "")[:200], bg=bg, wrap=True)
             _cell(ws, row, 3, oi["subcategory"] or "", bg=bg)
@@ -327,7 +331,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
         for i, exp in enumerate(lines):
             ws.row_dimensions[row].height = 15
             bg = _ALT if i % 2 else None
-            amt = float(exp["amount"] or 0)
+            amt = round(float(exp["amount"] or 0), 2)
             vendor_type = exp["qbo_account"] or exp["vendor_customer"] or ""
 
             _cell(ws, row, 1, exp["posting_date"], bg=bg)

@@ -21,6 +21,8 @@
   owner_email: margduf@gmail.com
   pm_fee_rate: 0.18
   owner_pays_supplies: true
+  term: STR
+  address: 11143 Rolling Bay Walk Northeast, Bainbridge Island, WA 98110, USA
 - qbo_class_id: '2100000000001794669'
   qbo_class_name: Listings:Beachwood
   property_id: beachwood
@@ -28,6 +30,7 @@
   owner_id: owner_beachwood
   owner_name: Beachwood Owner
   owner_email: ''
+  pm_fee_rate: 0.1
 - qbo_class_id: '2100000000001492202'
   qbo_class_name: Listings:Beachwood 1
   property_id: beachwood_1
@@ -36,6 +39,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001492176'
   qbo_class_name: Listings:Beachwood 10
   property_id: beachwood_10
@@ -44,6 +49,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001764898'
   qbo_class_name: Listings:Beachwood 2
   property_id: beachwood_2
@@ -52,6 +59,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001514510'
   qbo_class_name: Listings:Beachwood 3
   property_id: beachwood_3
@@ -60,6 +69,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '517130'
   qbo_class_name: Listings:Beachwood 4
   property_id: beachwood_4
@@ -68,6 +79,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001590423'
   qbo_class_name: Listings:Beachwood 5
   property_id: beachwood_5
@@ -76,13 +89,16 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '517494'
   qbo_class_name: Listings:Beachwood 6
   property_id: beachwood_6
   property_name: Beachwood 6
   owner_id: owner_beachwood_6
-  owner_name: Beachwood 6 Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
+  address: 1757 WA-105, Grayland, WA 98547, USA
 - qbo_class_id: '2100000000001769601'
   qbo_class_name: Listings:Beachwood 7
   property_id: beachwood_7
@@ -91,6 +107,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001514509'
   qbo_class_name: Listings:Beachwood 8
   property_id: beachwood_8
@@ -99,6 +117,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001793399'
   qbo_class_name: Listings:Beachwood 9
   property_id: beachwood_9
@@ -107,6 +127,8 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  term: LTR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001813930'
   qbo_class_name: Listings:Bellevue 10409
   property_id: bellevue_10409
@@ -116,6 +138,8 @@
   owner_email: paulshawn995@gmail.com
   pm_fee_rate: 0.12
   owner_pays_supplies: true
+  term: STR
+  address: 10409 NE 32nd Place, Bellevue, WA 98004, USA
 - qbo_class_id: '2100000000001492189'
   qbo_class_name: Listings:Bellevue 13020
   property_id: bellevue_13020
@@ -131,6 +155,8 @@
   owner_name: Fang Zhang
   owner_email: fangzh@umich.edu
   pm_fee_rate: 0.18
+  term: STR
+  address: 1326 Bellevue Way NE, Bellevue, WA 98004, USA
 - qbo_class_id: '627552'
   qbo_class_name: Listings:Bellevue 1420
   property_id: bellevue_1420
@@ -139,6 +165,8 @@
   owner_name: Alan Parker Lue
   owner_email: aparkerlue@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 1420 109th Ave SE, Bellevue, WA 98004, United States
 - qbo_class_id: '2100000000001640665'
   qbo_class_name: Listings:Bellevue 14507
   property_id: bellevue_14507
@@ -148,34 +176,48 @@
   owner_email: chrissieyim@gmail.com
   pm_fee_rate: 0.1
   owner_pays_supplies: true
+  term: LTR
+  address: 14507 NE 7th Place, Bellevue, WA 98007
 - qbo_class_id: '2100000000001640666'
   qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 1
   property_id: bellevue_14507_unit_1
   property_name: Bellevue 14507 Unit 1
   owner_id: owner_bellevue_14507_unit_1
   owner_name: Bellevue 14507 Unit 1 Owner
-  owner_email: ''
+  owner_email: chrissieyim@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
+  term: LTR
 - qbo_class_id: '2100000000001640667'
   qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 2
   property_id: bellevue_14507_unit_2
   property_name: Bellevue 14507 Unit 2
   owner_id: owner_bellevue_14507_unit_2
   owner_name: Bellevue 14507 Unit 2 Owner
-  owner_email: ''
+  owner_email: chrissieyim@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
+  term: LTR
 - qbo_class_id: '2100000000001640668'
   qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 3
   property_id: bellevue_14507_unit_3
   property_name: Bellevue 14507 Unit 3
   owner_id: owner_bellevue_14507_unit_3
   owner_name: Bellevue 14507 Unit 3 Owner
-  owner_email: ''
+  owner_email: chrissieyim@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
+  term: LTR
 - qbo_class_id: '2100000000001640669'
   qbo_class_name: Listings:Bellevue 14507:Bellevue 14507 Unit 4
   property_id: bellevue_14507_unit_4
   property_name: Bellevue 14507 Unit 4
   owner_id: owner_bellevue_14507_unit_4
   owner_name: Bellevue 14507 Unit 4 Owner
-  owner_email: ''
+  owner_email: chrissieyim@gmail.com
+  pm_fee_rate: 0.1
+  owner_pays_supplies: true
+  term: LTR
 - qbo_class_id: '510198'
   qbo_class_name: Listings:Bellevue 14621- G307
   property_id: bellevue_14621_g307
@@ -191,6 +233,8 @@
   owner_name: Chrissie Yim
   owner_email: chrissieyim@gmail.com
   pm_fee_rate: 0.16
+  term: STR
+  address: 1621 107th Ave SE, Bellevue, WA 98004, USA
 - qbo_class_id: '588893'
   qbo_class_name: Listings:Bellevue 16237
   property_id: bellevue_16237
@@ -221,13 +265,38 @@
   owner_name: Manpreet Kaur
   owner_email: manpkaur@gmail.com
   pm_fee_rate: 0.18
+  term: STR
+  address: 2243 W Lake Sammamish Pkwy SE, WA 98008
 - qbo_class_id: '1000000011'
   qbo_class_name: Listings:Bellevue 2323
   property_id: bellevue_2323
   property_name: Bellevue 2323
   owner_id: owner_bellevue_2323
-  owner_name: Bellevue 2323 Owner
+  owner_name: Ying Li
   owner_email: ''
+  pm_fee_rate: 0.2
+  term: STR
+  address: 2323 167th Ave NE, Bellevue, WA 98008
+- qbo_class_id: '1000000014'
+  qbo_class_name: Listings:Bellevue 2323 ADU
+  property_id: bellevue_2323_adu
+  property_name: Bellevue 2323 ADU
+  owner_id: owner_bellevue_2323_adu
+  owner_name: Ying Li
+  owner_email: ''
+  pm_fee_rate: 0.2
+  term: STR
+  address: 2323 167th Ave NE, Bellevue, WA 98008
+- qbo_class_id: '1000000013'
+  qbo_class_name: Listings:Bellevue 2323 Main
+  property_id: bellevue_2323_main
+  property_name: Bellevue 2323 Main
+  owner_id: owner_bellevue_2323_main
+  owner_name: Ying Li
+  owner_email: ''
+  pm_fee_rate: 0.2
+  term: STR
+  address: 2323 167th Ave NE, Bellevue, WA 98008
 - qbo_class_id: '544835'
   qbo_class_name: Listings:Bellevue 242
   property_id: bellevue_242
@@ -238,6 +307,8 @@
   pm_fee_rate: 0.15
   owner_pays_cleaning: true
   owner_pays_supplies: true
+  term: STR
+  address: 242 West Lake Sammamish Pkwy SE, WA 98008
 - qbo_class_id: '2100000000001739498'
   qbo_class_name: Listings:Bellevue 300
   property_id: bellevue_300
@@ -253,6 +324,8 @@
   owner_name: Brandon Shimizu
   owner_email: brandon@meadinvestments.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 321 Bellevue Way SE, Bellevue, Washington 98004
 - qbo_class_id: '2100000000001492154'
   qbo_class_name: Listings:Bellevue 514
   property_id: bellevue_514
@@ -262,6 +335,8 @@
   owner_email: seattlelijing@gmail.com
   pm_fee_rate: 0.2
   owner_pays_supplies: true
+  term: STR
+  address: 514 142nd Ave SE, Bellevue, WA 98007, USA
 - qbo_class_id: '2100000000001673559'
   qbo_class_name: Listings:Bellevue 601
   property_id: bellevue_601
@@ -279,6 +354,8 @@
   pm_fee_rate: 0.5
   owner_pays_cleaning: true
   owner_pays_supplies: true
+  term: STR
+  address: 701 122nd Avenue Northeast, Bellevue, Washington 98005
 - qbo_class_id: '587292'
   qbo_class_name: Listings:Bothell 11131
   property_id: bothell_11131
@@ -295,6 +372,8 @@
   owner_email: evan@mrnice.com
   pm_fee_rate: 0.18
   owner_pays_cleaning: true
+  term: STR
+  address: 14407 2nd Ave SW, Burien, WA 98166, USA
 - qbo_class_id: '2100000000001755153'
   qbo_class_name: Listings:Burien 14407 Top
   property_id: burien_14407_top
@@ -304,6 +383,8 @@
   owner_email: evan@mrnice.com
   pm_fee_rate: 0.18
   owner_pays_cleaning: true
+  term: STR
+  address: 14407 2nd Ave SW, Burien, WA 98166, USA
 - qbo_class_id: '677869'
   qbo_class_name: Listings:Edmonds 7819
   property_id: edmonds_7819
@@ -312,6 +393,8 @@
   owner_name: Mingmei Xu
   owner_email: maggiexu618@hotmail.com
   pm_fee_rate: 0.06
+  term: LTR
+  address: 7819 203rd st SW, WA 98026
 - qbo_class_id: '2100000000001492211'
   qbo_class_name: Listings:Elektra 1004
   property_id: elektra_1004
@@ -320,6 +403,8 @@
   owner_name: Jing Zhou
   owner_email: jingzhou.wa@gmail.com
   pm_fee_rate: 0.0
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '2100000000001492212'
   qbo_class_name: Listings:Elektra 1108
   property_id: elektra_1108
@@ -328,6 +413,8 @@
   owner_name: Jing Zhou
   owner_email: jingzhou.wa@gmail.com
   pm_fee_rate: 0.0
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '2100000000001492167'
   qbo_class_name: Listings:Elektra 1115
   property_id: elektra_1115
@@ -336,6 +423,8 @@
   owner_name: Jing Zhou
   owner_email: jingzhou.wa@gmail.com
   pm_fee_rate: 0.0
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '706489'
   qbo_class_name: Listings:Elektra 1203
   property_id: elektra_1203
@@ -345,6 +434,8 @@
   owner_email: lucialeung88@gmail.com
   pm_fee_rate: 0.15
   owner_pays_supplies: true
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '1000000008'
   qbo_class_name: Listings:Elektra 1212
   property_id: elektra_1212
@@ -354,6 +445,8 @@
   owner_email: lucialeung88@gmail.com
   pm_fee_rate: 0.15
   owner_pays_supplies: true
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '2100000000001795968'
   qbo_class_name: Listings:Elektra 1305
   property_id: elektra_1305
@@ -363,6 +456,8 @@
   owner_email: lucialeung88@gmail.com
   pm_fee_rate: 0.15
   owner_pays_supplies: true
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '1000000012'
   qbo_class_name: Listings:Elektra 1413
   property_id: elektra_1413
@@ -372,6 +467,8 @@
   owner_email: ''
   pm_fee_rate: 0.15
   owner_pays_supplies: true
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '2100000000001492155'
   qbo_class_name: Listings:Elektra 703
   property_id: elektra_703
@@ -380,6 +477,8 @@
   owner_name: Amanda Hui
   owner_email: amandayhui@gmail.com
   pm_fee_rate: 0.26
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '2100000000001492201'
   qbo_class_name: Listings:Elektra 809
   property_id: elektra_809
@@ -388,6 +487,8 @@
   owner_name: Charles Cardinaux
   owner_email: charles.cardinaux@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 1400 Hubbell Pl, Seattle, WA 98101, USA
 - qbo_class_id: '2100000000001492203'
   qbo_class_name: Listings:Hoodsport 26060
   property_id: hoodsport_26060
@@ -397,6 +498,8 @@
   owner_email: suetpoon388@hotmail.com
   pm_fee_rate: 0.2
   owner_pays_supplies: true
+  term: STR
+  address: 26060 US-101, Hoodsport, WA 98548, USA
 - qbo_class_id: '522144'
   qbo_class_name: Listings:Hoquiam 21
   property_id: hoquiam_21
@@ -429,6 +532,8 @@
   owner_pays_cleaning: true
   owner_pays_taxes: true
   owner_pays_supplies: true
+  term: STR
+  address: 15-1542 9th St, Keaau, HI96749, USA
 - qbo_class_id: '2100000000001492164'
   qbo_class_name: Listings:Kirkland 10219
   property_id: kirkland_10219
@@ -437,6 +542,8 @@
   owner_name: Yaoyun Shi
   owner_email: adiabatic.investment@protonmail.com
   pm_fee_rate: 0.16
+  term: STR
+  address: ''
 - qbo_class_id: '656442'
   qbo_class_name: Listings:Kirkland 11006-815
   property_id: kirkland_11006_815
@@ -452,6 +559,8 @@
   owner_name: Chenyu Dai & Jiachen Huang
   owner_email: jdaaph@gmail.com
   pm_fee_rate: 0.18
+  term: STR
+  address: 11321 106th Avenue Northeast, Kirkland, WA 98033, USA
 - qbo_class_id: '1000000010'
   qbo_class_name: Listings:Kirkland 13070
   property_id: kirkland_13070
@@ -461,6 +570,9 @@
   owner_email: ''
   pm_fee_rate: 0.18
   owner_pays_cleaning: true
+  owner_pays_supplies: true
+  term: STR
+  address: 13070 134th Avenue Northeast, Kirkland, WA 98034, USA
 - qbo_class_id: '588892'
   qbo_class_name: Listings:Kirkland 8017
   property_id: kirkland_8017
@@ -469,6 +581,8 @@
   owner_name: Jianxin Chen
   owner_email: qudit@me.com
   pm_fee_rate: 0.18
+  term: STR
+  address: 8017 Northeast 122nd Place, Kirkland, Washington 98034
 - qbo_class_id: '2100000000001492210'
   qbo_class_name: Listings:Kirkland 8252-D201
   property_id: kirkland_8252_d201
@@ -484,6 +598,8 @@
   owner_name: Xiaosong Yang
   owner_email: yangxiao@hotmail.com
   pm_fee_rate: 0.06
+  term: LTR
+  address: 7626 13th St SE, Lake Stevens, WA 98258
 - qbo_class_id: '2100000000001492204'
   qbo_class_name: Listings:Lilliwaup 28610
   property_id: lilliwaup_28610
@@ -493,6 +609,8 @@
   owner_email: cocorenkeke@gmail.com
   pm_fee_rate: 0.1
   owner_pays_supplies: true
+  term: STR
+  address: 28610 US-101, Lilliwaup, Washington 98555, USA
 - qbo_class_id: '2100000000001492151'
   qbo_class_name: Listings
   property_id: listings
@@ -509,20 +627,24 @@
   owner_email: jeanmtg10@gmail.com
   pm_fee_rate: 0.1
   owner_pays_supplies: true
+  term: STR
+  address: 6821 Cliff Avenue Southwest, Longbranch, Washington 98351, USA
 - qbo_class_id: '2100000000001492262'
   qbo_class_name: Listings:Longbranch 6821 Lower
   property_id: longbranch_6821_lower
   property_name: Longbranch 6821 Lower
   owner_id: owner_longbranch_6821_lower
-  owner_name: Longbranch 6821 Lower Owner
-  owner_email: ''
+  owner_name: Huijing Tao & Jing Zhou
+  owner_email: jeanmtg10@gmail.com
+  address: 6821 Cliff Avenue Southwest, Longbranch, Washington 98351, USA
 - qbo_class_id: '2100000000001492173'
   qbo_class_name: Listings:Longbranch 6821 Upper
   property_id: longbranch_6821_upper
   property_name: Longbranch 6821 Upper
   owner_id: owner_longbranch_6821_upper
-  owner_name: Longbranch 6821 Upper Owner
-  owner_email: ''
+  owner_name: Huijing Tao & Jing Zhou
+  owner_email: jeanmtg10@gmail.com
+  address: 6821 Cliff Avenue Southwest, Longbranch, Washington 98351, USA
 - qbo_class_id: '2100000000001491551'
   qbo_class_name: Listings:Mercer 2449
   property_id: mercer_2449
@@ -531,13 +653,16 @@
   owner_name: Na Si
   owner_email: yu7593@sina.com
   pm_fee_rate: 0.06
+  term: LTR
+  address: 2449 63rd Ave SE, Mercer Island, WA 98040, USA
 - qbo_class_id: '2100000000001492206'
   qbo_class_name: Listings:Mercer 3627
   property_id: mercer_3627
   property_name: Mercer 3627
   owner_id: owner_mercer_3627
-  owner_name: Mercer 3627 Owner
-  owner_email: ''
+  owner_name: Robert Foo
+  owner_email: 5034abo@gmail.com
+  address: 3627 80th Ave SE, Mercer Island, WA 98040, USA
 - qbo_class_id: '2100000000001492208'
   qbo_class_name: Listings:Mercer 3627 ADU
   property_id: mercer_3627_adu
@@ -547,6 +672,8 @@
   owner_email: 5034abo@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 3627 80th Ave SE, Mercer Island, WA 98040, USA
 - qbo_class_id: '1000000009'
   qbo_class_name: Listings:Mercer 3627 Lower
   property_id: mercer_3627_lower
@@ -556,13 +683,16 @@
   owner_email: 5034abo@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 3627 80th Ave SE, Mercer Island, WA 98040, USA
 - qbo_class_id: '2100000000001492207'
   qbo_class_name: Listings:Mercer 3627 Main
   property_id: mercer_3627_main
   property_name: Mercer 3627 Main
   owner_id: owner_mercer_3627_main
-  owner_name: Mercer 3627 Main Owner
-  owner_email: ''
+  owner_name: Robert Foo
+  owner_email: 5034abo@gmail.com
+  address: 3627 80th Ave SE, Mercer Island, WA 98040, USA
 - qbo_class_id: '689691'
   qbo_class_name: Listings:Mercer 3925
   property_id: mercer_3925
@@ -573,6 +703,8 @@
   pm_fee_rate: 0.2
   owner_pays_cleaning: true
   owner_pays_supplies: true
+  term: STR
+  address: 3925 95th Court Southeast, Mercer Island, Washington 98040, United States
 - qbo_class_id: '2100000000001492166'
   qbo_class_name: Listings:Microsoft 14615-D303
   property_id: microsoft_14615_d303
@@ -581,6 +713,8 @@
   owner_name: Jing Zhou
   owner_email: jingzhou.wa@gmail.com
   pm_fee_rate: 0.0
+  term: STR
+  address: 14615 Northeast 32nd Street , Bellevue, Washington 98007
 - qbo_class_id: '2100000000001492156'
   qbo_class_name: Listings:Microsoft 14620-E205
   property_id: microsoft_14620_e205
@@ -589,6 +723,8 @@
   owner_name: Yan Shen & Yaoming Sun
   owner_email: ''
   pm_fee_rate: 0.0
+  term: STR
+  address: 14620 Northeast 31st Street, Bellevue, Washington 98007
 - qbo_class_id: '2100000000001492169'
   qbo_class_name: Listings:Microsoft 14645-C19
   property_id: microsoft_14645_c19
@@ -597,6 +733,8 @@
   owner_name: Adam Chen
   owner_email: adam.wpp@gmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 14645 NE 34th St, Bellevue, WA 98007, USA
 - qbo_class_id: '2100000000001547055'
   qbo_class_name: Listings:OSBR
   property_id: osbr
@@ -606,6 +744,7 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
 - qbo_class_id: '2100000000001770304'
   qbo_class_name: Listings:OSBR 1
   property_id: osbr_1
@@ -615,6 +754,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547340'
   qbo_class_name: Listings:OSBR 10
   property_id: osbr_10
@@ -624,6 +765,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '515449'
   qbo_class_name: Listings:OSBR 11
   property_id: osbr_11
@@ -633,6 +776,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 1757 WA-105, Grayland, WA 98547, USA
 - qbo_class_id: '590693'
   qbo_class_name: Listings:OSBR 12
   property_id: osbr_12
@@ -642,6 +787,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 1757 WA-105, Grayland, WA 98547, USA
 - qbo_class_id: '2100000000001770313'
   qbo_class_name: Listings:OSBR 2
   property_id: osbr_2
@@ -651,6 +798,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547333'
   qbo_class_name: Listings:OSBR 3
   property_id: osbr_3
@@ -660,6 +809,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547334'
   qbo_class_name: Listings:OSBR 4
   property_id: osbr_4
@@ -669,6 +820,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547335'
   qbo_class_name: Listings:OSBR 5
   property_id: osbr_5
@@ -678,6 +831,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547336'
   qbo_class_name: Listings:OSBR 6
   property_id: osbr_6
@@ -687,6 +842,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 1757 WA-105, Grayland, WA 98547, USA
 - qbo_class_id: '2100000000001547337'
   qbo_class_name: Listings:OSBR 7
   property_id: osbr_7
@@ -696,6 +853,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547338'
   qbo_class_name: Listings:OSBR 8
   property_id: osbr_8
@@ -705,6 +864,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001547339'
   qbo_class_name: Listings:OSBR 9
   property_id: osbr_9
@@ -714,6 +875,8 @@
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001492157'
   qbo_class_name: Listings:Poulsbo 13976
   property_id: poulsbo_13976
@@ -730,6 +893,8 @@
   owner_email: margduf@gmail.com
   pm_fee_rate: 0.18
   owner_pays_supplies: true
+  term: STR
+  address: 3866 Washington 104, Poulsbo, Washington 98370, United States
 - qbo_class_id: '2100000000001492158'
   qbo_class_name: Listings:Poulsbo 3956
   property_id: poulsbo_3956
@@ -739,6 +904,8 @@
   owner_email: feifei.li@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 3956 NW Lakeness Rd, Poulsbo, WA 98370, USA
 - qbo_class_id: '2100000000001492175'
   qbo_class_name: Listings:Poulsbo 563
   property_id: poulsbo_563
@@ -748,6 +915,8 @@
   owner_email: jessi.sigander@gmail.com
   pm_fee_rate: 0.22
   owner_pays_supplies: true
+  term: STR
+  address: 563 NE Lincoln Rd, Poulsbo, WA 98370, USA
 - qbo_class_id: '1000000001'
   qbo_class_name: Listings:Redmond 11641
   property_id: redmond_11641
@@ -756,6 +925,8 @@
   owner_name: Kaiwen Gu
   owner_email: gu.kaiwen@gmail.com
   pm_fee_rate: 0.24
+  term: STR
+  address: 11641 204th Avenue Northeast, Redmond, Washington 98053, United States
 - qbo_class_id: '658546'
   qbo_class_name: Listings:Redmond 14707
   property_id: redmond_14707
@@ -764,6 +935,8 @@
   owner_name: Yuhui Mao & Zhongyan Qiu
   owner_email: maoyuhuiuw@gmail.com
   pm_fee_rate: 0.18
+  term: STR
+  address: 14707 Northeast 61st Court, Redmond, Washington 98052
 - qbo_class_id: '2100000000001492165'
   qbo_class_name: Listings:Redmond 15357
   property_id: redmond_15357
@@ -772,6 +945,8 @@
   owner_name: Jiaping Wang & Dan You
   owner_email: jiapw.cg@gmail.com
   pm_fee_rate: 0.16
+  term: LTR
+  address: 15357 NE 107th Way, Redmond, WA 98052, USA
 - qbo_class_id: '575624'
   qbo_class_name: Listings:Redmond 16012
   property_id: redmond_16012
@@ -787,6 +962,8 @@
   owner_name: Arvind Visvanathan
   owner_email: arvind_visvanathan@hotmail.com
   pm_fee_rate: 0.06
+  term: LTR
+  address: 18641 NE 55th Wy, Redmond, WA 98052
 - qbo_class_id: '2100000000001492195'
   qbo_class_name: Listings:Redmond 7579
   property_id: redmond_7579
@@ -795,6 +972,8 @@
   owner_name: Adam Chen
   owner_email: adam.wpp@gmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 7579 Old Redmond Rd, Redmond, WA 98052, USA
 - qbo_class_id: '2100000000001653158'
   qbo_class_name: Listings:Sammamish 2009
   property_id: sammamish_2009
@@ -803,6 +982,8 @@
   owner_name: Liaoyuan Ning
   owner_email: ningliaoyuan@gmail.com
   pm_fee_rate: 0.16
+  term: STR
+  address: 2009 NE 216th Pl, Sammamish, WA 98074,USA
 - qbo_class_id: '695032'
   qbo_class_name: Listings:Sammamish 5124-1
   property_id: sammamish_5124_1
@@ -813,6 +994,8 @@
   pm_fee_rate: 0.5
   owner_pays_cleaning: true
   owner_pays_supplies: true
+  term: STR
+  address: 5124 188th Place Northeast, Sammamish, Washington 98074
 - qbo_class_id: '1000000003'
   qbo_class_name: Listings:Sammamish 5124-2
   property_id: sammamish_5124_2
@@ -849,6 +1032,8 @@
   owner_name: Quinnlan Varcoe
   owner_email: quinnlanvarcoe@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 10057 17th Avenue Southwest, Seattle, WA 98146, USA
 - qbo_class_id: '689690'
   qbo_class_name: Listings:Seattle 10057 Upper
   property_id: seattle_10057_upper
@@ -857,6 +1042,8 @@
   owner_name: Quinnlan Varcoe
   owner_email: quinnlanvarcoe@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 10057 17th Avenue Southwest, Seattle, WA 98146, USA
 - qbo_class_id: '692580'
   qbo_class_name: Listings:Seattle 10057 Whole
   property_id: seattle_10057_whole
@@ -865,6 +1052,8 @@
   owner_name: Quinnlan Varcoe
   owner_email: quinnlanvarcoe@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 10057 17th Avenue Southwest, Seattle, WA 98146, USA
 - qbo_class_id: '2100000000001615459'
   qbo_class_name: Listings:Seattle 1117
   property_id: seattle_1117
@@ -873,6 +1062,8 @@
   owner_name: Dajiang Liu
   owner_email: liudajiang0828@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 1117 NW 11th Ave, Seattle, WA 98107, USA
 - qbo_class_id: '1000000004'
   qbo_class_name: Listings:Seattle 11331
   property_id: seattle_11331
@@ -881,6 +1072,8 @@
   owner_name: Ling Zhang
   owner_email: zzzling_99@yahoo.com
   pm_fee_rate: 0.06
+  term: STR
+  address: 11331 24th Ave NE,Seattle, WA 98125
 - qbo_class_id: '2100000000001651204'
   qbo_class_name: Listings:Seattle 115
   property_id: seattle_115
@@ -889,6 +1082,8 @@
   owner_name: Chen Pan
   owner_email: pchen_lily@hotmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 115 North 46th Street,Seattle, WA 98103, USA
 - qbo_class_id: '2100000000001492171'
   qbo_class_name: Listings:Seattle 1424C
   property_id: seattle_1424c
@@ -897,6 +1092,8 @@
   owner_name: Angus Ni
   owner_email: angus.f.ni@gmail.com
   pm_fee_rate: 0.18
+  term: STR
+  address: 1424 24th Ave, Seattle, WA 98122, USA
 - qbo_class_id: '2100000000001492170'
   qbo_class_name: Listings:Seattle 1430B
   property_id: seattle_1430b
@@ -912,6 +1109,8 @@
   owner_name: David Asuncion
   owner_email: dasun102@gmail.com
   pm_fee_rate: 0.22
+  term: STR
+  address: 1502 S Walker St., Seattle, WA 98144, USA
 - qbo_class_id: '2100000000001492153'
   qbo_class_name: Listings:Seattle 1512
   property_id: seattle_1512
@@ -928,6 +1127,8 @@
   owner_email: niya.zhang16@gmail.com
   pm_fee_rate: 0.15
   owner_pays_supplies: true
+  term: STR
+  address: 1623 S Lane St, Seattle, WA 98144, USA
 - qbo_class_id: '687377'
   qbo_class_name: Listings:Seattle 206
   property_id: seattle_206
@@ -936,6 +1137,8 @@
   owner_name: Jing Chen
   owner_email: chenjing.ustc@hotmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 206 Northwest 87th Street, Seattle, WA98117, USA
 - qbo_class_id: '2100000000001492159'
   qbo_class_name: Listings:Seattle 3617
   property_id: seattle_3617
@@ -951,6 +1154,8 @@
   owner_name: Brian McNaboe
   owner_email: bmcnaboe@gmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 4201 51st Avenue South, Seattle, Washington 98118
 - qbo_class_id: '2100000000001492160'
   qbo_class_name: Listings:Seattle 710
   property_id: seattle_710
@@ -959,6 +1164,8 @@
   owner_name: Isabell Sheang
   owner_email: isabellsheang@gmail.com
   pm_fee_rate: 0.16
+  term: STR
+  address: 710 N 97th St, Seattle, WA 98103, USA
 - qbo_class_id: '2100000000001492162'
   qbo_class_name: Listings:Seattle 710 ADU
   property_id: seattle_710_adu
@@ -967,6 +1174,8 @@
   owner_name: Isabell Sheang
   owner_email: isabellsheang@gmail.com
   pm_fee_rate: 0.16
+  term: STR
+  address: 710 N 97th St, Seattle, WA 98103, USA
 - qbo_class_id: '1000000007'
   qbo_class_name: Listings:Seattle 7434 Lower
   property_id: seattle_7434_lower
@@ -975,6 +1184,8 @@
   owner_name: Dai Li
   owner_email: li.lea.dai@gmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 7434 Keen Way N, Seattle, WA, 98103
 - qbo_class_id: '1000000006'
   qbo_class_name: Listings:Seattle 7434 Upper
   property_id: seattle_7434_upper
@@ -983,13 +1194,18 @@
   owner_name: Dai Li
   owner_email: li.lea.dai@gmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 7434 Keen Way N, Seattle, WA, 98103
 - qbo_class_id: '1000000005'
   qbo_class_name: Listings:Seattle 7434 Whole
   property_id: seattle_7434_whole
-  property_name: Seattle 7434 Whole
+  property_name: Seattle 7434
   owner_id: owner_seattle_7434_whole
-  owner_name: Seattle 7434 Whole Owner
-  owner_email: ''
+  owner_name: Dai Li
+  owner_email: li.lea.dai@gmail.com
+  address: 7434 Keen Way N, Seattle, WA, 98103
+  pm_fee_rate: 0.2
+  term: STR
 - qbo_class_id: '2100000000001775452'
   qbo_class_name: Listings:Seattle 8415
   property_id: seattle_8415
@@ -998,6 +1214,8 @@
   owner_name: Baofu Wang
   owner_email: cheapcoffeewbf@gmail.com
   pm_fee_rate: 0.2
+  term: STR
+  address: 8415 Linden Ave N, Seattle, WA 98103, USA
 - qbo_class_id: '613445'
   qbo_class_name: Listings:Seattle 9021
   property_id: seattle_9021
@@ -1007,6 +1225,8 @@
   owner_email: manager@chillhavenhomes.com
   pm_fee_rate: 0.171
   owner_pays_supplies: true
+  term: STR
+  address: 9021 8th Ave S, Seattle, WA 98108, USA
 - qbo_class_id: '605774'
   qbo_class_name: Listings:Seattle 906 Lower
   property_id: seattle_906_lower
@@ -1015,6 +1235,8 @@
   owner_name: Arsham Mesbah Shoolami
   owner_email: theseattlewhalehouse@gmail.com
   pm_fee_rate: 0.16
+  term: STR
+  address: 906 North 101st Street, Seattle, Washington 98133
 - qbo_class_id: '696831'
   qbo_class_name: Listings:Seattle 906 Upper
   property_id: seattle_906_upper
@@ -1023,6 +1245,8 @@
   owner_name: Arsham Mesbah Shoolami
   owner_email: theseattlewhalehouse@gmail.com
   pm_fee_rate: 0.16
+  term: LTR
+  address: 906 North 101st Street, Seattle, Washington 98133
 - qbo_class_id: '2100000000001707454'
   qbo_class_name: Listings:Seattle 9750
   property_id: seattle_9750
@@ -1046,6 +1270,8 @@
   owner_email: angus.f.ni@gmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 250 SE Dogwood Acrs Rd, Shelton, WA 98584, USA
 - qbo_class_id: '2100000000001492192'
   qbo_class_name: Listings:Shelton 310
   property_id: shelton_310
@@ -1055,13 +1281,16 @@
   owner_email: suetpoon388@hotmail.com
   pm_fee_rate: 0.16
   owner_pays_supplies: true
+  term: STR
+  address: 310 SE Sells Dr, Shelton, WA 98584, USA
 - qbo_class_id: '2100000000001492193'
   qbo_class_name: Listings:Shelton 310 Upper
   property_id: shelton_310_upper
   property_name: Shelton 310 Upper
   owner_id: owner_shelton_310_upper
-  owner_name: Shelton 310 Upper Owner
-  owner_email: ''
+  owner_name: Suki E
+  owner_email: suetpoon388@hotmail.com
+  address: 310 SE Sells Dr, Shelton, WA 98584, USA
 - qbo_class_id: '2100000000001547053'
   qbo_class_name: Listings:Tacoma 7811
   property_id: tacoma_7811
@@ -1090,3 +1319,43 @@
   owner_id: owner_woodinville_19319
   owner_name: Woodinville 19319 Owner
   owner_email: ''
+- qbo_class_id: '1000000016'
+  qbo_class_name: Listings:Lynnwood 17506
+  property_id: lynnwood_17506
+  property_name: Lynnwood 17506
+  owner_id: owner_lynnwood_17506
+  owner_name: Wenge Wei
+  owner_email: 'w11299999@hotmail.com'
+  pm_fee_rate: 0.22
+  term: STR
+  address: 17506 44th Ave W, Lynnwood, WA 98037, USA
+- qbo_class_id: '1000000015'
+  qbo_class_name: Listings:Shoreline 15510
+  property_id: shoreline_15510
+  property_name: Shoreline 15510
+  owner_id: owner_shoreline_15510
+  owner_name: Wenge Wei
+  owner_email: 'w11299999@hotmail.com'
+  pm_fee_rate: 0.22
+  term: STR
+  address: 15510 Meridian Avenue North, Shoreline, WA 98133
+- qbo_class_id: '1000000018'
+  qbo_class_name: Listings:Yacinde C1
+  property_id: yacinde_c1
+  property_name: Yacinde C1
+  owner_id: owner_yacinde_c1
+  owner_name: Yacinde C1 Owner
+  owner_email: ''
+  pm_fee_rate: 0.22
+  term: STR
+  Address: 1 Yacinde Dr C1, Bellevue, WA 98005, USA
+- qbo_class_id: '1000000017'
+  qbo_class_name: Listings:Yacinde E3
+  property_id: yacinde_e3
+  property_name: Yacinde E3
+  owner_id: owner_yacinde_e3
+  owner_name: Yacinde E3 Owner
+  owner_email: ''
+  pm_fee_rate: 0.22
+  term: STR
+  Address: 1 Yacinde Dr E3, Bellevue, WA 98005, USA

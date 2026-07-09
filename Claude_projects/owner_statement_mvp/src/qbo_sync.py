@@ -50,6 +50,10 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
         txn_id = e.get("Id")
         txn_date = _parse_date(e.get("TxnDate"))
         vendor = (e.get("VendorRef") or {}).get("name") or (e.get("PayeeRef") or {}).get("name")
+        # Credit=True marks a vendor refund/return (e.g. a returned supply). Its amount
+        # is a credit back to the owner, so it must be POSITIVE (reduces the expense
+        # subtotal). A normal Purchase is a cost and stays negative.
+        is_credit = bool(e.get("Credit"))
         lines = e.get("Line", []) or []
         for idx, ln in enumerate(lines, start=1):
             detail = ln.get("AccountBasedExpenseLineDetail") or {}
@@ -84,7 +88,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                     ln.get("Description"),
                     vendor,
                     acct_name,
-                    -abs(amount),
+                    abs(amount) if is_credit else -abs(amount),
                     now_iso(),
                 ),
             )

@@ -14,3 +14,13 @@ statement_policy:
   default_pm_fee_base: "net_booking_revenue"
   default_reserve_target: 0
   taxes_included_in_revenue: false
+
+# Consolidate multiple listings into a single owner statement. The parent
+# property_id gets one statement aggregating its own + all member ledger lines;
+# member listings are skipped (no separate statement). PM fee uses the parent's rate.
+statement_rollups:
+  bellevue_14507:
+    - bellevue_14507_unit_1
+    - bellevue_14507_unit_2
+    - bellevue_14507_unit_3
+    - bellevue_14507_unit_4

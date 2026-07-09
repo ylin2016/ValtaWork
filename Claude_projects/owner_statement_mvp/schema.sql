@@ -52,6 +52,10 @@ CREATE TABLE IF NOT EXISTS ledger_lines (
   vendor_customer TEXT,
   qbo_account TEXT,
   amount REAL NOT NULL,
+  -- Immutable original Guesty net (pre-QBO-fee) for guesty INCOME rows. `build`
+  -- recomputes amount = base_amount - fees from this each run, so a re-run can
+  -- never double-subtract fees. NULL for non-guesty rows. See run_month_close.cmd_build.
+  base_amount REAL,
   currency TEXT NOT NULL DEFAULT 'USD',
   include_in_statement INTEGER NOT NULL DEFAULT 1,
   status TEXT NOT NULL DEFAULT 'posted',

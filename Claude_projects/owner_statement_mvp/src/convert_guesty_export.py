@@ -13,6 +13,7 @@ _NICKNAME_ALIASES = {
     "cottage 5":       "osbr_5",
     "cottage 6":       "osbr_6",
     "cottage 7":       "osbr_7",
+    "cottage 8":       "osbr_8",
     "cottage 9":       "osbr_9",
     "cottage 10":      "osbr_10",
     "cottage 11 (tiny)": "osbr_11",

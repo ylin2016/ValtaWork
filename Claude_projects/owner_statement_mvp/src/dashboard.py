@@ -14,6 +14,11 @@ from reportlab.lib.units import inch
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
 from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
 import io
+import sys, os
+sys.path.insert(0, os.path.dirname(__file__))
+from ltr_records import build_records as ltr_build_records, is_rent_income as ltr_is_rent_income
+from listing_filter import allowed_property_ids
+from pm_rate import resolve_pm_fee_rate
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration
@@ -54,27 +59,6 @@ st.markdown("""
 # ─────────────────────────────────────────────────────────────────────────────
 
 @st.cache_data
-def load_listing_contacts():
-    """Load property names from Listing_contacts.csv."""
-    import csv
-    import re
-
-    csv_path = Path(__file__).parent.parent / "data/Listing_contacts.csv"
-    contact_props = set()
-
-    if csv_path.exists():
-        with open(csv_path, encoding='utf-8-sig') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                prop_name = (row.get('Property') or '').strip().lower()
-                if prop_name:
-                    # Normalize property name for matching
-                    normalized = re.sub(r'[^a-z0-9]+', '_', prop_name)
-                    normalized = re.sub(r'_+', '_', normalized).strip('_')
-                    contact_props.add(normalized)
-
-    return contact_props
-
 @st.cache_data
 def load_mapping_with_addresses():
     """Load property addresses and flags from mapping_classes.yml."""
@@ -101,6 +85,71 @@ def load_mapping_with_addresses():
     return addresses, owner_flags
 
 @st.cache_data
+def load_rollups():
+    """Load statement_rollups from config.yml: child property_id -> parent, and parent -> [members]."""
+    import yaml
+    cfg_path = Path(__file__).parent.parent / "config.yml"
+    rollups = {}
+    if cfg_path.exists():
+        with open(cfg_path, 'r') as f:
+            cfg = yaml.safe_load(f) or {}
+            rollups = cfg.get('statement_rollups') or {}
+    children = {child for kids in rollups.values() for child in kids}
+    return rollups, children
+
+def _member_ids(property_id: str) -> list:
+    """A rollup parent expands to itself + its members; everything else is just itself."""
+    rollups, _ = load_rollups()
+    return [property_id] + list(rollups.get(property_id, []))
+
+# LTR/deferred Net-Revenue lines are sourced from the period's LTR CSV via the
+# shared ltr_records module (same logic the Excel build uses).
+def build_ltr_records(property_id: str, period: str, pm_fee_rate: float, owner_pays_cleaning: bool):
+    """Return (display_records, covered_pids).
+
+    display_records: Net-Revenue-style rows (formatted like Guesty bookings) for LTR
+    rents + deferred bookings — one line per CSV row (full monthly rent). Each carries
+    numeric helpers (_net/_gross/_comm/_owner) for totalling.
+    covered_pids: property_ids that got a line (their rent is moved out of Other Credits).
+    """
+    conn = sqlite3.connect(DB_PATH)
+    raw, covered = ltr_build_records(
+        BASE, period, _member_ids(property_id),
+        lambda code: conn.execute(
+            "SELECT 1 FROM ledger_lines WHERE source='guesty' AND source_txn_id=? LIMIT 1",
+            (code,)).fetchone() is not None)
+    conn.close()
+
+    out = []
+    for x in raw:
+        # Round to cents at source so each column's TOTAL equals the sum of the
+        # rounded cells shown (no penny drift from summing unrounded values).
+        net, gross = round(float(x["net_revenue"]), 2), round(float(x["gross_revenue"]), 2)
+        comm = round(-net * pm_fee_rate, 2)
+        owner = round(net + comm, 2)
+        try:
+            ci = datetime.strptime(x["checkin"], "%Y-%m-%d"); co = datetime.strptime(x["checkout"], "%Y-%m-%d")
+            dates = f"{ci.strftime('%d. %b.')} - {co.strftime('%d. %b. %Y')} / {(co - ci).days} nights"
+        except Exception:
+            dates = ""
+        rec = {
+            "Guest Name": x["guest_name"],
+            "Confirmation Code": x["booking_id"],
+            "Reservation Dates": dates,
+            "Gross Revenue": f"${gross:,.2f}",
+            "Net Rental Revenue": f"${net:,.2f}",
+        }
+        if owner_pays_cleaning:
+            rec["Owner Cleaning Fee"] = "$0.00"
+            rec["cleaning_fee_value"] = 0.0
+        rec["Management Commission"] = f"${comm:,.2f}"
+        rec["Net Owner Revenue"] = f"${owner:,.2f}"
+        rec["Commission %"] = f"{-pm_fee_rate:.0%}"
+        rec.update(_net=net, _gross=gross, _comm=comm, _owner=owner)
+        out.append(rec)
+    return out, covered
+
+@st.cache_data
 def load_properties_and_periods():
     """Load available properties and periods from database."""
     conn = sqlite3.connect(DB_PATH)
@@ -113,8 +162,8 @@ def load_properties_and_periods():
         ORDER BY period DESC
     """).fetchall()
 
-    # Load properties from Listing_contacts.csv
-    contact_props = load_listing_contacts()
+    # Listings present in Listing_contacts.csv (shared with the build).
+    allowed = allowed_property_ids(conn, BASE)
 
     properties = conn.execute("""
         SELECT p.property_id, p.property_name, o.owner_name
@@ -129,12 +178,16 @@ def load_properties_and_periods():
     # Convert to dictionaries for pickle serialization
     periods_list = [dict(p) for p in periods]
 
+    # Rollup members are consolidated into their parent — hide them from the picker.
+    _, rollup_children = load_rollups()
+
     # Filter properties to only those in Listing_contacts.csv
     properties_list = []
     for p in properties:
         prop_dict = dict(p)
-        # Check if property_id matches any contact property
-        if prop_dict['property_id'] in contact_props:
+        if prop_dict['property_id'] in rollup_children:
+            continue
+        if prop_dict['property_id'] in allowed:
             properties_list.append(prop_dict)
 
     return properties_list, periods_list
@@ -148,14 +201,15 @@ def load_statement_data(property_id: str, period: str):
     year, month = period.split('-')
     period_start = f"{year}-{month}-01"
 
-    # Get property info with PM fee rate
+    # Get property info. PM fee rate is resolved separately through the shared
+    # resolve_pm_fee_rate() so the dashboard/PDF use the SAME effective-dated rate
+    # (and config fallback) the stored amount_due was built with — otherwise the
+    # per-booking commission column won't foot to the Net Income read from amount_due.
     prop = conn.execute("""
-        SELECT p.*, o.owner_name, o.owner_email, COALESCE(oc.pm_fee_rate, 0.18) as pm_fee_rate
+        SELECT p.*, o.owner_name, o.owner_email
         FROM properties p
         LEFT JOIN owners o ON p.owner_id = o.owner_id
-        LEFT JOIN owner_contracts oc ON p.property_id = oc.property_id
         WHERE p.property_id = ?
-        ORDER BY oc.effective_start DESC LIMIT 1
     """, (property_id,)).fetchone()
 
     # Get statement totals (get LATEST run for this period)
@@ -167,47 +221,81 @@ def load_statement_data(property_id: str, period: str):
         LIMIT 1
     """, (property_id, period_start)).fetchone()
 
+    # Rollup parents aggregate their members' ledger lines.
+    members = _member_ids(property_id)
+    ph = ",".join("?" * len(members))
+
     # Get bookings (guesty income)
-    bookings = conn.execute("""
+    bookings = conn.execute(f"""
         SELECT source_txn_id as booking_id, vendor_customer as guest_name,
                posting_date as checkin, service_date as checkout, amount as net_revenue, status
         FROM ledger_lines
-        WHERE property_id = ? AND posting_date >= ? AND posting_date < date(?, '+1 month')
+        WHERE property_id IN ({ph}) AND posting_date >= ? AND posting_date < date(?, '+1 month')
           AND source = 'guesty' AND category = 'INCOME' AND include_in_statement = 1
         ORDER BY posting_date
-    """, (property_id, period_start, period_start)).fetchall()
+    """, (*members, period_start, period_start)).fetchall()
 
-    # Get other income
-    other_income = conn.execute("""
-        SELECT posting_date, description, vendor_customer, subcategory, amount
+    # Get other income (rent/deferred for properties shown in Net Revenue is filtered
+    # out later in Python, using the LTR-covered property set)
+    other_income = conn.execute(f"""
+        SELECT posting_date, description, vendor_customer, subcategory, amount,
+               property_id, source_object
         FROM ledger_lines
-        WHERE property_id = ? AND posting_date >= ? AND posting_date < date(?, '+1 month')
+        WHERE property_id IN ({ph}) AND posting_date >= ? AND posting_date < date(?, '+1 month')
           AND source = 'qbo' AND category = 'INCOME' AND include_in_statement = 1
         ORDER BY posting_date
-    """, (property_id, period_start, period_start)).fetchall()
+    """, (*members, period_start, period_start)).fetchall()
 
     # Get expenses by category
-    expenses = conn.execute("""
+    expenses = conn.execute(f"""
         SELECT posting_date, description, vendor_customer, qbo_account, subcategory, amount
         FROM ledger_lines
-        WHERE property_id = ? AND posting_date >= ? AND posting_date < date(?, '+1 month')
+        WHERE property_id IN ({ph}) AND posting_date >= ? AND posting_date < date(?, '+1 month')
           AND source = 'qbo' AND category = 'EXPENSE' AND include_in_statement = 1
           AND qbo_account LIKE '%Owner Expenses%'
         ORDER BY subcategory, posting_date
-    """, (property_id, period_start, period_start)).fetchall()
+    """, (*members, period_start, period_start)).fetchall()
+
+    # Transient occupancy / lodging tax passed THROUGH to the owner (QBO account
+    # 'Owner Income:Taxes Paid to Owners'), matched per booking by the stay's date
+    # range (the lines carry "<checkin> to <checkout>" rather than the booking code).
+    booking_dicts = [dict(b) for b in bookings]
+    for b in booking_dicts:
+        trow = conn.execute(f"""
+            SELECT COALESCE(SUM(amount), 0) FROM ledger_lines
+            WHERE property_id IN ({ph}) AND posting_date >= ? AND posting_date < date(?, '+1 month')
+              AND qbo_account LIKE '%Taxes Paid to Owners%'
+              AND description LIKE ?
+        """, (*members, period_start, period_start, f"%{b['checkin']} to {b['checkout']}%")).fetchone()
+        b['owner_tax'] = float(trow[0] or 0)
+
+    prop_dict = dict(prop) if prop else {}
+    if prop_dict:
+        # None when no contract rate is configured — the caller halts rather than
+        # substituting a default (see resolve_pm_fee_rate).
+        prop_dict['pm_fee_rate'] = resolve_pm_fee_rate(conn, property_id, period_start)
 
     conn.close()
 
     return {
-        'property': dict(prop) if prop else {},
+        'property': prop_dict,
         'totals': dict(tot) if tot else None,
-        'bookings': [dict(b) for b in bookings],
+        'bookings': booking_dicts,
         'other_income': [dict(i) for i in other_income],
         'expenses': [dict(e) for e in expenses],
     }
 
 def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
     """Generate PDF statement."""
+    # Use the SAME rate load_statement_data already resolved via resolve_pm_fee_rate
+    # (effective-dated contract) so the PDF commission matches the on-screen table and
+    # the stored amount_due. No separate query and no silent default: the main view
+    # halts before offering the PDF when the rate is missing.
+    _pm = data.get('property', {}).get('pm_fee_rate')
+    if _pm is None:
+        raise ValueError(f"No PM fee rate configured for {property_id}; set pm_fee_rate in mapping_classes.yml.")
+    pm_fee_rate = float(_pm)
+
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter,
                            rightMargin=0.75*inch, leftMargin=0.75*inch,
@@ -297,9 +385,9 @@ def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
 
         for b in data['bookings']:
             try:
-                net_rental = float(b['net_revenue'] or 0)
-                comm = -net_rental * 0.18  # Assuming 18% PM fee
-                owner_rev = net_rental + comm
+                net_rental = round(float(b['net_revenue'] or 0), 2)
+                comm = round(-net_rental * pm_fee_rate, 2)
+                owner_rev = round(net_rental + comm, 2)
 
                 checkin = datetime.strptime(b['checkin'], '%Y-%m-%d')
                 checkout = datetime.strptime(b['checkout'], '%Y-%m-%d')
@@ -345,7 +433,7 @@ def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
         total_exp = 0.0
 
         for exp in data['expenses']:
-            amt = float(exp['amount'] or 0)
+            amt = round(float(exp['amount'] or 0), 2)
             expense_data.append([
                 exp['posting_date'],
                 exp['description'][:50] if exp['description'] else '',
@@ -427,6 +515,30 @@ tot = data['totals']
 addresses, owner_flags = load_mapping_with_addresses()
 prop_address = addresses.get(property_id, 'N/A')
 owner_pays_cleaning = owner_flags.get(property_id, {}).get('owner_pays_cleaning', False)
+owner_pays_taxes = owner_flags.get(property_id, {}).get('owner_pays_taxes', False)
+
+# PM fee rate: resolved in load_statement_data via resolve_pm_fee_rate (effective-dated
+# contract), the same rate the stored amount_due used. No silent default — if a property
+# has no configured rate, halt and tell the user to set it (matching the build's behavior).
+_pm_rate_raw = prop.get('pm_fee_rate') if prop else None
+if _pm_rate_raw is None:
+    st.error(
+        f"No PM fee rate is configured for **{property_id}**. "
+        f"Set `pm_fee_rate` for it in `mapping_classes.yml` (then run `sync-mappings`) "
+        f"so commission can be calculated. Refusing to guess a default."
+    )
+    st.stop()
+pm_fee_rate = float(_pm_rate_raw)
+ltr_records, ltr_covered_pids = build_ltr_records(property_id, period, pm_fee_rate, owner_pays_cleaning)
+has_net_revenue = bool(data['bookings'] or ltr_records)
+
+# Move rent out of "Other Credits" only for properties that got a Net Revenue line
+# (rent for properties without a CSV line stays in Other Credits so it isn't hidden).
+data['other_income'] = [
+    oi for oi in data['other_income']
+    if not (oi.get('property_id') in ltr_covered_pids
+            and ltr_is_rent_income(oi.get('source_object'), oi.get('description')))
+]
 
 # Header with property info and summary side-by-side
 period_dt = datetime.strptime(period, '%Y-%m')
@@ -477,13 +589,13 @@ with col_right:
 
     # This will be calculated in the Net Revenue Section below
     # and we'll reference it here via a placeholder that gets updated
-    if data['bookings']:
+    if has_net_revenue:
         st.markdown("*(See Net Revenue Section below for calculation details)*")
 
 st.divider()
 
 # NET REVENUE SECTION - Calculate totals for summary
-if data['bookings']:
+if has_net_revenue:
     # Load Guesty CSV to get total_payout (gross revenue before fees) and cleaning fees
     guesty_csv = BASE / "data/guesty_converted.csv"
     gross_revenue_map = {}
@@ -497,7 +609,6 @@ if data['bookings']:
             gross_revenue_map[booking_id] = total_payout
             cleaning_fee_map[booking_id] = cleaning_fee
 
-    pm_fee_rate = float(prop.get('pm_fee_rate', 0.18)) if prop else 0.18
     booking_records = []
     total_gross_revenue = 0.0
     total_net_rental = 0.0
@@ -506,11 +617,14 @@ if data['bookings']:
     total_expenses = 0.0
 
     for b in data['bookings']:
-        net_rental = float(b['net_revenue'] or 0)
+        # Round every displayed dollar figure to cents at source so each column's
+        # TOTAL equals the sum of the rounded cells shown (no penny drift from
+        # summing unrounded values and rounding only the total).
+        net_rental = round(float(b['net_revenue'] or 0), 2)
         booking_id = b['booking_id']
 
         # Gross revenue from converted Guesty CSV (total_payout before any fees)
-        gross_revenue = gross_revenue_map.get(booking_id, net_rental)
+        gross_revenue = round(gross_revenue_map.get(booking_id, net_rental), 2)
 
         # Check booking status
         booking_status = str(b.get('status', 'confirmed')).lower()
@@ -519,14 +633,21 @@ if data['bookings']:
         if booking_status == 'canceled':
             cleaning_fee = 0.0
         else:
-            cleaning_fee = cleaning_fee_map.get(booking_id, 0.0)
+            cleaning_fee = round(cleaning_fee_map.get(booking_id, 0.0), 2)
 
-        comm = -net_rental * pm_fee_rate
+        comm = round(-net_rental * pm_fee_rate, 2)
         owner_rev = net_rental + comm
 
         # Add owner cleaning fee if owner_pays_cleaning is true
         if owner_pays_cleaning:
             owner_rev += cleaning_fee
+
+        # Tax passed to owner (transient occupancy tax) — owner income, added after MCR
+        tax_paid = round(float(b.get('owner_tax') or 0), 2) if owner_pays_taxes else 0.0
+        if owner_pays_taxes:
+            owner_rev += tax_paid
+
+        owner_rev = round(owner_rev, 2)
 
         checkin = datetime.strptime(b['checkin'], '%Y-%m-%d')
         checkout = datetime.strptime(b['checkout'], '%Y-%m-%d')
@@ -551,6 +672,9 @@ if data['bookings']:
             record['cleaning_fee_value'] = cleaning_fee  # Store numeric value for TOTAL calculation
 
         record['Management Commission'] = f"${comm:,.2f}"
+        if owner_pays_taxes:
+            record['Tax Paid to Owner'] = f"${tax_paid:,.2f}"
+            record['tax_paid_value'] = tax_paid  # numeric, for TOTAL row
         record['Net Owner Revenue'] = f"${owner_rev:,.2f}"
         record['Commission %'] = f"{-pm_fee_rate:.0%}"
 
@@ -561,13 +685,37 @@ if data['bookings']:
         total_comm += comm
         total_owner += owner_rev
 
+    # Append LTR rents + deferred bookings (from the LTR CSV) as Net Revenue lines
+    for rec in ltr_records:
+        booking_records.append(rec)
+        total_gross_revenue += rec['_gross']
+        total_net_rental += rec['_net']
+        total_comm += rec['_comm']
+        total_owner += rec['_owner']
+
     # Sum all expenses (already negative values)
     for exp in data['expenses']:
         total_expenses += float(exp['amount'] or 0)
 
-    # NET INCOME = Total Net Owner Revenue + Total Expenses
-    # (expenses are negative, so adding them subtracts the amount)
-    net_income = total_owner + total_expenses
+    # Net Income = the authoritative build total (statement_property_totals.
+    # amount_due_to_owner) for ALL properties, so the dashboard summary always matches
+    # the Excel statement and the end_balances comparison. That total already reflects:
+    # guesty net (idempotent, fee-adjusted), Other Credits at full value, PM commission
+    # on bookings + LTR/deferred only (NOT Other Credits), and owner expenses.
+    # Fall back to the line-by-line sum only if no build total exists for this period yet.
+    # Owner Cleaning Fee (the Guesty cleaning charged to the guest) is returned to the
+    # owner as income for owner_pays_cleaning properties and shown per-booking in the Net
+    # Revenue table (added into each Net Owner Revenue cell and the TOTAL row). The build
+    # now folds this same credit into amount_due_to_owner via a non-commissioned OWNER_ADJ
+    # line (_apply_owner_cleaning_credit), so Net Income reads amount_due directly — do NOT
+    # add the cleaning fee again here or it would double-count.
+    total_cleaning_fee = sum(
+        float(r.get('cleaning_fee_value', 0)) for r in booking_records if 'cleaning_fee_value' in r
+    )
+    if tot:
+        net_income = float(tot['amount_due_to_owner'] or 0)
+    else:
+        net_income = total_owner + total_expenses
     current_balance = net_income
 
     # Update summary with calculated values
@@ -614,10 +762,28 @@ if data['bookings']:
 
     st.markdown("")
 
+# Summary for properties with no Guesty bookings (LTR / deferred / rollup parents):
+# use the authoritative statement_property_totals from the build (includes other
+# income, PM commission, and expenses).
+elif tot:
+    amount_due = float(tot['amount_due_to_owner'] or 0)
+    with col_right:
+        for label in ["Starting Balance", "Net Income", "Current Balance", "Owner Payout", "Ending Balance"]:
+            col_a, col_b = st.columns([0.6, 0.4])
+            with col_a:
+                st.markdown(f"**{label}**")
+            with col_b:
+                if label == "Starting Balance":
+                    st.markdown("$0.00")
+                elif label == "Net Income":
+                    st.markdown(f"<span style='color: #2e74b5; font-weight: bold;'>${amount_due:,.2f}</span>", unsafe_allow_html=True)
+                else:
+                    st.markdown(f"${amount_due:,.2f}")
+
 st.divider()
 
 # Net Revenue Section - Display the calculated data
-if data['bookings']:
+if has_net_revenue:
     st.header("Net Revenue Section")
 
     total_record = {
@@ -629,20 +795,23 @@ if data['bookings']:
     }
 
     if owner_pays_cleaning:
-        # Calculate total cleaning fee from all bookings
-        total_cleaning_fee = sum(float(r.get('cleaning_fee_value', 0)) for r in booking_records if 'cleaning_fee_value' in r)
+        # total_cleaning_fee already summed above (folded into Net Income)
         total_record['Owner Cleaning Fee'] = f"${total_cleaning_fee:,.2f}"
 
     total_record['Management Commission'] = f"${total_comm:,.2f}"
+    if owner_pays_taxes:
+        total_tax_paid = sum(float(r.get('tax_paid_value', 0)) for r in booking_records if 'tax_paid_value' in r)
+        total_record['Tax Paid to Owner'] = f"${total_tax_paid:,.2f}"
     total_record['Net Owner Revenue'] = f"${total_owner:,.2f}"
     total_record['Commission %'] = f"{-pm_fee_rate:.0%}"
 
     booking_records.append(total_record)
 
     df_bookings = pd.DataFrame(booking_records)
-    # Remove temporary cleaning_fee_value column used for calculations
-    if 'cleaning_fee_value' in df_bookings.columns:
-        df_bookings = df_bookings.drop(columns=['cleaning_fee_value'])
+    # Remove temporary numeric/helper columns used only for totalling
+    helper_cols = [c for c in df_bookings.columns if c.startswith('_') or c in ('cleaning_fee_value', 'tax_paid_value')]
+    if helper_cols:
+        df_bookings = df_bookings.drop(columns=helper_cols)
 
     # Style the dataframe to bold the last row
     def highlight_total(row):
@@ -663,7 +832,7 @@ if data['other_income']:
     total_oi = 0.0
 
     for inc in data['other_income']:
-        amt = float(inc['amount'] or 0)
+        amt = round(float(inc['amount'] or 0), 2)
         income_records.append({
             'Date': inc['posting_date'],
             'Description': inc['description'][:100] if inc['description'] else '',
@@ -731,7 +900,7 @@ for category in all_categories:
             # Get expenses for this category, or empty list if none
             exps = expense_categories.get(category, [])
             for exp in exps:
-                amt = float(exp['amount'] or 0)
+                amt = round(float(exp['amount'] or 0), 2)
                 # Extract just the last part of the account path (after the last dash)
                 account = exp['qbo_account'] or ''
                 if ' - ' in account:
