@@ -1,0 +1,26 @@
+# Guesty Open API configuration. Credentials live in .env, not here.
+
+# REST base for all data calls (listings, reservations, etc.)
+base_url: https://open-api.guesty.com/v1
+
+# OAuth2 client-credentials token endpoint
+token_url: https://open-api.guesty.com/oauth2/token
+scope: open-api
+
+# Where the 24h access token is cached (git-ignored). Guesty allows only
+# 5 tokens / 24h / client, so we reuse this until it is near expiry.
+token_path: ./data/guesty_token.json
+
+# Refresh the token this many seconds BEFORE it actually expires.
+token_refresh_buffer_seconds: 3600
+
+# Defaults applied when the input spreadsheet leaves a field blank.
+defaults:
+  currency: USD
+  # New listings are created UNLISTED by default so nothing goes public by
+  # accident. Flip per-row in the sheet, or publish later in the Guesty UI.
+  is_listed: false
+  timezone: America/New_York
+
+# Politeness: pause between create (POST) calls to stay under rate limits.
+create_delay_seconds: 1.0
