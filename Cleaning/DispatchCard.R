@@ -45,7 +45,7 @@ data_dispatch = format_dispatch(dispatch)
 tmp = dispatch %>% select(Cleaning.Date,nunit) %>% 
   join(data_dispatch %>% group_by(Cleaning.Date) %>% 
          reframe(nunit1=length(unique(Listing))))
-tmp %>% filter(nunit!=nunit1) %>% arrange(Cleaning.Date)
+tmp %>% filter(nunit!=nunit1 & Cleaning.Date>'2026-06-01') %>% arrange(Cleaning.Date) 
 #2025-10-15     8   7: it is ok as Clyde hill 8830 shown in car 1 &2 for joint work
 #2025-10-11    12   11: it is ok as Kirkland 8017 shown in car 1 &2 for joint work
 #2026-01-26    11   10:  No scheduled clean for Seattle 10057 Upper
@@ -69,7 +69,7 @@ daily = data_dispatch %>% group_by(Cleaning.Date) %>%
   reframe(nunit=length(unique(Listing)),
           ncleaner= length(unique(cleaner))) 
 daily = merge(daily,daily_cleaners,by.x ="Cleaning.Date",by.y="Day",all.x=T)
-daily %>% filter(ncleaner.x!=ncleaner.y)
+daily %>% filter(ncleaner.x!=ncleaner.y & Cleaning.Date>'2026-05-01')
 # 2026-05-17    17          5          4 : Maria pay Maribel
 
 ##-----------------------------------------------------------------
@@ -137,7 +137,7 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
     mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-both %>% filter(yearmonth %in% '2026-05' & diff!=0)
+both %>% filter(yearmonth %in% '2026-06' & diff!=0)
 ##2026-05
 # Elektra 203   : 1 dispatch, no payment, next month
 #Kirkland 1273: should be 13805  : 1 dispatch, no payment
