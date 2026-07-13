@@ -107,7 +107,7 @@ format_dispatch <- function(dispatch)
 
 pay_cleaner_record <- function(payfile2026)
 {
-  payCleaner = rbind.fill(read.xlsx(payfile2026,sheet = "Payment", startRow = 3),
+  payCleaner = rbind.fill(read.xlsx(payfile2026,sheet = "Payment"),
                         read.xlsx(payfile2026,sheet = "Payment2025", startRow = 3)) %>%
   filter(!grepl("Maria", Payment.date)) 
 
