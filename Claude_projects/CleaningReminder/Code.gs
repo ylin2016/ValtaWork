@@ -53,19 +53,37 @@ function runForDay_(day, dryRun) {
     }
 
     const message = composeMessage_(cleaner.name, label, jobs);
+    const phones = cleanerPhones_(cleaner);
 
     if (dryRun) {
       Logger.log('\n--- DRY RUN → %s (%s) — %s event(s) ---\n%s',
-        cleaner.name, cleaner.phone || '(no phone set)', jobs.length, message);
-      results.push({ name: cleaner.name, events: jobs.length, sent: false, dryRun: true });
+        cleaner.name, phones.length ? phones.join(', ') : '(no phone set)', jobs.length, message);
+      Logger.log('   [debug] shifts: %s', jobs.map(function (e) {
+        return formatTime_(e.getStartTime()) + (isBackToBackEvent_(e) ? ' B2B' : '');
+      }).join(', '));
+      results.push({ name: cleaner.name, events: jobs.length, recipients: phones.length, sent: false, dryRun: true });
+    } else if (!phones.length) {
+      Logger.log('%s: no phone number set — skipping.', cleaner.name);
+      results.push({ name: cleaner.name, events: jobs.length, sent: false, error: 'no phone' });
     } else {
-      const res = sendSms_(cleaner.phone, message);
-      Logger.log('%s (%s): %s', cleaner.name, cleaner.phone, res.ok ? 'SENT ✓' : 'FAILED — ' + res.error);
-      results.push({ name: cleaner.name, jobs: jobs.length, sent: res.ok, error: res.error });
+      phones.forEach(function (phone) {
+        const res = sendSms_(phone, message);
+        Logger.log('%s (%s): %s', cleaner.name, phone, res.ok ? 'SENT ✓' : 'FAILED — ' + res.error);
+        results.push({ name: cleaner.name, phone: phone, events: jobs.length, sent: res.ok, error: res.error });
+      });
     }
   });
 
   return results;
+}
+
+/** Normalize a cleaner's number(s) — accepts `phones: [...]` and/or `phone: ''`. */
+function cleanerPhones_(cleaner) {
+  const raw = [];
+  if (Array.isArray(cleaner.phones)) Array.prototype.push.apply(raw, cleaner.phones);
+  if (cleaner.phone) raw.push(cleaner.phone);
+  return raw.map(function (s) { return String(s).trim(); })
+    .filter(function (s) { return s.length; });
 }
 
 /** Print every calendar this account can access, with names and IDs. */
@@ -120,47 +138,47 @@ function getJobs_(cal, day) {
 /**
  * Build the SMS body for one cleaner. Each event is one shift whose title is a
  * comma-separated list of units; units are broken onto their own lines under a
- * time header. A unit whose "(out->in)" arrow shows a same-day check-in (in > 0)
- * is flagged ⚠️ back-to-back.
+ * time header. A back-to-back shift (the purple 11am–4pm turn) is tagged so the
+ * cleaner knows those units must be finished before same-day check-in.
  */
 function composeMessage_(name, dayLabel, events) {
   const sorted = events.slice().sort(function (a, b) {
     return a.getStartTime() - b.getStartTime();
   });
 
-  const body = [];
-  let totalUnits = 0;
-  let b2bUnits = 0;
+  const totalUnits = sorted.reduce(function (n, e) {
+    return n + splitUnits_(e.getTitle()).length;
+  }, 0);
+
+  const lines = [];
+  lines.push(CONFIG.BRAND + ' — ' + dayLabel +
+    ' (' + totalUnits + ' unit' + (totalUnits === 1 ? '' : 's') + '):');
 
   sorted.forEach(function (event) {
-    body.push('');
-    body.push((event.isAllDayEvent()
+    lines.push('');
+
+    let header = event.isAllDayEvent()
       ? 'All day'
-      : formatTime_(event.getStartTime()) + '–' + formatTime_(event.getEndTime())) + ':');
+      : formatTime_(event.getStartTime()) + '–' + formatTime_(event.getEndTime());
+    if (isBackToBackEvent_(event)) {
+      header = '⚠️ BACK-TO-BACK · ' + header + ' (finish before check-in)';
+    }
+    lines.push(header + ':');
 
     splitUnits_(event.getTitle()).forEach(function (unit) {
-      totalUnits++;
-      if (isBackToBackUnit_(unit)) {
-        b2bUnits++;
-        body.push(' • ⚠️ ' + unit + ' — check-in today, finish first');
-      } else {
-        body.push(' • ' + unit);
-      }
+      lines.push(' • ' + unit);
     });
 
     const loc = event.getLocation();
-    if (loc) body.push('   ' + loc);
+    if (loc) lines.push('   ' + loc);
 
     const notes = cleanNotes_(event.getDescription());
-    if (notes) body.push('   Notes: ' + notes);
+    if (notes) lines.push('   Notes: ' + notes);
   });
 
-  let head = CONFIG.BRAND + ' cleaning — ' + dayLabel +
-    ' (' + totalUnits + ' unit' + (totalUnits === 1 ? '' : 's');
-  if (b2bUnits) head += ', ' + b2bUnits + ' back-to-back';
-  head += '):';
-
-  return [head].concat(body, ['', 'Reply here if you cannot make it. Thanks, ' + name + '!']).join('\n');
+  lines.push('');
+  lines.push('Reply here if you cannot make it. Thanks, ' + name + '!');
+  return lines.join('\n');
 }
 
 /** Split a multi-unit event title on commas into trimmed unit strings. */
@@ -170,12 +188,12 @@ function splitUnits_(title) {
 }
 
 /**
- * True if a unit like "Seattle 5544(2->2)" has a same-day check-in — i.e. the
- * number after "->" is greater than 0. Units with no arrow return false.
+ * True if an event is the back-to-back (purple, morning) shift — it starts before
+ * CONFIG.BACKTOBACK_BEFORE_HOUR. All-day events are treated as not back-to-back.
  */
-function isBackToBackUnit_(unit) {
-  const m = unit.match(/\(\s*\d+\s*->\s*(\d+)\s*\)/);
-  return m ? Number(m[1]) > 0 : false;
+function isBackToBackEvent_(event) {
+  if (event.isAllDayEvent()) return false;
+  return event.getStartTime().getHours() < CONFIG.BACKTOBACK_BEFORE_HOUR;
 }
 
 /** Strip HTML and collapse whitespace from a calendar description. */

@@ -19,10 +19,14 @@ const CONFIG = {
   // The empty "(No title)" 11am–4pm / 4–10pm shift blocks are ignored.
   SKIP_UNTITLED: true,
 
-  // A unit is flagged BACK-TO-BACK when its "(out->in)" arrow shows in > 0
-  // (a guest checks in that day → must finish before arrival). This is read per
-  // unit from the title, so no event-color configuration is needed.
+  // BACK-TO-BACK is a property of the EVENT (the shift), not the unit. The purple
+  // morning shift (11am–4pm) is the back-to-back turn — a new guest checks in that
+  // day, so it must finish before arrival. The yellow evening shift (4pm–10pm) is
+  // not. We classify by the event's START hour (24h, calendar timezone): an event
+  // that starts before this hour is back-to-back. 15 (3pm) cleanly splits the
+  // 11am shift from the 4pm shift.
+  BACKTOBACK_BEFORE_HOUR: 15,
 
   // Business name shown at the top of each text message.
-  BRAND: 'Valta',
+  BRAND: 'Valta Realty Cleaning Schedule',
 };
