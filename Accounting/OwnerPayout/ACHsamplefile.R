@@ -9,7 +9,7 @@ library(lubridate)
 ###   invoices from billing emails:
 setwd("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/OwnerPayments/")
 cohost = read.xlsx('/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx')
-# owners = read.xlsx("/Users/ylin/My Drive/Cohost/Accounting/01-OwnerPayout Records.xlsx",
+{# owners = read.xlsx("/Users/ylin/My Drive/Cohost/Accounting/01-OwnerPayout Records.xlsx",
 #                    startRow=8)
 # colnames(owners)[4]="Rounting"
 # 
@@ -38,6 +38,7 @@ cohost = read.xlsx('/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Pr
 # owners = rbind.fill(owners,added)
 
 #owners_direct = owners
+}  
 owners = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Accounting/OwnerPayments/Data/Owners.xlsx")
 ## check owners directly pull from payout to my owner file
 #both = merge(owners_direct,owners,by="Property",all=T) 
@@ -45,7 +46,7 @@ owners = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Acco
 
 ## Owner Payout Checking....
 payout= read.xlsx("/Users/ylin/Google Drive/My Drive/Accounting/01-OwnerPayout Records.xlsx",
-                   sheet="2026.05") 
+                   sheet="2026.06") 
 colnames(payout)[c(3,10)] =c("Listing","PayoutName_old")
 payout= payout %>% filter(!is.na(Date) & !is.na(Payout)) 
 
@@ -64,8 +65,16 @@ both = merge(owners %>% select(Property,Name),
 
 ## ======================================================
 ### create ACH file
-paydate ="20260612"
-payouts = merge(payout %>% select(Listing,Property,Type,Owner,Payout,MCR,PayoutName),
+paydate ="20260714"
+paymonth = "2607"
+creation.date = "260709"
+
+seatac = data.frame(Listing='Seatac 12834',Property = "Seatac 12834",Type="LTR",
+                    Owner = "Jing Zhou",Payout=as.numeric(5000),
+                    PayoutName="Jing Zhou US bank")
+payouts = merge(rbind.fill(payout %>% 
+                             select(Listing,Property,Type,Owner,Payout,MCR,PayoutName),
+                           seatac),
                 owners %>% select(Property,Rounting, account.number),
                 by="Property",all.x=T) 
 #add = payouts %>% filter(Owner %in% 'Valta Homes')
@@ -82,8 +91,14 @@ payouts = payouts %>% #rbind(payouts,add) %>%
 sum(payouts$Payout) #2026.04:145665.9
 #Mar: 124675.21 #118217.3=855.37+117361.97 Feb #118247/61 #154556.68/58
 #2026.05: 173780.46
-sum(payouts$Payout[payouts$Type %in% "STR"]) #2026.05: 155201.43
-sum(payouts$Payout[payouts$Type %in% "LTR"]) #2026.05: 18579.03
+#2026.06: 67/58/9/313552.02
+
+sum(payouts$Payout[payouts$Type %in% "STR"]) 
+#2026.05: 155201.43
+#2026.06: 282632.9
+sum(payouts$Payout[payouts$Type %in% "LTR"]) 
+#2026.05: 18579.03
+#2026.06: 35919.09
 
 #sum(payouts$Payout[payouts$Owner %in% 'Valta Homes']) #417.8 Feb #328.36
 #sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) 
@@ -121,6 +136,7 @@ createACH <-function(achfile,samplefile,BatchId,creation.date,paydate){
   samplefile$Total.ACH.debit.amount[4] = sum(achfile$Total.trxn)
   samplefile$Total.ACH.credit.amount[2] = sum(achfile$Total.trxn)
   
+  achfile$Total.trxn = trimws(format(achfile$Total.trxn, scientific = FALSE))
   output = rbind(samplefile[1:5,],achfile)
 }
 
@@ -136,8 +152,7 @@ STR = payouts %>% filter(Type %in% "STR")
 #        "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
 #Feb: onhold Lake stevens
 
-BatchId = 260710
-creation.date = "260609"
+BatchId = paste0(paymonth,10)
 output = createACH(STR,samplefile,BatchId,creation.date,paydate)
 #2026.1.11: 58 , sophia and ValtaHome is not $1126.02 
 View(output) 
@@ -145,15 +160,15 @@ View(output)
 # 115,644.52 Jan
 # 148,073.88 Dec
 # 2026.05: 155201.43
-write.table(output,"./ACHfile_filled/ACHfile_filled_STR_202606.csv",
+write.table(output,paste0("./ACHfile_filled/ACHfile_filled_STR_20",paymonth,".csv"),
             row=F,col = F,na="",sep=",",quo=F)
 
-BatchId = 260720
+BatchId = paste0(paymonth,20)
 LTR = payouts %>% filter(Type %in% "LTR")
 output.LTR = createACH(LTR,samplefile.LTR,BatchId,creation.date,paydate)
 View(output.LTR) 
 # 2026.05: 18579.03
-write.table(output.LTR,"./ACHfile_filled/ACHfile_filled_LTR_202606.csv",
+write.table(output.LTR,paste0("./ACHfile_filled/ACHfile_filled_LTR_20",paymonth,".csv"),
             row=F,col = F,na="",sep=",",quo=F)
 
 
@@ -161,8 +176,8 @@ write.table(output.LTR,"./ACHfile_filled/ACHfile_filled_LTR_202606.csv",
 
 ## check payments
 
-reports = read.csv('./Report/Owner_payout_202605.csv')
+reports = read.csv('./Report/Owner_payout_202606.csv')
 reports$Amount = -as.numeric(gsub("[$, ]","",reports$Amount))
 
-both = merge(payout,reports[,c("Pay.to","Amount")],by.x="Payout",by.y="Amount",all.x=T)
-both %>% select(Listing,Pay.to,Payout,Paid.Record) %>% View()
+both = merge(payouts,reports[,c("Pay.to","Amount")],by.x="Payout",by.y="Amount",all.y=T)
+both %>% select(Listing,Pay.to,Payout,filename) %>% View()
