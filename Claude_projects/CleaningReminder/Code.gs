@@ -246,15 +246,18 @@ function isBackToBackEvent_(event) {
 
 /** Build the daily SMS body for one cleaner from their typed jobs. */
 function composeMessage_(name, dayLabel, jobs) {
-  const totalUnits = jobs.reduce(function (n, j) {
-    return n + splitUnits_(j.event.getTitle()).length;
-  }, 0);
+  const residential = [];
+  const timed = [];
+  jobs.forEach(function (j) { (j.type === 'residential' ? residential : timed).push(j); });
+
+  const totalUnits = jobs.reduce(function (n, j) { return n + unitCount_(j); }, 0);
 
   const lines = [];
   lines.push(CONFIG.BRAND + ' — ' + dayLabel +
     ' (' + totalUnits + ' unit' + (totalUnits === 1 ? '' : 's') + '):');
 
-  jobs.forEach(function (job) {
+  // Timed shift jobs (back-to-back, next-day, move-in/out): section per event.
+  timed.forEach(function (job) {
     lines.push('');
     lines.push(typeHeader_(job) + ':');
 
@@ -269,9 +272,28 @@ function composeMessage_(name, dayLabel, jobs) {
     if (notes) lines.push('   Notes: ' + notes);
   });
 
+  // Residential: one row per cleaning, contact + address only.
+  if (residential.length) {
+    lines.push('');
+    lines.push('Residential:');
+    residential.forEach(function (job) { lines.push(' • ' + residentialRow_(job)); });
+  }
+
   lines.push('');
   lines.push('Reply here if you cannot make it. Thanks, ' + name + '!');
   return lines.join('\n');
+}
+
+/** One residential row: contact (event title) + address (event location). */
+function residentialRow_(job) {
+  const contact = job.event.getTitle().trim();
+  const address = (job.event.getLocation() || '').trim();
+  return address ? contact + ' — ' + address : contact;
+}
+
+/** Cleanings represented by a job: residential = 1 per event, else one per unit. */
+function unitCount_(job) {
+  return job.type === 'residential' ? 1 : splitUnits_(job.event.getTitle()).length;
 }
 
 /** The section header for a job: time window plus a type tag. */
@@ -362,7 +384,7 @@ function tallyWeek_(cleaner, week) {
 
     collectJobs_(cleaner, day).forEach(function (job) {
       if (!(job.type in counts)) return;
-      const n = splitUnits_(job.event.getTitle()).length;
+      const n = unitCount_(job);
       counts[job.type] += n;
       totals[job.type] += n;
       dayTotal += n;

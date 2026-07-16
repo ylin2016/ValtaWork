@@ -129,6 +129,12 @@ A cleaner can cover extra calendars beyond their own shifts — list them in
 are folded into that cleaner's **daily message** (as their own labeled sections)
 and **weekly summary**. Maria is set up with Residential + Move-in/out.
 
+**Residential** renders differently: **one row per cleaning**, showing only the
+**contact** (event title) and **address** (event location) — no time or unit
+splitting — under a single `Residential:` section. It counts as one cleaning per
+event in the unit totals. (Back-to-back / next-day / move-in-out still split their
+comma-separated unit lists.)
+
 > Calendar names are matched **exactly** (case-sensitive). If an extra calendar
 > "not found" shows in the log, run `listCleanerCalendars` and copy the name
 > verbatim (or use `calendarId`).
