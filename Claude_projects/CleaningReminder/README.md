@@ -18,15 +18,16 @@ natively — no key files or OAuth tokens to manage.
   `Property Unit(guests_out->guests_in)`. The script splits on commas and lists
   each unit on its own line. Empty `(No title)` 11am–4pm / 4–10pm blocks are shift
   placeholders and are ignored (`CONFIG.SKIP_UNTITLED`).
-- **The event color flags back-to-back.** Purple = back-to-back (same-day
-  turnover, hard deadline); yellow = not back-to-back. Back-to-back jobs are
-  tagged `⚠️ BACK-TO-BACK` in the text. Which color counts as back-to-back is set
-  by `CONFIG.BACKTOBACK_COLORS` — `previewTomorrow` prints each event's real
-  color id so you can confirm the mapping.
+- **Back-to-back is a property of the shift (event), not the unit.** The purple
+  morning event (11am–4pm) is the back-to-back turn — a guest checks in that day,
+  so it must finish before arrival — and its whole section is tagged
+  `⚠️ BACK-TO-BACK`. The yellow evening event (4pm–10pm) is not. Shifts are told
+  apart by start time (`CONFIG.BACKTOBACK_BEFORE_HOUR`, default 3pm), so the
+  `(out->in)` arrows on individual units don't affect this.
 - Each cleaner's titled jobs for the day are combined into **one** text.
 
-The job title is forwarded to the cleaner **as written** (it's their own
-shorthand). If you'd rather I expand `Name Unit(out->in)` into words, say so.
+Each unit is forwarded **as written** (the cleaners' own shorthand). If you'd
+rather expand `Property Unit(out->in)` into words, say so.
 
 ## Files
 
@@ -52,18 +53,46 @@ name/ID the account can see. Make sure the `calendar:` values in `Cleaners.gs`
 match exactly. (If any name isn't unique, put the calendar's ID in a
 `calendarId:` field on that row instead.)
 
-### 3. Add each cleaner's phone
-Edit `Cleaners.gs` — fill the `phone` for each cleaner in **E.164** (`+1` + 10
-digits, no spaces/dashes). Leave a row's phone blank to skip that cleaner for now.
+### 3. Add each cleaner's phone(s)
+Edit `Cleaners.gs` — fill `phones` for each cleaner in **E.164** (`+1` + 10
+digits, no spaces/dashes). List **all the numbers for that cleaner's group** (the
+cleaner plus any helpers): `phones: ['+18283311782', '+12065551234']`. Leave
+`phones: []` to skip that cleaner for now. See *Group messaging* below.
 
 ### 4. Add Twilio credentials (secrets — not in code)
-1. Create a Twilio account and an SMS-capable number.
+1. Create a Twilio account and a phone number. For group messaging it must be an
+   **MMS-enabled US/Canada number**; for plain 1:1 SMS any SMS number works.
 2. Apps Script → **Project Settings → Script properties → Add**:
    | Property               | Value                                   |
    |------------------------|-----------------------------------------|
    | `TWILIO_ACCOUNT_SID`   | Account SID (starts `AC…`)              |
    | `TWILIO_AUTH_TOKEN`    | Auth Token                              |
    | `TWILIO_FROM_NUMBER`   | Twilio number, e.g. `+15125550100`      |
+
+### Group messaging
+With `CONFIG.GROUP_MESSAGING: true` (the default), each cleaner's `phones` form
+**one shared group text** (Twilio Conversations *Group MMS*) — the cleaner and
+their helpers all see each other's replies, like a normal group chat. The thread
+is created once per cleaner and reused every day (its ID is cached in Script
+Properties), so it stays one continuous conversation.
+
+**Leader / dispatcher oversight.** Put the leader's number in
+`CONFIG.LEADER_PHONES`. With a single Twilio number the leader **cannot** be a
+member of every group (a number can only be in one group MMS thread per sending
+number), so instead they receive a **1:1 copy** of each cleaner's schedule. They
+see every schedule; they don't see the cleaners' in-thread replies. (To put the
+leader *inside* every group you'd need one Twilio number per cleaner and a
+`fromNumber` per cleaner in `Cleaners.gs`.)
+
+Requirements & limits:
+- **MMS-enabled US/Canada** sending number; **A2P 10DLC** registration for US.
+- A cleaner needs **2+ numbers** to form a group; one number falls back to 1:1 SMS.
+- A phone number can be in **only one group per sending number** — so don't put
+  the same helper in two cleaners' groups on one number.
+- After you **change a cleaner's `phones`**, run **`resetGroups`** once so the
+  next run rebuilds the thread with the new members.
+
+Set `GROUP_MESSAGING: false` to send every number (cleaner + leader) a plain 1:1 SMS.
 
 ### 5. Check the timezone
 `appsscript.json` is `America/Los_Angeles` (Pacific — matches the Seattle-area
@@ -74,9 +103,10 @@ properties and the GMT-07 grid in your calendar). This controls what counts as
 
 `Config.gs` ships with `DRY_RUN: true`. Run **`previewTomorrow`** (first run asks
 you to authorize Calendar + external-request access). Open **Executions / Logs**:
-for each cleaner you'll see the number of jobs and the **exact SMS** that would
-be sent — no texts go out. Share that log with me and we'll tune the parsing to
-your real events if anything looks off.
+for each cleaner you'll see the **exact SMS** that would be sent — no texts go
+out. To check a specific day, set `CONFIG.PREVIEW_DATE` and run **`previewDate`**
+(the Run button can't pass an argument, so it reads the date from Config). Share
+that log with me and we'll tune the parsing to your real events if anything looks off.
 
 ## Go live
 
