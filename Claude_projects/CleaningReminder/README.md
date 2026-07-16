@@ -130,15 +130,13 @@ are folded into that cleaner's **daily message** (as their own labeled sections)
 and **weekly summary**. Maria is set up with Residential + Move-in/out.
 
 **Residential** renders differently: **one row per cleaning** under a single
-`Residential:` section — no time, no unit splitting. The **title is ignored**
-(it's freeform); instead each row shows the **address** (event *location* field,
-deduped) plus the **name & phone** parsed from the **first line of the notes**
-(e.g. `owner Swetha  (214) 226-8097`). The leading "owner" label is dropped and
-the phone is normalized to US `(XXX) XXX-XXXX` →
+`Residential:` section — no time, no unit splitting. Each row shows the
+**address only** (the event's *location* field, deduped; the freeform title is
+ignored) →
 
 ```
 Residential:
- • 1938 Riva Ln NW, Issaquah, WA 98027, USA — Swetha (214) 226-8097
+ • 1938 Riva Ln NW, Issaquah, WA 98027, USA
 ```
 
 It counts as one cleaning per event in the totals. (Back-to-back / next-day /

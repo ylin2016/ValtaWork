@@ -284,49 +284,9 @@ function composeMessage_(name, dayLabel, jobs) {
   return lines.join('\n');
 }
 
-// Matches a US phone in the notes, e.g. "(214) 226-8097", "214-226-8097".
-const PHONE_RE = /\(?\d{3}\)?[\s.\-]?\d{3}[\s.\-]?\d{4}/;
-
-/**
- * One residential row — address (from location) + name & phone (from the notes).
- * The title is intentionally ignored (it's freeform). Notes look like:
- *   "owner Swetha  (214) 226-8097\ncheck with ... \n3 Beds ..."
- */
+/** One residential row — address only (deduped location field; title as fallback). */
 function residentialRow_(job) {
-  const desc = job.event.getDescription() || '';
-  const phone = extractPhone_(desc);                       // normalized US format
-  const name = firstDescLine_(desc)
-    .replace(PHONE_RE, '')                                 // drop the phone (any format)
-    .replace(/^owner\b[\s:]*/i, '')                        // drop leading "owner" label
-    .replace(/[\s,;:–-]+$/, '')
-    .trim();
-
-  const address = dedupeAddress_(job.event.getLocation() || '');
-  const contact = [name, phone].filter(function (s) { return s; }).join(' ');
-  const parts = [address, contact].filter(function (s) { return s; });
-  return parts.length ? parts.join(' — ') : job.event.getTitle().trim();
-}
-
-/** First non-empty line of a calendar description (HTML → newlines, tags stripped). */
-function firstDescLine_(desc) {
-  const text = String(desc)
-    .replace(/<br\s*\/?>/gi, '\n')
-    .replace(/<\/(div|p|li|tr)>/gi, '\n')
-    .replace(/<[^>]*>/g, '');
-  const lines = text.split(/\r?\n/);
-  for (var i = 0; i < lines.length; i++) {
-    if (lines[i].trim()) return lines[i].trim();
-  }
-  return '';
-}
-
-/** First phone in text, normalized to US "(XXX) XXX-XXXX" (drops a leading country 1). */
-function extractPhone_(text) {
-  const m = String(text).match(PHONE_RE);
-  if (!m) return '';
-  var d = m[0].replace(/\D/g, '');
-  if (d.length === 11 && d.charAt(0) === '1') d = d.slice(1);
-  return d.length === 10 ? '(' + d.slice(0, 3) + ') ' + d.slice(3, 6) + '-' + d.slice(6) : m[0].trim();
+  return dedupeAddress_(job.event.getLocation() || '') || job.event.getTitle().trim();
 }
 
 /** Drop duplicate comma-separated segments from a location string, preserving order. */
