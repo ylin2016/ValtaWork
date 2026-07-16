@@ -293,7 +293,8 @@ function composeMessage_(name, dayLabel, jobs) {
 function residentialRow_(job) {
   const loc = dedupeAddress_(job.event.getLocation() || '');
   if (loc) return loc;
-  return addressFromTitle_(job.event.getTitle() || '') || job.event.getTitle().trim();
+  const title = job.event.getTitle().trim();
+  return addressFromTitle_(title) || title;
 }
 
 /**
@@ -303,14 +304,13 @@ function residentialRow_(job) {
  * segment when that looks like a city/place name. Returns '' if none found.
  */
 function addressFromTitle_(title) {
-  const seg = String(title).split(',').map(function (s) { return s.trim(); });
+  const seg = splitUnits_(title);            // comma-split + trim + drop blanks
   const streetRe = /^\d{1,6}\s+\S/;          // "14701 SE 42nd ST" yes; "4252833210 Max" no
   const placeRe = /^[A-Za-z][A-Za-z .'-]*$/; // city = the letters-only segment right after the street
   for (var i = 0; i < seg.length; i++) {
     if (streetRe.test(seg[i])) {
-      const parts = [seg[i]];
-      if (i + 1 < seg.length && placeRe.test(seg[i + 1])) parts.push(seg[i + 1]);
-      return parts.join(', ');
+      const next = seg[i + 1];
+      return next && placeRe.test(next) ? seg[i] + ', ' + next : seg[i];
     }
   }
   return '';
