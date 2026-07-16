@@ -113,12 +113,60 @@ that log with me and we'll tune the parsing to your real events if anything look
 1. Set `DRY_RUN: false` in `Config.gs`.
 2. Run **`runDaily`** once manually — real texts send. Confirm receipt.
 
-## Automate the daily scan (when ready)
+## Cleaning types & extra calendars
 
-Currently manual, by design. To automate:
-- Apps Script → **Triggers** (clock icon) → **Add Trigger**
-  - Function `runDaily`, **Time-driven → Day timer**, pick an hour (e.g. 5–6pm so
-    cleaners get tomorrow's list the evening before).
+Every cleaning has a **type**:
+
+| Type | Where it comes from |
+|------|---------------------|
+| Back-to-back | main `ValtaAuto_*` calendar, purple 11am–4pm shift (start before `BACKTOBACK_BEFORE_HOUR`) |
+| Next-day | main `ValtaAuto_*` calendar, yellow 4–10pm shift |
+| Residential | the cleaner's **`Residential Cleaning`** extra calendar |
+| Move-in/out | the cleaner's **`move in/out cleaning`** extra calendar |
+
+A cleaner can cover extra calendars beyond their own shifts — list them in
+`Cleaners.gs` under `extraCalendars`, each tagged with its `type`. Their events
+are folded into that cleaner's **daily message** (as their own labeled sections)
+and **weekly summary**. Maria is set up with Residential + Move-in/out.
+
+> Calendar names are matched **exactly** (case-sensitive). If an extra calendar
+> "not found" shows in the log, run `listCleanerCalendars` and copy the name
+> verbatim (or use `calendarId`).
+
+## Weekly summary (Sundays)
+
+`runWeekly` texts each cleaner a summary of their **coming week** (the 7 days
+Sun–Sat): totals per type, plus a per-day breakdown. Counts are by unit, same as
+the daily reminder. Only the types that cleaner actually covers are shown.
+Preview safely with **`previewWeekly`** (never sends). Example:
+
+```
+Valta Realty Cleaning Schedule — week of Sun, Jul 12 (49 units):
+
+Totals:
+ • Back-to-back: 12
+ • Next-day: 34
+ • Residential: 3
+
+By day:
+ Sun Jul 12 — B2B 2, Next 5
+ Mon Jul 13 — B2B 1, Next 4, Res 1
+ Tue Jul 14 — none
+ …
+
+Thanks, Maria!
+```
+
+The weekly summary goes to **each cleaner** (no leader CC).
+
+## Automate the scans (when ready)
+
+Currently manual, by design. To automate, Apps Script → **Triggers** (clock icon)
+→ **Add Trigger**:
+- **Daily:** function `runDaily`, **Time-driven → Day timer**, pick an hour (e.g.
+  5–6pm so cleaners get tomorrow's list the evening before).
+- **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Sunday**,
+  pick an hour (e.g. Sunday morning).
 
 ## Assumptions to confirm
 

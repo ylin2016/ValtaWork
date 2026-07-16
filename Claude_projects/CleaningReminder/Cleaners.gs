@@ -14,6 +14,11 @@
  *                from. Give each cleaner a DIFFERENT one if the leader must be in
  *                every group (a number can only be in one group per sending
  *                number). Omit to use the default TWILIO_FROM_NUMBER.
+ *   extraCalendars — (optional) additional calendars this cleaner covers, each
+ *                tagged with a fixed cleaning type. Their events are added to the
+ *                cleaner's daily message and weekly summary. Types:
+ *                'residential', 'moveinout'. (Main-calendar events are typed
+ *                automatically as 'backtoback'/'nextday' by shift time.)
  *
  * If two calendars happen to share a name, use `calendarId` instead of
  * `calendar` (Calendar settings → "Integrate calendar" → Calendar ID).
@@ -25,7 +30,13 @@ const CLEANERS = [
   { name: 'Anna',     calendar: 'ValtaAuto_Anna',     phones: [], fromNumber: '' },
   { name: 'Camilla',  calendar: 'ValtaAuto_Camilla',  phones: [], fromNumber: '' },
   { name: 'Crystal',  calendar: 'ValtaAuto_Crystal',  phones: [], fromNumber: '' },
-  { name: 'Maria',    calendar: 'ValtaAuto_Maria',    phones: ['+18283311782'], fromNumber: '' },
+  {
+    name: 'Maria', calendar: 'ValtaAuto_Maria', phones: ['+18283311782'], fromNumber: '',
+    extraCalendars: [
+      { calendar: 'Residential Cleaning',  type: 'residential' },
+      { calendar: 'move in/out cleaning',  type: 'moveinout' },
+    ],
+  },
 ];
 
 // Example — a cleaner's own two numbers, its own Twilio sending number, and the
