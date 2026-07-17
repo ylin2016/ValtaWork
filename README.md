@@ -2,7 +2,8 @@
 
 A Google Apps Script that scans each cleaner's Google Calendar once a day, finds
 their **next-day** cleaning jobs, and texts them (via **Twilio**) the list of
-units, with times and any notes.
+units, with times and any notes. Each cleaner can have several phone numbers —
+every number gets its own 1:1 SMS copy.
 
 It runs *as* the vacation@valtarealty.com account, so calendars are read
 natively — no key files or OAuth tokens to manage.
@@ -55,13 +56,13 @@ match exactly. (If any name isn't unique, put the calendar's ID in a
 
 ### 3. Add each cleaner's phone(s)
 Edit `Cleaners.gs` — fill `phones` for each cleaner in **E.164** (`+1` + 10
-digits, no spaces/dashes). List **all the numbers for that cleaner's group** (the
-cleaner plus any helpers): `phones: ['+18283311782', '+12065551234']`. Leave
-`phones: []` to skip that cleaner for now. See *Group messaging* below.
+digits, no spaces/dashes). List **all the numbers for that cleaner** (the cleaner
+plus any helpers): `phones: ['+18283311782', '+12065551234']`. **Each number gets
+its own 1:1 SMS copy** of that cleaner's schedule. Leave `phones: []` to skip that
+cleaner for now.
 
 ### 4. Add Twilio credentials (secrets — not in code)
-1. Create a Twilio account and a phone number. For group messaging it must be an
-   **MMS-enabled US/Canada number**; for plain 1:1 SMS any SMS number works.
+1. Create a Twilio account and an **SMS-enabled** phone number.
 2. Apps Script → **Project Settings → Script properties → Add**:
    | Property               | Value                                   |
    |------------------------|-----------------------------------------|
@@ -69,30 +70,16 @@ cleaner plus any helpers): `phones: ['+18283311782', '+12065551234']`. Leave
    | `TWILIO_AUTH_TOKEN`    | Auth Token                              |
    | `TWILIO_FROM_NUMBER`   | Twilio number, e.g. `+15125550100`      |
 
-### Group messaging
-With `CONFIG.GROUP_MESSAGING: true` (the default), each cleaner's `phones` form
-**one shared group text** (Twilio Conversations *Group MMS*) — the cleaner and
-their helpers all see each other's replies, like a normal group chat. The thread
-is created once per cleaner and reused every day (its ID is cached in Script
-Properties), so it stays one continuous conversation.
+### How messages are sent
+Every number in a cleaner's `phones` list receives its **own separate 1:1 SMS**
+copy of that cleaner's schedule — the cleaner and any helpers each get the same
+text individually (there is no shared group thread; replies are private to each
+sender). Any US A2P 10DLC registration your Twilio account requires for SMS still
+applies.
 
 **Leader / dispatcher oversight.** Put the leader's number in
-`CONFIG.LEADER_PHONES`. With a single Twilio number the leader **cannot** be a
-member of every group (a number can only be in one group MMS thread per sending
-number), so instead they receive a **1:1 copy** of each cleaner's schedule. They
-see every schedule; they don't see the cleaners' in-thread replies. (To put the
-leader *inside* every group you'd need one Twilio number per cleaner and a
-`fromNumber` per cleaner in `Cleaners.gs`.)
-
-Requirements & limits:
-- **MMS-enabled US/Canada** sending number; **A2P 10DLC** registration for US.
-- A cleaner needs **2+ numbers** to form a group; one number falls back to 1:1 SMS.
-- A phone number can be in **only one group per sending number** — so don't put
-  the same helper in two cleaners' groups on one number.
-- After you **change a cleaner's `phones`**, run **`resetGroups`** once so the
-  next run rebuilds the thread with the new members.
-
-Set `GROUP_MESSAGING: false` to send every number (cleaner + leader) a plain 1:1 SMS.
+`CONFIG.LEADER_PHONES` and they'll get a **1:1 copy of every cleaner's schedule**,
+exactly like the cleaners do.
 
 ### 5. Check the timezone
 `appsscript.json` is `America/Los_Angeles` (Pacific — matches the Seattle-area
