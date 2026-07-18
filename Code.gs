@@ -8,9 +8,11 @@
  *
  * ENTRY POINTS (run from the editor's ▶ Run menu, or a time trigger):
  *   runDaily()              — daily next-day reminder. Honors CONFIG.DRY_RUN.
- *   runWeekly()             — weekly week-ahead summary (trigger on Sundays).
+ *   runWeekly()             — weekly summary (CONFIG.WEEKLY_TARGET; trigger Sundays).
  *   previewTomorrow()       — dry run for tomorrow + verbose log, never sends.
- *   previewWeekly()         — dry run of the weekly summary, never sends.
+ *   previewWeekly()         — dry run of what runWeekly would send, never sends.
+ *   previewThisWeek()       — dry run of THIS week's summary, never sends.
+ *   previewNextWeek()       — dry run of NEXT week's summary, never sends.
  *   previewDate()           — dry run for CONFIG.PREVIEW_DATE (set it, then Run).
  *   listCleanerCalendars()  — print every calendar name/ID this account can see.
  *
@@ -36,14 +38,27 @@ function previewDate(dateStr) {
   return runForDay_(dayFromString_(dateStr || CONFIG.PREVIEW_DATE), true);
 }
 
-/** Weekly summary for the coming week (Sun–Sat). Honors CONFIG.DRY_RUN. Trigger on Sundays. */
+/**
+ * Weekly summary (Sun–Sat) for the week set by CONFIG.WEEKLY_TARGET
+ * ('upcoming' | 'this' | 'next'). Honors CONFIG.DRY_RUN. Trigger on Sundays.
+ */
 function runWeekly() {
-  return runWeekly_(CONFIG.DRY_RUN);
+  return runWeekly_(CONFIG.DRY_RUN, CONFIG.WEEKLY_TARGET);
 }
 
-/** Non-sending preview of the weekly summary — never texts anyone. */
+/** Non-sending preview of what runWeekly would send (uses CONFIG.WEEKLY_TARGET). */
 function previewWeekly() {
-  return runWeekly_(true);
+  return runWeekly_(true, CONFIG.WEEKLY_TARGET);
+}
+
+/** Non-sending preview of THIS calendar week (Sun–Sat containing today). */
+function previewThisWeek() {
+  return runWeekly_(true, 'this');
+}
+
+/** Non-sending preview of NEXT week (the Sun–Sat after this one). */
+function previewNextWeek() {
+  return runWeekly_(true, 'next');
 }
 
 /* ------------------------------------------------------------------ */
@@ -364,9 +379,9 @@ function cleanNotes_(desc) {
 /* Weekly summary                                                     */
 /* ------------------------------------------------------------------ */
 
-/** Build + (optionally) send each cleaner's week-ahead summary. */
-function runWeekly_(dryRun) {
-  const week = weekWindow_();
+/** Build + (optionally) send each cleaner's week summary for the chosen week (see weekWindow_). */
+function runWeekly_(dryRun, mode) {
+  const week = weekWindow_(mode);
   const weekLabel = formatDay_({ start: week.start });
   Logger.log('CleaningReminder — weekly summary, week of %s%s', weekLabel, dryRun ? '  (DRY RUN — no texts)' : '');
 
@@ -386,14 +401,20 @@ function runWeekly_(dryRun) {
 }
 
 /**
- * Seven day-windows for the UPCOMING week (Sun–Sat). If today is Sunday — the
- * intended trigger day — that's the week starting today; on any other day it's
- * next week. So running mid-week always previews the week ahead, not the one
- * already in progress.
+ * Seven day-windows (Sun–Sat) for the chosen week. `mode`:
+ *   'this'     — the calendar week that contains today.
+ *   'next'     — the week after this one.
+ *   'upcoming' — (default) today's week if it's Sunday, else next week. This is
+ *                the trigger-day behavior: a Sunday run covers the week starting
+ *                that day; a mid-week run looks ahead to next week.
  */
-function weekWindow_() {
+function weekWindow_(mode) {
   const now = new Date();
-  const daysToSun = (7 - now.getDay()) % 7; // 0 today if Sunday, else days to next Sunday
+  const dow = now.getDay(); // 0 = Sunday
+  var daysToSun;
+  if (mode === 'this') daysToSun = -dow;             // Sunday of the current week
+  else if (mode === 'next') daysToSun = 7 - dow;     // Sunday of next week
+  else daysToSun = (7 - dow) % 7;                     // 'upcoming': today if Sunday, else next Sunday
   const sun = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSun, 0, 0, 0);
   const days = [];
   for (var i = 0; i < 7; i++) {

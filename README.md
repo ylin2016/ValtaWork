@@ -143,14 +143,21 @@ move-in-out still split their comma-separated unit lists.)
 
 ## Weekly summary (Sundays)
 
-`runWeekly` texts each cleaner a summary of their **upcoming week** (the 7 days
-Sun–Sat): totals per type, plus a per-day breakdown. Counts are by unit, same as
-the daily reminder. Only the types that cleaner actually covers are shown.
+`runWeekly` texts each cleaner a summary of one Sun–Sat week: totals per type,
+plus a per-day breakdown. Counts are by unit, same as the daily reminder. Only
+the types that cleaner actually covers are shown.
 
-The window is the **next** Sun–Sat: on Sunday (the intended trigger day) that's
-the week starting that day, and running any other weekday previews *next* week —
-never the week already in progress. Preview safely with **`previewWeekly`**
-(never sends). Example:
+**Choose which week** with `CONFIG.WEEKLY_TARGET`:
+
+| Value | `runWeekly` sends… |
+|-------|--------------------|
+| `'upcoming'` (default) | today's week if it's **Sunday**, else **next** week — so the Sunday trigger covers the week ahead, and a manual mid-week run also looks ahead |
+| `'this'` | always the calendar week **containing today** |
+| `'next'` | always the week **after** this one |
+
+To just *look* without changing the setting, run **`previewThisWeek`** or
+**`previewNextWeek`** (neither ever sends). **`previewWeekly`** shows exactly what
+`runWeekly` would send under the current `WEEKLY_TARGET`. Example:
 
 ```
 Valta Realty Cleaning Schedule — week of Sun, Jul 12 (49 units):

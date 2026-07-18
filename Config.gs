@@ -24,6 +24,15 @@ const CONFIG = {
   // E.164, e.g. ['+12065550100'].
   LEADER_PHONES: [],
 
+  // Which week runWeekly() summarizes (Sun–Sat):
+  //   'upcoming' → today's week if it's Sunday, else next week. Best for the
+  //                Sunday trigger: Sunday covers the week starting that day, and a
+  //                manual mid-week run looks ahead to next week.
+  //   'this'     → always the calendar week that contains today.
+  //   'next'     → always the week after this one.
+  // To just LOOK without changing this, run previewThisWeek() / previewNextWeek().
+  WEEKLY_TARGET: 'upcoming',
+
   // A calendar event is treated as a cleaning JOB only if it has a real title.
   // The empty "(No title)" 11am–4pm / 4–10pm shift blocks are ignored.
   SKIP_UNTITLED: true,
