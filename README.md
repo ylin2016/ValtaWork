@@ -161,8 +161,7 @@ To just *look* without changing the setting, run **`previewThisWeek`** or
 
 ```
 Valta Realty Cleaning Schedule — Weekly Summary
-Mon, Jul 13 – Sun, Jul 19
-Total: 49 units
+Mon, Jul 13 – Sun, Jul 19 (49 units)
 
 Totals:
  • Back-to-back: 12

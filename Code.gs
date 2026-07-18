@@ -460,8 +460,7 @@ function tallyWeek_(cleaner, week) {
 function composeWeeklyMessage_(name, weekLabel, tally, types) {
   const lines = [];
   lines.push(CONFIG.BRAND + ' — Weekly Summary');
-  lines.push(weekLabel);
-  lines.push('Total: ' + tally.total + ' unit' + (tally.total === 1 ? '' : 's'));
+  lines.push(weekLabel + ' (' + tally.total + ' unit' + (tally.total === 1 ? '' : 's') + ')');
 
   lines.push('');
   lines.push('Totals:');
