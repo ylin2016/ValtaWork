@@ -385,10 +385,16 @@ function runWeekly_(dryRun) {
   return results;
 }
 
-/** Seven day-windows starting on the Sunday of the current week. */
+/**
+ * Seven day-windows for the UPCOMING week (Sun–Sat). If today is Sunday — the
+ * intended trigger day — that's the week starting today; on any other day it's
+ * next week. So running mid-week always previews the week ahead, not the one
+ * already in progress.
+ */
 function weekWindow_() {
   const now = new Date();
-  const sun = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 0, 0, 0);
+  const daysToSun = (7 - now.getDay()) % 7; // 0 today if Sunday, else days to next Sunday
+  const sun = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSun, 0, 0, 0);
   const days = [];
   for (var i = 0; i < 7; i++) {
     days.push({
