@@ -27,7 +27,8 @@ def fetch_all_listings(client: GuestyClient, fields: str | None = None, limit: i
         page_limit = PAGE_SIZE if limit is None else min(PAGE_SIZE, limit - len(results))
         params = {"limit": page_limit, "skip": skip}
         if fields:
-            params["fields"] = fields
+            # Guesty expects space-separated field names; accept commas for convenience.
+            params["fields"] = " ".join(f.strip() for f in fields.replace(",", " ").split())
         data = client.get("/listings", params=params)
         batch = data.get("results", data.get("data", []))
         results.extend(batch)
