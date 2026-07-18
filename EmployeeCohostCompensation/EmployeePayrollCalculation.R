@@ -1,12 +1,4 @@
 ### Check guest reviews for bonus to Jackson and Brittany
-library(plyr)
-library(dplyr)
-library(tidyr)
-library(openxlsx)
-library(lubridate)
-library(ggplot2)
-library(scales)
-
 setwd("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/")
 source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
 
@@ -57,7 +49,7 @@ k="20260716 guesty_reviews.xlsx"
 
 ## Jackson's
 ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2026-06",month)) %>% 
-  #filter(!grepl("Cottage",nickname)) %>%
+  filter(!grepl("Cottage",nickname)) %>%
   group_by(month) %>% reframe(n=n())
 
 ratings[[k]] %>% 

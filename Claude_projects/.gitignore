@@ -12,6 +12,8 @@
 *.csv    # remove this if you WANT to track CSVs
 *.ppt
 *.pptx
+*.ics
+*.html
 
 # Ignore PDFs
 *.pdf
