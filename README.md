@@ -160,7 +160,7 @@ To just *look* without changing the setting, run **`previewThisWeek`** or
 `runWeekly` would send under the current `WEEKLY_TARGET`. Example:
 
 ```
-Valta Realty Cleaning Schedule — week of Mon, Jul 13 (49 units):
+Valta Realty Cleaning Schedule — Mon, Jul 13 – Sun, Jul 19 (49 units):
 
 Totals:
  • Back-to-back: 12

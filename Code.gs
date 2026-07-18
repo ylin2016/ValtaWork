@@ -382,8 +382,8 @@ function cleanNotes_(desc) {
 /** Build + (optionally) send each cleaner's week summary for the chosen week (see weekWindow_). */
 function runWeekly_(dryRun, mode) {
   const week = weekWindow_(mode);
-  const weekLabel = formatDay_({ start: week.start });
-  Logger.log('CleaningReminder — weekly summary, week of %s%s', weekLabel, dryRun ? '  (DRY RUN — no texts)' : '');
+  const weekLabel = formatDay_({ start: week.start }) + ' – ' + formatDay_({ start: week.days[6].start });
+  Logger.log('CleaningReminder — weekly summary, %s%s', weekLabel, dryRun ? '  (DRY RUN — no texts)' : '');
 
   const results = [];
   CLEANERS.forEach(function (cleaner) {
@@ -459,7 +459,7 @@ function tallyWeek_(cleaner, week) {
 /** Build the weekly summary SMS body for the cleaner's relevant `types`. */
 function composeWeeklyMessage_(name, weekLabel, tally, types) {
   const lines = [];
-  lines.push(CONFIG.BRAND + ' — week of ' + weekLabel +
+  lines.push(CONFIG.BRAND + ' — ' + weekLabel +
     ' (' + tally.total + ' unit' + (tally.total === 1 ? '' : 's') + '):');
 
   lines.push('');
