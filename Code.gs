@@ -459,8 +459,9 @@ function tallyWeek_(cleaner, week) {
 /** Build the weekly summary SMS body for the cleaner's relevant `types`. */
 function composeWeeklyMessage_(name, weekLabel, tally, types) {
   const lines = [];
-  lines.push(CONFIG.BRAND + ' — ' + weekLabel +
-    ' (' + tally.total + ' unit' + (tally.total === 1 ? '' : 's') + '):');
+  lines.push(CONFIG.BRAND + ' — Weekly Summary');
+  lines.push(weekLabel);
+  lines.push('Total: ' + tally.total + ' unit' + (tally.total === 1 ? '' : 's'));
 
   lines.push('');
   lines.push('Totals:');
