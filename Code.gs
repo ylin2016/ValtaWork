@@ -8,7 +8,7 @@
  *
  * ENTRY POINTS (run from the editor's ▶ Run menu, or a time trigger):
  *   runDaily()              — daily next-day reminder. Honors CONFIG.DRY_RUN.
- *   runWeekly()             — weekly summary (CONFIG.WEEKLY_TARGET; trigger Sundays).
+ *   runWeekly()             — weekly summary (CONFIG.WEEKLY_TARGET; trigger Mondays).
  *   previewTomorrow()       — dry run for tomorrow + verbose log, never sends.
  *   previewWeekly()         — dry run of what runWeekly would send, never sends.
  *   previewThisWeek()       — dry run of THIS week's summary, never sends.
@@ -39,8 +39,8 @@ function previewDate(dateStr) {
 }
 
 /**
- * Weekly summary (Sun–Sat) for the week set by CONFIG.WEEKLY_TARGET
- * ('upcoming' | 'this' | 'next'). Honors CONFIG.DRY_RUN. Trigger on Sundays.
+ * Weekly summary (Mon–Sun) for the week set by CONFIG.WEEKLY_TARGET
+ * ('upcoming' | 'this' | 'next'). Honors CONFIG.DRY_RUN. Trigger on Mondays.
  */
 function runWeekly() {
   return runWeekly_(CONFIG.DRY_RUN, CONFIG.WEEKLY_TARGET);
@@ -51,12 +51,12 @@ function previewWeekly() {
   return runWeekly_(true, CONFIG.WEEKLY_TARGET);
 }
 
-/** Non-sending preview of THIS calendar week (Sun–Sat containing today). */
+/** Non-sending preview of THIS week (the Mon–Sun week containing today). */
 function previewThisWeek() {
   return runWeekly_(true, 'this');
 }
 
-/** Non-sending preview of NEXT week (the Sun–Sat after this one). */
+/** Non-sending preview of NEXT week (the Mon–Sun after this one). */
 function previewNextWeek() {
   return runWeekly_(true, 'next');
 }
@@ -401,26 +401,27 @@ function runWeekly_(dryRun, mode) {
 }
 
 /**
- * Seven day-windows (Sun–Sat) for the chosen week. `mode`:
- *   'this'     — the calendar week that contains today.
+ * Seven day-windows for the chosen week, running MONDAY–SUNDAY. `mode`:
+ *   'this'     — the Mon–Sun week that contains today.
  *   'next'     — the week after this one.
- *   'upcoming' — (default) today's week if it's Sunday, else next week. This is
- *                the trigger-day behavior: a Sunday run covers the week starting
+ *   'upcoming' — (default) today's week if it's Monday, else next week. This is
+ *                the trigger-day behavior: a Monday run covers the week starting
  *                that day; a mid-week run looks ahead to next week.
  */
 function weekWindow_(mode) {
   const now = new Date();
-  const dow = now.getDay(); // 0 = Sunday
-  var daysToSun;
-  if (mode === 'this') daysToSun = -dow;             // Sunday of the current week
-  else if (mode === 'next') daysToSun = 7 - dow;     // Sunday of next week
-  else daysToSun = (7 - dow) % 7;                     // 'upcoming': today if Sunday, else next Sunday
-  const sun = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToSun, 0, 0, 0);
+  const dow = now.getDay();               // 0 = Sunday … 1 = Monday … 6 = Saturday
+  const sinceMon = (dow + 6) % 7;         // days since this week's Monday (Mon=0 … Sun=6)
+  var daysToMon;
+  if (mode === 'this') daysToMon = -sinceMon;          // Monday of the current week
+  else if (mode === 'next') daysToMon = 7 - sinceMon;  // Monday of next week
+  else daysToMon = (8 - dow) % 7;                       // 'upcoming': today if Monday, else next Monday
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToMon, 0, 0, 0);
   const days = [];
   for (var i = 0; i < 7; i++) {
     days.push({
-      start: new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() + i, 0, 0, 0),
-      end: new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() + i + 1, 0, 0, 0),
+      start: new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i, 0, 0, 0),
+      end: new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i + 1, 0, 0, 0),
     });
   }
   return { start: days[0].start, end: days[6].end, days: days };

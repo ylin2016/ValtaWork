@@ -141,18 +141,18 @@ move-in-out still split their comma-separated unit lists.)
 > "not found" shows in the log, run `listCleanerCalendars` and copy the name
 > verbatim (or use `calendarId`).
 
-## Weekly summary (Sundays)
+## Weekly summary (Mondays)
 
-`runWeekly` texts each cleaner a summary of one Sun–Sat week: totals per type,
-plus a per-day breakdown. Counts are by unit, same as the daily reminder. Only
-the types that cleaner actually covers are shown.
+`runWeekly` texts each cleaner a summary of one **Monday–Sunday** week: totals per
+type, plus a per-day breakdown. Counts are by unit, same as the daily reminder.
+Only the types that cleaner actually covers are shown.
 
 **Choose which week** with `CONFIG.WEEKLY_TARGET`:
 
 | Value | `runWeekly` sends… |
 |-------|--------------------|
-| `'upcoming'` (default) | today's week if it's **Sunday**, else **next** week — so the Sunday trigger covers the week ahead, and a manual mid-week run also looks ahead |
-| `'this'` | always the calendar week **containing today** |
+| `'upcoming'` (default) | today's week if it's **Monday**, else **next** week — so the Monday trigger covers the week starting that day, and a manual mid-week run looks ahead |
+| `'this'` | always the Mon–Sun week **containing today** |
 | `'next'` | always the week **after** this one |
 
 To just *look* without changing the setting, run **`previewThisWeek`** or
@@ -160,7 +160,7 @@ To just *look* without changing the setting, run **`previewThisWeek`** or
 `runWeekly` would send under the current `WEEKLY_TARGET`. Example:
 
 ```
-Valta Realty Cleaning Schedule — week of Sun, Jul 12 (49 units):
+Valta Realty Cleaning Schedule — week of Mon, Jul 13 (49 units):
 
 Totals:
  • Back-to-back: 12
@@ -168,9 +168,9 @@ Totals:
  • Residential: 3
 
 By day:
- Sun Jul 12 — B2B 2, Next 5
  Mon Jul 13 — B2B 1, Next 4, Res 1
  Tue Jul 14 — none
+ Wed Jul 15 — B2B 2, Next 5
  …
 
 Thanks, Maria!
@@ -184,8 +184,8 @@ Currently manual, by design. To automate, Apps Script → **Triggers** (clock ic
 → **Add Trigger**:
 - **Daily:** function `runDaily`, **Time-driven → Day timer**, pick an hour (e.g.
   5–6pm so cleaners get tomorrow's list the evening before).
-- **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Sunday**,
-  pick an hour (e.g. Sunday morning).
+- **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Monday**,
+  pick an hour (e.g. Monday morning).
 
 ## Assumptions to confirm
 

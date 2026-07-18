@@ -24,11 +24,11 @@ const CONFIG = {
   // E.164, e.g. ['+12065550100'].
   LEADER_PHONES: [],
 
-  // Which week runWeekly() summarizes (Sun–Sat):
-  //   'upcoming' → today's week if it's Sunday, else next week. Best for the
-  //                Sunday trigger: Sunday covers the week starting that day, and a
+  // Which week runWeekly() summarizes. Weeks run MONDAY–SUNDAY.
+  //   'upcoming' → today's week if it's Monday, else next week. Best for the
+  //                Monday trigger: Monday covers the week starting that day, and a
   //                manual mid-week run looks ahead to next week.
-  //   'this'     → always the calendar week that contains today.
+  //   'this'     → always the Mon–Sun week that contains today.
   //   'next'     → always the week after this one.
   // To just LOOK without changing this, run previewThisWeek() / previewNextWeek().
   WEEKLY_TARGET: 'upcoming',
