@@ -24,6 +24,8 @@
 *.jpeg
 *.gif
 *.svg
+*.sqlite
+*.sqlite.bak
 
 # Icon files
 Icon?
