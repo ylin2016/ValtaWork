@@ -19,21 +19,19 @@ const CONFIG = {
   // Keep this true until the logs look right, then flip to false.
   DRY_RUN: true,
 
-  // Group messaging.
-  //   true  → each cleaner's `phones` become ONE shared group text (the cleaner +
-  //           their helpers all see replies) via Twilio Conversations Group MMS.
-  //           Requires an MMS-enabled US/CA Twilio number + A2P 10DLC, and a
-  //           cleaner needs 2+ numbers to form a group (1 number falls back to SMS).
-  //   false → each number gets a separate 1:1 SMS (no shared replies).
-  // If you change a cleaner's phones after a group exists, run resetGroups() once.
-  GROUP_MESSAGING: true,
-
-  // Leader / dispatcher number(s) that should see EVERY cleaner's schedule.
-  // With a single Twilio number the leader can't be a member of every group MMS
-  // thread (a number can only be in one group per sending number), so instead the
-  // leader is sent a 1:1 copy of each cleaner's message. They see all schedules,
-  // but not the cleaners' in-thread replies. E.164, e.g. ['+12065550100'].
+  // Leader / dispatcher number(s) that should see EVERY cleaner's schedule. Each
+  // gets a 1:1 copy of every cleaner's message (same as the cleaners themselves).
+  // E.164, e.g. ['+12065550100'].
   LEADER_PHONES: [],
+
+  // Which week runWeekly() summarizes. Weeks run MONDAY–SUNDAY.
+  //   'upcoming' → today's week if it's Monday, else next week. Best for the
+  //                Monday trigger: Monday covers the week starting that day, and a
+  //                manual mid-week run looks ahead to next week.
+  //   'this'     → always the Mon–Sun week that contains today.
+  //   'next'     → always the week after this one.
+  // To just LOOK without changing this, run previewThisWeek() / previewNextWeek().
+  WEEKLY_TARGET: 'upcoming',
 
   // A calendar event is treated as a cleaning JOB only if it has a real title.
   // The empty "(No title)" 11am–4pm / 4–10pm shift blocks are ignored.

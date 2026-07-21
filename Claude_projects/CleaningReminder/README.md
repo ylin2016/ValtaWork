@@ -2,7 +2,8 @@
 
 A Google Apps Script that scans each cleaner's Google Calendar once a day, finds
 their **next-day** cleaning jobs, and texts them (via **Twilio**) the list of
-units, with times and any notes.
+units, with times and any notes. Each cleaner can have several phone numbers —
+every number gets its own 1:1 SMS copy.
 
 It runs *as* the vacation@valtarealty.com account, so calendars are read
 natively — no key files or OAuth tokens to manage.
@@ -38,6 +39,9 @@ rather expand `Property Unit(out->in)` into words, say so.
 | `Config.gs`       | Settings: days-ahead, `DRY_RUN` safety switch, skip-untitled.     |
 | `appsscript.json` | Manifest (timezone + OAuth scopes).                              |
 
+> Looking for Maria's daily driving-route plan (geocoded, packed into cars)? That
+> lives in the separate **`Maria Route Plan`** project.
+
 ## One-time setup
 
 ### 1. Create the Apps Script project
@@ -55,13 +59,13 @@ match exactly. (If any name isn't unique, put the calendar's ID in a
 
 ### 3. Add each cleaner's phone(s)
 Edit `Cleaners.gs` — fill `phones` for each cleaner in **E.164** (`+1` + 10
-digits, no spaces/dashes). List **all the numbers for that cleaner's group** (the
-cleaner plus any helpers): `phones: ['+18283311782', '+12065551234']`. Leave
-`phones: []` to skip that cleaner for now. See *Group messaging* below.
+digits, no spaces/dashes). List **all the numbers for that cleaner** (the cleaner
+plus any helpers): `phones: ['+18283311782', '+12065551234']`. **Each number gets
+its own 1:1 SMS copy** of that cleaner's schedule. Leave `phones: []` to skip that
+cleaner for now.
 
 ### 4. Add Twilio credentials (secrets — not in code)
-1. Create a Twilio account and a phone number. For group messaging it must be an
-   **MMS-enabled US/Canada number**; for plain 1:1 SMS any SMS number works.
+1. Create a Twilio account and an **SMS-enabled** phone number.
 2. Apps Script → **Project Settings → Script properties → Add**:
    | Property               | Value                                   |
    |------------------------|-----------------------------------------|
@@ -69,30 +73,16 @@ cleaner plus any helpers): `phones: ['+18283311782', '+12065551234']`. Leave
    | `TWILIO_AUTH_TOKEN`    | Auth Token                              |
    | `TWILIO_FROM_NUMBER`   | Twilio number, e.g. `+15125550100`      |
 
-### Group messaging
-With `CONFIG.GROUP_MESSAGING: true` (the default), each cleaner's `phones` form
-**one shared group text** (Twilio Conversations *Group MMS*) — the cleaner and
-their helpers all see each other's replies, like a normal group chat. The thread
-is created once per cleaner and reused every day (its ID is cached in Script
-Properties), so it stays one continuous conversation.
+### How messages are sent
+Every number in a cleaner's `phones` list receives its **own separate 1:1 SMS**
+copy of that cleaner's schedule — the cleaner and any helpers each get the same
+text individually (there is no shared group thread; replies are private to each
+sender). Any US A2P 10DLC registration your Twilio account requires for SMS still
+applies.
 
 **Leader / dispatcher oversight.** Put the leader's number in
-`CONFIG.LEADER_PHONES`. With a single Twilio number the leader **cannot** be a
-member of every group (a number can only be in one group MMS thread per sending
-number), so instead they receive a **1:1 copy** of each cleaner's schedule. They
-see every schedule; they don't see the cleaners' in-thread replies. (To put the
-leader *inside* every group you'd need one Twilio number per cleaner and a
-`fromNumber` per cleaner in `Cleaners.gs`.)
-
-Requirements & limits:
-- **MMS-enabled US/Canada** sending number; **A2P 10DLC** registration for US.
-- A cleaner needs **2+ numbers** to form a group; one number falls back to 1:1 SMS.
-- A phone number can be in **only one group per sending number** — so don't put
-  the same helper in two cleaners' groups on one number.
-- After you **change a cleaner's `phones`**, run **`resetGroups`** once so the
-  next run rebuilds the thread with the new members.
-
-Set `GROUP_MESSAGING: false` to send every number (cleaner + leader) a plain 1:1 SMS.
+`CONFIG.LEADER_PHONES` and they'll get a **1:1 copy of every cleaner's schedule**,
+exactly like the cleaners do.
 
 ### 5. Check the timezone
 `appsscript.json` is `America/Los_Angeles` (Pacific — matches the Seattle-area
@@ -131,12 +121,20 @@ and **weekly summary**. Maria is set up with Residential + Move-in/out.
 
 **Residential** renders differently: **one row per cleaning** under a single
 `Residential:` section — no time, no unit splitting. Each row shows the
-**address only** (the event's *location* field, deduped; the freeform title is
-ignored) →
+**address only**. It comes from the event's structured *location* field when set
+(deduped); when that's empty, the address is dug out of the freeform title — the
+first `<number> <street>` segment plus the city that follows, dropping price,
+names, and phone numbers. So
+
+```
+Monthly : $180, 14701 SE 42nd ST, Bellevue, Isabelle WFH, 4252833210 Max4.5ph
+```
+
+renders as
 
 ```
 Residential:
- • 1938 Riva Ln NW, Issaquah, WA 98027, USA
+ • 14701 SE 42nd ST, Bellevue
 ```
 
 It counts as one cleaning per event in the totals. (Back-to-back / next-day /
@@ -146,15 +144,27 @@ move-in-out still split their comma-separated unit lists.)
 > "not found" shows in the log, run `listCleanerCalendars` and copy the name
 > verbatim (or use `calendarId`).
 
-## Weekly summary (Sundays)
+## Weekly summary (Mondays)
 
-`runWeekly` texts each cleaner a summary of their **coming week** (the 7 days
-Sun–Sat): totals per type, plus a per-day breakdown. Counts are by unit, same as
-the daily reminder. Only the types that cleaner actually covers are shown.
-Preview safely with **`previewWeekly`** (never sends). Example:
+`runWeekly` texts each cleaner a summary of one **Monday–Sunday** week: totals per
+type, plus a per-day breakdown. Counts are by unit, same as the daily reminder.
+Only the types that cleaner actually covers are shown.
+
+**Choose which week** with `CONFIG.WEEKLY_TARGET`:
+
+| Value | `runWeekly` sends… |
+|-------|--------------------|
+| `'upcoming'` (default) | today's week if it's **Monday**, else **next** week — so the Monday trigger covers the week starting that day, and a manual mid-week run looks ahead |
+| `'this'` | always the Mon–Sun week **containing today** |
+| `'next'` | always the week **after** this one |
+
+To just *look* without changing the setting, run **`previewThisWeek`** or
+**`previewNextWeek`** (neither ever sends). **`previewWeekly`** shows exactly what
+`runWeekly` would send under the current `WEEKLY_TARGET`. Example:
 
 ```
-Valta Realty Cleaning Schedule — week of Sun, Jul 12 (49 units):
+Valta Realty Cleaning Schedule — Weekly Summary
+Mon, Jul 13 – Sun, Jul 19 (49 units)
 
 Totals:
  • Back-to-back: 12
@@ -162,9 +172,9 @@ Totals:
  • Residential: 3
 
 By day:
- Sun Jul 12 — B2B 2, Next 5
  Mon Jul 13 — B2B 1, Next 4, Res 1
  Tue Jul 14 — none
+ Wed Jul 15 — B2B 2, Next 5
  …
 
 Thanks, Maria!
@@ -178,8 +188,8 @@ Currently manual, by design. To automate, Apps Script → **Triggers** (clock ic
 → **Add Trigger**:
 - **Daily:** function `runDaily`, **Time-driven → Day timer**, pick an hour (e.g.
   5–6pm so cleaners get tomorrow's list the evening before).
-- **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Sunday**,
-  pick an hour (e.g. Sunday morning).
+- **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Monday**,
+  pick an hour (e.g. Monday morning).
 
 ## Assumptions to confirm
 

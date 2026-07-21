@@ -3,17 +3,18 @@
  *
  * For each cleaner (each has their own Google Calendar, plus optional extra
  * calendars like Residential / Move-in-out), scans the target day, composes one
- * message listing their units by type, and sends it via Twilio. A weekly summary
- * tallies the coming week by type.
+ * message listing their units by type, and sends it as a 1:1 SMS to each of the
+ * cleaner's numbers via Twilio. A weekly summary tallies the coming week by type.
  *
  * ENTRY POINTS (run from the editor's ▶ Run menu, or a time trigger):
  *   runDaily()              — daily next-day reminder. Honors CONFIG.DRY_RUN.
- *   runWeekly()             — weekly week-ahead summary (trigger on Sundays).
+ *   runWeekly()             — weekly summary (CONFIG.WEEKLY_TARGET; trigger Mondays).
  *   previewTomorrow()       — dry run for tomorrow + verbose log, never sends.
- *   previewWeekly()         — dry run of the weekly summary, never sends.
+ *   previewWeekly()         — dry run of what runWeekly would send, never sends.
+ *   previewThisWeek()       — dry run of THIS week's summary, never sends.
+ *   previewNextWeek()       — dry run of NEXT week's summary, never sends.
  *   previewDate()           — dry run for CONFIG.PREVIEW_DATE (set it, then Run).
  *   listCleanerCalendars()  — print every calendar name/ID this account can see.
- *   resetGroups()           — forget cached group threads after changing phones.
  *
  * See README.md for setup, Twilio keys, and the daily/weekly triggers.
  */
@@ -37,14 +38,27 @@ function previewDate(dateStr) {
   return runForDay_(dayFromString_(dateStr || CONFIG.PREVIEW_DATE), true);
 }
 
-/** Weekly summary for the coming week (Sun–Sat). Honors CONFIG.DRY_RUN. Trigger on Sundays. */
+/**
+ * Weekly summary (Mon–Sun) for the week set by CONFIG.WEEKLY_TARGET
+ * ('upcoming' | 'this' | 'next'). Honors CONFIG.DRY_RUN. Trigger on Mondays.
+ */
 function runWeekly() {
-  return runWeekly_(CONFIG.DRY_RUN);
+  return runWeekly_(CONFIG.DRY_RUN, CONFIG.WEEKLY_TARGET);
 }
 
-/** Non-sending preview of the weekly summary — never texts anyone. */
+/** Non-sending preview of what runWeekly would send (uses CONFIG.WEEKLY_TARGET). */
 function previewWeekly() {
-  return runWeekly_(true);
+  return runWeekly_(true, CONFIG.WEEKLY_TARGET);
+}
+
+/** Non-sending preview of THIS week (the Mon–Sun week containing today). */
+function previewThisWeek() {
+  return runWeekly_(true, 'this');
+}
+
+/** Non-sending preview of NEXT week (the Mon–Sun after this one). */
+function previewNextWeek() {
+  return runWeekly_(true, 'next');
 }
 
 /* ------------------------------------------------------------------ */
@@ -78,8 +92,8 @@ function runForDay_(day, dryRun) {
 }
 
 /**
- * Deliver `message` to one cleaner — as a Group MMS if they have 2+ numbers, else
- * 1:1 SMS — and optionally CC the leader(s) a 1:1 copy. Honors dryRun (logs only).
+ * Deliver `message` to one cleaner as a separate 1:1 SMS to EACH of their numbers,
+ * and optionally CC the leader(s) a 1:1 copy too. Honors dryRun (logs only).
  * Returns an array of result records.
  */
 function deliverMessage_(cleaner, message, dryRun, ccLeader) {
@@ -87,15 +101,14 @@ function deliverMessage_(cleaner, message, dryRun, ccLeader) {
   const leaders = ccLeader
     ? leaderPhones_().filter(function (p) { return phones.indexOf(p) === -1; })
     : [];
-  const asGroup = CONFIG.GROUP_MESSAGING && phones.length >= 2;
 
   if (dryRun) {
-    Logger.log('\n--- DRY RUN → %s [%s: %s]%s ---\n%s',
-      cleaner.name, asGroup ? 'GROUP' : 'SMS',
+    Logger.log('\n--- DRY RUN → %s [SMS: %s]%s ---\n%s',
+      cleaner.name,
       phones.length ? phones.join(', ') : '(no phone set)',
       leaders.length ? '  +CC leader: ' + leaders.join(', ') : '',
       message);
-    return [{ name: cleaner.name, recipients: phones.length, cc: leaders.length, group: asGroup, sent: false, dryRun: true }];
+    return [{ name: cleaner.name, recipients: phones.length, cc: leaders.length, sent: false, dryRun: true }];
   }
   if (!phones.length && !leaders.length) {
     Logger.log('%s: no phone number set — skipping.', cleaner.name);
@@ -103,17 +116,11 @@ function deliverMessage_(cleaner, message, dryRun, ccLeader) {
   }
 
   const out = [];
-  if (asGroup) {
-    const res = sendGroupMessage_(cleaner, phones, message);
-    Logger.log('%s (group of %s): %s', cleaner.name, phones.length, res.ok ? 'SENT ✓' : 'FAILED — ' + res.error);
-    out.push({ name: cleaner.name, group: true, sent: res.ok, error: res.error });
-  } else {
-    phones.forEach(function (phone) {
-      const res = sendSms_(phone, message);
-      Logger.log('%s (%s): %s', cleaner.name, phone, res.ok ? 'SENT ✓' : 'FAILED — ' + res.error);
-      out.push({ name: cleaner.name, phone: phone, sent: res.ok, error: res.error });
-    });
-  }
+  phones.forEach(function (phone) {
+    const res = sendSms_(phone, message);
+    Logger.log('%s (%s): %s', cleaner.name, phone, res.ok ? 'SENT ✓' : 'FAILED — ' + res.error);
+    out.push({ name: cleaner.name, phone: phone, sent: res.ok, error: res.error });
+  });
   leaders.forEach(function (phone) {
     const res = sendSms_(phone, message);
     Logger.log('%s → leader %s: %s', cleaner.name, phone, res.ok ? 'SENT ✓' : 'FAILED — ' + res.error);
@@ -284,9 +291,36 @@ function composeMessage_(name, dayLabel, jobs) {
   return lines.join('\n');
 }
 
-/** One residential row — address only (deduped location field; title as fallback). */
+/**
+ * One residential row — address only. Prefer the event's structured location
+ * field; if it's empty, dig the street+city out of the freeform title
+ * (e.g. "Monthly : $180, 14701 SE 42nd ST, Bellevue, Isabelle WFH, 4252833210"
+ * → "14701 SE 42nd ST, Bellevue"). Full title is the last-ditch fallback.
+ */
 function residentialRow_(job) {
-  return dedupeAddress_(job.event.getLocation() || '') || job.event.getTitle().trim();
+  const loc = dedupeAddress_(job.event.getLocation() || '');
+  if (loc) return loc;
+  const title = job.event.getTitle().trim();
+  return addressFromTitle_(title) || title;
+}
+
+/**
+ * Pull a street address out of a comma-separated freeform title. Finds the first
+ * segment that starts like a street ("<1-6 digits> <text>", which excludes
+ * 10-digit phone numbers and "$180" prices) and pairs it with the following
+ * segment when that looks like a city/place name. Returns '' if none found.
+ */
+function addressFromTitle_(title) {
+  const seg = splitUnits_(title);            // comma-split + trim + drop blanks
+  const streetRe = /^\d{1,6}\s+\S/;          // "14701 SE 42nd ST" yes; "4252833210 Max" no
+  const placeRe = /^[A-Za-z][A-Za-z .'-]*$/; // city = the letters-only segment right after the street
+  for (var i = 0; i < seg.length; i++) {
+    if (streetRe.test(seg[i])) {
+      const next = seg[i + 1];
+      return next && placeRe.test(next) ? seg[i] + ', ' + next : seg[i];
+    }
+  }
+  return '';
 }
 
 /** Drop duplicate comma-separated segments from a location string, preserving order. */
@@ -345,11 +379,11 @@ function cleanNotes_(desc) {
 /* Weekly summary                                                     */
 /* ------------------------------------------------------------------ */
 
-/** Build + (optionally) send each cleaner's week-ahead summary. */
-function runWeekly_(dryRun) {
-  const week = weekWindow_();
-  const weekLabel = formatDay_({ start: week.start });
-  Logger.log('CleaningReminder — weekly summary, week of %s%s', weekLabel, dryRun ? '  (DRY RUN — no texts)' : '');
+/** Build + (optionally) send each cleaner's week summary for the chosen week (see weekWindow_). */
+function runWeekly_(dryRun, mode) {
+  const week = weekWindow_(mode);
+  const weekLabel = formatDay_({ start: week.start }) + ' – ' + formatDay_({ start: week.days[6].start });
+  Logger.log('CleaningReminder — weekly summary, %s%s', weekLabel, dryRun ? '  (DRY RUN — no texts)' : '');
 
   const results = [];
   CLEANERS.forEach(function (cleaner) {
@@ -366,15 +400,28 @@ function runWeekly_(dryRun) {
   return results;
 }
 
-/** Seven day-windows starting on the Sunday of the current week. */
-function weekWindow_() {
+/**
+ * Seven day-windows for the chosen week, running MONDAY–SUNDAY. `mode`:
+ *   'this'     — the Mon–Sun week that contains today.
+ *   'next'     — the week after this one.
+ *   'upcoming' — (default) today's week if it's Monday, else next week. This is
+ *                the trigger-day behavior: a Monday run covers the week starting
+ *                that day; a mid-week run looks ahead to next week.
+ */
+function weekWindow_(mode) {
   const now = new Date();
-  const sun = new Date(now.getFullYear(), now.getMonth(), now.getDate() - now.getDay(), 0, 0, 0);
+  const dow = now.getDay();               // 0 = Sunday … 1 = Monday … 6 = Saturday
+  const sinceMon = (dow + 6) % 7;         // days since this week's Monday (Mon=0 … Sun=6)
+  var daysToMon;
+  if (mode === 'this') daysToMon = -sinceMon;          // Monday of the current week
+  else if (mode === 'next') daysToMon = 7 - sinceMon;  // Monday of next week
+  else daysToMon = (8 - dow) % 7;                       // 'upcoming': today if Monday, else next Monday
+  const mon = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysToMon, 0, 0, 0);
   const days = [];
   for (var i = 0; i < 7; i++) {
     days.push({
-      start: new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() + i, 0, 0, 0),
-      end: new Date(sun.getFullYear(), sun.getMonth(), sun.getDate() + i + 1, 0, 0, 0),
+      start: new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i, 0, 0, 0),
+      end: new Date(mon.getFullYear(), mon.getMonth(), mon.getDate() + i + 1, 0, 0, 0),
     });
   }
   return { start: days[0].start, end: days[6].end, days: days };
@@ -412,8 +459,8 @@ function tallyWeek_(cleaner, week) {
 /** Build the weekly summary SMS body for the cleaner's relevant `types`. */
 function composeWeeklyMessage_(name, weekLabel, tally, types) {
   const lines = [];
-  lines.push(CONFIG.BRAND + ' — week of ' + weekLabel +
-    ' (' + tally.total + ' unit' + (tally.total === 1 ? '' : 's') + '):');
+  lines.push(CONFIG.BRAND + ' — Weekly Summary');
+  lines.push(weekLabel + ' (' + tally.total + ' unit' + (tally.total === 1 ? '' : 's') + ')');
 
   lines.push('');
   lines.push('Totals:');
@@ -499,70 +546,4 @@ function sendSms_(to, body) {
   const res = twilioPost_('https://api.twilio.com/2010-04-01/Accounts/' + c.sid + '/Messages.json',
     { To: to, From: c.from, Body: body }, c);
   return res.ok ? { ok: true, error: '', sid: res.data.sid } : { ok: false, error: res.error };
-}
-
-/* ------------------------------------------------------------------ */
-/* Twilio Conversations — one shared group text per cleaner (Group MMS) */
-/* ------------------------------------------------------------------ */
-
-function conversationKey_(cleaner) { return 'CONV_SID_' + cleaner.name; }
-
-/**
- * Send `body` as one shared group message to all `phones`. The conversation is
- * created once per cleaner (participants share the Twilio number as proxy, which
- * makes it a Group MMS) and its SID is cached in Script Properties, so every day
- * posts into the same ongoing thread. Returns { ok, error }.
- */
-function sendGroupMessage_(cleaner, phones, body) {
-  const c = twilioCreds_();
-  if (!c) return { ok: false, error: 'Missing Twilio Script Properties (TWILIO_ACCOUNT_SID / TWILIO_AUTH_TOKEN / TWILIO_FROM_NUMBER).' };
-
-  // Each cleaner's group sends from its own Twilio number if set, else the default.
-  const proxy = (cleaner.fromNumber && String(cleaner.fromNumber).trim()) || c.from;
-
-  const conv = getOrCreateConversation_(cleaner, phones, c, proxy);
-  if (!conv.ok) return { ok: false, error: conv.error };
-
-  const res = twilioPost_('https://conversations.twilio.com/v1/Conversations/' + conv.sid + '/Messages',
-    { Body: body, Author: CONFIG.BRAND }, c);
-  return res.ok ? { ok: true, error: '' } : { ok: false, error: 'post message: ' + res.error };
-}
-
-/** Return a cached conversation SID for the cleaner, or create one and cache it. */
-function getOrCreateConversation_(cleaner, phones, c, proxy) {
-  const props = PropertiesService.getScriptProperties();
-  const key = conversationKey_(cleaner);
-  const existing = props.getProperty(key);
-  if (existing) return { ok: true, sid: existing };
-
-  const created = twilioPost_('https://conversations.twilio.com/v1/Conversations',
-    { FriendlyName: CONFIG.BRAND + ' — ' + cleaner.name }, c);
-  if (!created.ok) return { ok: false, error: 'create conversation: ' + created.error };
-  const sid = created.data.sid;
-
-  // Adding 2+ participants that share the same proxy (this group's Twilio number)
-  // makes it a native Group MMS thread. A number can be in only one group per
-  // proxy, so don't reuse the same helper number across cleaners on one number.
-  for (var i = 0; i < phones.length; i++) {
-    const added = twilioPost_('https://conversations.twilio.com/v1/Conversations/' + sid + '/Participants',
-      { 'MessagingBinding.Address': phones[i], 'MessagingBinding.ProxyAddress': proxy }, c);
-    if (!added.ok) {
-      return { ok: false, error: 'add participant ' + phones[i] + ' via ' + proxy + ': ' + added.error +
-        ' (a number can only be in one group per Twilio number at a time)' };
-    }
-  }
-
-  props.setProperty(key, sid);
-  return { ok: true, sid: sid };
-}
-
-/**
- * Forget the stored group conversations so the next run recreates them with
- * current membership. Run this after changing any cleaner's `phones`. It only
- * clears the cached SIDs here; it does not delete the conversations in Twilio.
- */
-function resetGroups() {
-  const props = PropertiesService.getScriptProperties();
-  CLEANERS.forEach(function (cleaner) { props.deleteProperty(conversationKey_(cleaner)); });
-  Logger.log('Cleared cached group conversation SIDs for %s cleaner(s). Next run recreates them.', CLEANERS.length);
 }

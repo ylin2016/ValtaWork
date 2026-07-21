@@ -1,9 +1,12 @@
-# CleaningReminder
+# Maria Route Plan
 
-A Google Apps Script that scans each cleaner's Google Calendar once a day, finds
-their **next-day** cleaning jobs, and texts them (via **Twilio**) the list of
-units, with times and any notes. Each cleaner can have several phone numbers —
-every number gets its own 1:1 SMS copy.
+A Google Apps Script that does everything the **CleaningReminder** project does —
+scans each cleaner's Google Calendar once a day and texts them (via **Twilio**)
+their next-day jobs — **plus** builds Maria a daily, address-by-address **route
+plan** across her turnover, Residential and Move-in/out calendars (see *Maria's
+route plan* below). This is the superset build; the plain-reminder-only version
+lives in the separate `CleaningReminder` project. Each cleaner can have several
+phone numbers — every number gets its own 1:1 SMS copy.
 
 It runs *as* the vacation@valtarealty.com account, so calendars are read
 natively — no key files or OAuth tokens to manage.
