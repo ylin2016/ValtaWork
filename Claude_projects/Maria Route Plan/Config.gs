@@ -63,7 +63,7 @@ const CONFIG = {
     // Depot: crews start AND end here each day (round trip). REQUIRED for routing —
     // fill in your office/home base. Leave '' to skip base legs (planner still runs
     // but can't tell you the first/last drive). Full address, e.g. "123 Main St, Bellevue, WA".
-    BASE_ADDRESS: '',
+    BASE_ADDRESS: '12834 24th Ave S, SeaTac, WA 98168',
 
     CREW_PER_CAR: 2,            // cleaners per car.
     MAX_HOURS_PER_PERSON: 8,    // workday cap. With a crew working together this is the car's clock-hours.
