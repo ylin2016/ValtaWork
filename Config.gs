@@ -52,4 +52,41 @@ const CONFIG = {
 
   // Business name shown at the top of each text message.
   BRAND: 'Valta Realty Cleaning Schedule',
+
+  // ----------------------------------------------------------------------------
+  // Route planning (Maria only — previewMariaRoutes / runMariaRoutes).
+  // Geocodes each stop's address, then packs the day's jobs into 1–3 crews (cars),
+  // each a crew of CREW_PER_CAR working up to MAX_HOURS_PER_PERSON clock-hours,
+  // and orders each crew's stops by shortest travel from the base and back.
+  // ----------------------------------------------------------------------------
+  ROUTING: {
+    // Depot: crews start AND end here each day (round trip). REQUIRED for routing —
+    // fill in your office/home base. Leave '' to skip base legs (planner still runs
+    // but can't tell you the first/last drive). Full address, e.g. "123 Main St, Bellevue, WA".
+    BASE_ADDRESS: '',
+
+    CREW_PER_CAR: 2,            // cleaners per car.
+    MAX_HOURS_PER_PERSON: 8,    // workday cap. With a crew working together this is the car's clock-hours.
+    MAX_UNITS_PER_CAR: 6,       // hard cap on units (stops) per car per day.
+    MAX_CARS: 3,                // most cars available. Work beyond this is flagged as unassigned.
+
+    // Turnover cleaning time (crew clock-minutes) = base + per-bedroom + per-bathroom.
+    CLEAN_BASE_MIN: 60,
+    CLEAN_PER_BEDROOM_MIN: 15,
+    CLEAN_PER_BATHROOM_MIN: 20,
+
+    // Residential & move-in/out have only an address (no bed/bath) — fixed minutes each.
+    RESIDENTIAL_MIN: 120,       // 2h, 2-person.
+    MOVEINOUT_MIN: 120,         // 2h, 2-person.
+
+    // Travel model: straight-line miles between geocoded stops ÷ this speed, then
+    // inflated by ROAD_FACTOR to approximate real driving. Keeps API calls to one
+    // geocode per unique address (cached in Script Properties).
+    AVG_SPEED_MPH: 28,
+    ROAD_FACTOR: 1.3,           // road distance ≈ 1.3 × straight-line.
+
+    // Optional: a Google Sheet (columns Listing, Address, Bedrooms, Bathrooms) that
+    // overrides/extends the embedded Listings.gs table. '' = use embedded table only.
+    LISTINGS_SHEET_ID: '',
+  },
 };

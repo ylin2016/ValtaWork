@@ -36,7 +36,9 @@ rather expand `Property Unit(out->in)` into words, say so.
 |-------------------|-------------------------------------------------------------------|
 | `Code.gs`         | Main logic: per-cleaner calendar → titled jobs → compose → send.  |
 | `Cleaners.gs`     | One row per cleaner: name, calendar name, phone.                  |
-| `Config.gs`       | Settings: days-ahead, `DRY_RUN` safety switch, skip-untitled.     |
+| `Config.gs`       | Settings: days-ahead, `DRY_RUN` safety switch, skip-untitled, `ROUTING`. |
+| `Routes.gs`       | Maria's daily route plan: geocode → pack into cars → order stops. |
+| `Listings.gs`     | Listing → address / bedrooms / bathrooms (from `data/Listings.xlsx`). |
 | `appsscript.json` | Manifest (timezone + OAuth scopes).                              |
 
 ## One-time setup
@@ -179,6 +181,56 @@ Thanks, Maria!
 
 The weekly summary goes to **each cleaner** (no leader CC).
 
+## Maria's route plan (daily)
+
+Maria's day spans turnovers **plus** the Residential and Move-in/out calendars, so
+she gets an extra **route plan** message: the per-type counts *and* the day's jobs
+packed into cars with an ordered, address-by-address route. Other cleaners are
+unaffected. Preview with **`previewMariaRoutes`** (tomorrow) or **`previewMariaRoutesDate`**
+(`CONFIG.PREVIEW_DATE`); send with **`runMariaRoutes`**.
+
+**How it works.** Each cleaning becomes a *stop*. A turnover event splits into one
+stop per unit — each unit's address, bedrooms and bathrooms come from `Listings.gs`
+(a nickname like `Bellevue 2243(6->0)` is matched by stripping the `(…)`).
+Residential / move-in/out stops use the address on the calendar. Every address is
+geocoded once (cached) via the built-in **Maps service** — no API key. Stops are
+then packed into **1–3 cars** (a crew of 2 each), filling a car by nearest-next
+stop until it hits **6 units** or **8 hours** (cleaning + drive, incl. the return
+to base), then opening the next car. Anything beyond 3 full cars is flagged as
+**over capacity**.
+
+**Cleaning-time model** (`CONFIG.ROUTING`, all tunable): turnover = `CLEAN_BASE_MIN`
+(60) + `CLEAN_PER_BEDROOM_MIN` (15) × beds + `CLEAN_PER_BATHROOM_MIN` (20) × baths;
+residential & move-in/out = a flat 2h. Travel = straight-line miles × `ROAD_FACTOR`
+÷ `AVG_SPEED_MPH`.
+
+**Set these before going live:**
+1. `CONFIG.ROUTING.BASE_ADDRESS` — the office/home base crews start and end at.
+   Without it the plan still runs but can't count the first/last drive.
+2. Keep `Listings.gs` current (or set `CONFIG.ROUTING.LISTINGS_SHEET_ID` to a Google
+   Sheet with columns *Listing, Address, Bedrooms, Bathrooms* — the sheet overrides
+   the embedded table). Run **`checkListings`** to see which of tomorrow's units
+   resolve to an address; fix any "UNKNOWN"/"GEOCODE FAILED" before relying on it.
+
+Example:
+
+```
+Valta Realty Cleaning Schedule — Maria's Route Plan
+Mon, Jul 20 (7 units, 2 cars)
+Counts: B2B 3, Next 2, Res 2
+
+🚗 Car 1 — 4 units, 7h20m (5h40m clean + 1h40m drive · 34 mi):
+ 1. Elektra 1212 — 1400 Hubbell Pl, Seattle (2BR/1BA) · B2B 1h50m
+ 2. Seattle 8415 — 8415 Linden Ave N, Seattle (3BR/3.5BA) · B2B 2h55m
+ 3. 1938 Riva Ln NW — 1938 Riva Ln NW, Issaquah · Res 2h
+    ↩ back to base
+🚗 Car 2 — 3 units, …
+```
+
+**Trigger:** function `runMariaRoutes`, **Time-driven → Day timer**, morning (or the
+evening before, matching your daily reminder). Geocoding uses the Maps-service quota
+(a few hundred lookups/day; results are cached, so repeat addresses are free).
+
 ## Automate the scans (when ready)
 
 Currently manual, by design. To automate, Apps Script → **Triggers** (clock icon)
@@ -187,6 +239,8 @@ Currently manual, by design. To automate, Apps Script → **Triggers** (clock ic
   5–6pm so cleaners get tomorrow's list the evening before).
 - **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Monday**,
   pick an hour (e.g. Monday morning).
+- **Maria's route plan:** function `runMariaRoutes`, **Time-driven → Day timer**,
+  same cadence as the daily reminder.
 
 ## Assumptions to confirm
 

@@ -16,6 +16,7 @@
  *   previewDate()           — dry run for CONFIG.PREVIEW_DATE (set it, then Run).
  *   listCleanerCalendars()  — print every calendar name/ID this account can see.
  *
+ * Maria's route planning lives in Routes.gs (previewMariaRoutes / runMariaRoutes).
  * See README.md for setup, Twilio keys, and the daily/weekly triggers.
  */
 
