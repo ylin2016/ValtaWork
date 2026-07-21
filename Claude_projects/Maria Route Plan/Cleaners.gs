@@ -21,10 +21,6 @@
  */
 
 const CLEANERS = [
-  { name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [] },
-  { name: 'Anna',     calendar: 'ValtaAuto_Anna',     phones: [] },
-  { name: 'Camilla',  calendar: 'ValtaAuto_Camilla',  phones: [] },
-  { name: 'Crystal',  calendar: 'ValtaAuto_Crystal',  phones: [] },
   {
     name: 'Maria', calendar: 'ValtaAuto_Maria', phones: ['+18283311782'],
     extraCalendars: [

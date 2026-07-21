@@ -70,8 +70,10 @@ const CONFIG = {
     MAX_UNITS_PER_CAR: 6,       // hard cap on units (stops) per car per day.
     MAX_CARS: 3,                // most cars available. Work beyond this is flagged as unassigned.
 
-    // Turnover cleaning time (crew clock-minutes) = base + per-bedroom + per-bathroom.
-    CLEAN_BASE_MIN: 60,
+    // Turnover cleaning time (crew clock-minutes for a CREW_PER_CAR-person crew) =
+    // base + per-bedroom + per-bathroom. Anchored so a 1BR/1BA = 60 min for 2 people
+    // (25 + 15 + 20); each extra bed adds 15, each extra bath adds 20.
+    CLEAN_BASE_MIN: 25,
     CLEAN_PER_BEDROOM_MIN: 15,
     CLEAN_PER_BATHROOM_MIN: 20,
 

@@ -1,21 +1,29 @@
 # Maria Route Plan
 
-A Google Apps Script that does everything the **CleaningReminder** project does —
-scans each cleaner's Google Calendar once a day and texts them (via **Twilio**)
-their next-day jobs — **plus** builds Maria a daily, address-by-address **route
-plan** across her turnover, Residential and Move-in/out calendars (see *Maria's
-route plan* below). This is the superset build; the plain-reminder-only version
-lives in the separate `CleaningReminder` project. Each cleaner can have several
-phone numbers — every number gets its own 1:1 SMS copy.
+A Google Apps Script that scans **Maria's** Google Calendars once a day and texts
+her (via **Twilio**) her next-day jobs, **plus** builds a daily, address-by-address
+**route plan** across those same calendars (see *Maria's route plan* below). Maria
+can have several phone numbers — every number gets its own 1:1 SMS copy.
 
 It runs *as* the vacation@valtarealty.com account, so calendars are read
 natively — no key files or OAuth tokens to manage.
 
+## Which calendars are read
+
+Only **three calendars, all Maria's**:
+
+| Calendar | Cleaning type(s) | What it holds |
+|----------|------------------|---------------|
+| `ValtaAuto_Maria` | Back-to-back / Next-day | turnover shifts — purple 11am–4pm (back-to-back) and yellow 4–10pm (next-day) |
+| `Residential Cleaning` | Residential | residential jobs (address only) |
+| `move in/out cleaning` | Move-in/out | move-in/out jobs (address only) |
+
+The turnover types come from the `ValtaAuto_Maria` shift's start time; the other
+two are typed by which calendar the event sits on. All three are configured on the
+single **Maria** row in `Cleaners.gs` (`calendar` + `extraCalendars`).
+
 ## How the calendar is read
 
-- **One calendar per cleaner** — `ValtaAuto_Angelina`, `ValtaAuto_Anna`,
-  `ValtaAuto_Camilla`, `ValtaAuto_Crystal`, `ValtaAuto_Maria`. The calendar an
-  event sits on is how we know whose job it is.
 - **A job is a titled event, and one event can hold many units.** The title is a
   comma-separated list like
   `Bellevue 2243(6->0),Elektra 1212(4->0),Seattle 8415(3->0)` where each unit is
@@ -28,17 +36,17 @@ natively — no key files or OAuth tokens to manage.
   `⚠️ BACK-TO-BACK`. The yellow evening event (4pm–10pm) is not. Shifts are told
   apart by start time (`CONFIG.BACKTOBACK_BEFORE_HOUR`, default 3pm), so the
   `(out->in)` arrows on individual units don't affect this.
-- Each cleaner's titled jobs for the day are combined into **one** text.
+- Maria's titled jobs for the day (all three calendars) are combined into **one** text.
 
-Each unit is forwarded **as written** (the cleaners' own shorthand). If you'd
+Each unit is forwarded **as written** (Maria's own shorthand). If you'd
 rather expand `Property Unit(out->in)` into words, say so.
 
 ## Files
 
 | File              | What it is                                                        |
 |-------------------|-------------------------------------------------------------------|
-| `Code.gs`         | Main logic: per-cleaner calendar → titled jobs → compose → send.  |
-| `Cleaners.gs`     | One row per cleaner: name, calendar name, phone.                  |
+| `Code.gs`         | Main logic: Maria's calendars → titled jobs → compose → send.     |
+| `Cleaners.gs`     | The Maria row: name, turnover calendar, extra calendars, phone.   |
 | `Config.gs`       | Settings: days-ahead, `DRY_RUN` safety switch, skip-untitled, `ROUTING`. |
 | `Routes.gs`       | Maria's daily route plan: geocode → pack into cars → order stops. |
 | `Listings.gs`     | Listing → address / bedrooms / bathrooms (from `data/Listings.xlsx`). |
@@ -53,18 +61,18 @@ Signed in as **vacation@valtarealty.com**:
    [`clasp`](https://github.com/google/clasp)).
 3. **Project Settings** → tick *"Show appsscript.json manifest file"*.
 
-### 2. Confirm the cleaner calendars
+### 2. Confirm Maria's calendars
 Run **`listCleanerCalendars`** once and check the log — it prints every calendar
-name/ID the account can see. Make sure the `calendar:` values in `Cleaners.gs`
-match exactly. (If any name isn't unique, put the calendar's ID in a
-`calendarId:` field on that row instead.)
+name/ID the account can see. Make sure the three names on the Maria row of
+`Cleaners.gs` (`ValtaAuto_Maria`, `Residential Cleaning`, `move in/out cleaning`)
+match exactly. (If any name isn't unique, put the calendar's ID in a `calendarId:`
+field instead.)
 
-### 3. Add each cleaner's phone(s)
-Edit `Cleaners.gs` — fill `phones` for each cleaner in **E.164** (`+1` + 10
-digits, no spaces/dashes). List **all the numbers for that cleaner** (the cleaner
-plus any helpers): `phones: ['+18283311782', '+12065551234']`. **Each number gets
-its own 1:1 SMS copy** of that cleaner's schedule. Leave `phones: []` to skip that
-cleaner for now.
+### 3. Add Maria's phone(s)
+Edit `Cleaners.gs` — fill `phones` in **E.164** (`+1` + 10 digits, no
+spaces/dashes). List **all the numbers** (Maria plus any helpers):
+`phones: ['+18283311782', '+12065551234']`. **Each number gets its own 1:1 SMS
+copy** of the schedule.
 
 ### 4. Add Twilio credentials (secrets — not in code)
 1. Create a Twilio account and an **SMS-enabled** phone number.
@@ -76,15 +84,14 @@ cleaner for now.
    | `TWILIO_FROM_NUMBER`   | Twilio number, e.g. `+15125550100`      |
 
 ### How messages are sent
-Every number in a cleaner's `phones` list receives its **own separate 1:1 SMS**
-copy of that cleaner's schedule — the cleaner and any helpers each get the same
-text individually (there is no shared group thread; replies are private to each
-sender). Any US A2P 10DLC registration your Twilio account requires for SMS still
-applies.
+Every number in Maria's `phones` list receives its **own separate 1:1 SMS** copy
+of the schedule — Maria and any helpers each get the same text individually (there
+is no shared group thread; replies are private to each sender). Any US A2P 10DLC
+registration your Twilio account requires for SMS still applies.
 
 **Leader / dispatcher oversight.** Put the leader's number in
-`CONFIG.LEADER_PHONES` and they'll get a **1:1 copy of every cleaner's schedule**,
-exactly like the cleaners do.
+`CONFIG.LEADER_PHONES` and they'll get a **1:1 copy of the schedule**, exactly like
+Maria does.
 
 ### 5. Check the timezone
 `appsscript.json` is `America/Los_Angeles` (Pacific — matches the Seattle-area
@@ -95,7 +102,7 @@ properties and the GMT-07 grid in your calendar). This controls what counts as
 
 `Config.gs` ships with `DRY_RUN: true`. Run **`previewTomorrow`** (first run asks
 you to authorize Calendar + external-request access). Open **Executions / Logs**:
-for each cleaner you'll see the **exact SMS** that would be sent — no texts go
+you'll see the **exact SMS** that would be sent to Maria — no texts go
 out. To check a specific day, set `CONFIG.PREVIEW_DATE` and run **`previewDate`**
 (the Run button can't pass an argument, so it reads the date from Config). Share
 that log with me and we'll tune the parsing to your real events if anything looks off.
@@ -111,14 +118,14 @@ Every cleaning has a **type**:
 
 | Type | Where it comes from |
 |------|---------------------|
-| Back-to-back | main `ValtaAuto_*` calendar, purple 11am–4pm shift (start before `BACKTOBACK_BEFORE_HOUR`) |
-| Next-day | main `ValtaAuto_*` calendar, yellow 4–10pm shift |
-| Residential | the cleaner's **`Residential Cleaning`** extra calendar |
-| Move-in/out | the cleaner's **`move in/out cleaning`** extra calendar |
+| Back-to-back | `ValtaAuto_Maria` calendar, purple 11am–4pm shift (start before `BACKTOBACK_BEFORE_HOUR`) |
+| Next-day | `ValtaAuto_Maria` calendar, yellow 4–10pm shift |
+| Residential | the **`Residential Cleaning`** extra calendar |
+| Move-in/out | the **`move in/out cleaning`** extra calendar |
 
-A cleaner can cover extra calendars beyond their own shifts — list them in
+Maria's extra calendars beyond her turnover shifts are listed in
 `Cleaners.gs` under `extraCalendars`, each tagged with its `type`. Their events
-are folded into that cleaner's **daily message** (as their own labeled sections)
+are folded into Maria's **daily message** (as their own labeled sections)
 and **weekly summary**. Maria is set up with Residential + Move-in/out.
 
 **Residential** renders differently: **one row per cleaning** under a single
@@ -148,9 +155,9 @@ move-in-out still split their comma-separated unit lists.)
 
 ## Weekly summary (Mondays)
 
-`runWeekly` texts each cleaner a summary of one **Monday–Sunday** week: totals per
+`runWeekly` texts Maria a summary of one **Monday–Sunday** week: totals per
 type, plus a per-day breakdown. Counts are by unit, same as the daily reminder.
-Only the types that cleaner actually covers are shown.
+Only the types Maria actually covers are shown.
 
 **Choose which week** with `CONFIG.WEEKLY_TARGET`:
 
@@ -182,7 +189,7 @@ By day:
 Thanks, Maria!
 ```
 
-The weekly summary goes to **each cleaner** (no leader CC).
+The weekly summary goes to **Maria** (no leader CC).
 
 ## Maria's route plan (daily)
 
@@ -203,7 +210,8 @@ to base), then opening the next car. Anything beyond 3 full cars is flagged as
 **over capacity**.
 
 **Cleaning-time model** (`CONFIG.ROUTING`, all tunable): turnover = `CLEAN_BASE_MIN`
-(60) + `CLEAN_PER_BEDROOM_MIN` (15) × beds + `CLEAN_PER_BATHROOM_MIN` (20) × baths;
+(25) + `CLEAN_PER_BEDROOM_MIN` (15) × beds + `CLEAN_PER_BATHROOM_MIN` (20) × baths,
+in crew clock-minutes for a 2-person crew — anchored so a **1BR/1BA = 1 hour**;
 residential & move-in/out = a flat 2h. Travel = straight-line miles × `ROAD_FACTOR`
 ÷ `AVG_SPEED_MPH`.
 
@@ -239,7 +247,7 @@ evening before, matching your daily reminder). Geocoding uses the Maps-service q
 Currently manual, by design. To automate, Apps Script → **Triggers** (clock icon)
 → **Add Trigger**:
 - **Daily:** function `runDaily`, **Time-driven → Day timer**, pick an hour (e.g.
-  5–6pm so cleaners get tomorrow's list the evening before).
+  5–6pm so Maria gets tomorrow's list the evening before).
 - **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Monday**,
   pick an hour (e.g. Monday morning).
 - **Maria's route plan:** function `runMariaRoutes`, **Time-driven → Day timer**,
@@ -247,8 +255,9 @@ Currently manual, by design. To automate, Apps Script → **Triggers** (clock ic
 
 ## Assumptions to confirm
 
-- One cleaner per calendar; a **titled** event = a job; `(No title)` = ignore.
-- The **five** `ValtaAuto_*` calendars above are the full cleaner list. Add/remove
-  rows in `Cleaners.gs` as needed.
+- A **titled** event = a job; `(No title)` = ignore.
+- Only **Maria's three calendars** are read — `ValtaAuto_Maria` (turnovers),
+  `Residential Cleaning`, and `move in/out cleaning`. All other cleaners are out of
+  scope for this project.
 - Twilio charges per message (~1¢ US SMS); US A2P registration may be required
   depending on your account type.
