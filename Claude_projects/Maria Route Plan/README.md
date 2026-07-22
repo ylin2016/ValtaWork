@@ -203,17 +203,36 @@ unaffected. Preview with **`previewMariaRoutes`** (tomorrow) or **`previewMariaR
 stop per unit — each unit's address, bedrooms and bathrooms come from `Listings.gs`
 (a nickname like `Bellevue 2243(6->0)` is matched by stripping the `(…)`).
 Residential / move-in/out stops use the address on the calendar. Every address is
-geocoded once (cached) via the built-in **Maps service** — no API key. Stops are
-then packed into **1–3 cars** (a crew of 2 each), filling a car by nearest-next
-stop until it hits **6 units** or **8 hours** (cleaning + drive, incl. the return
-to base), then opening the next car. Anything beyond 3 full cars is flagged as
-**over capacity**.
+geocoded once (cached) via the built-in **Maps service** — no API key.
+
+**Cars and crews (workload-driven).** The planner first sizes the day's work to
+decide **how many cars** are needed — the fewest (up to **3**) that hold the units
+and the labor — then staffs **each car with 2–4 cleaners**: the *fewest* people who
+can finish that car's route within the **8-hour** day. Each car still holds at most
+**6 units**. So a light day might be one 2-person car; a heavy day, three 4-person
+cars. **A bigger crew cleans proportionally faster** — a job that's 1h for 2 people
+is ~40m for 3 and 30m for 4 — so the crew size is shown per car and the per-stop
+times reflect it.
+
+**Back-to-back comes first.** B2B turnovers have a same-day check-in deadline, so
+the packer places **every B2B before any other job**:
+- **Done first in each car** — a car's B2B stops are ordered ahead of its
+  Residential / next-day / move-in-out stops.
+- **Spread across the crews** — when the day needs more than one car, B2B are
+  distributed so each crew starts its morning on a deadline job.
+- **Never over capacity** — only non-B2B work can spill to **over capacity**; a
+  B2B is never deferred. (In the rare case B2B alone exceed every crew's capacity,
+  the plan flags a loud `🚨 B2B OVER CAPACITY — add a crew`.)
+
+Non-B2B jobs then fill the leftover capacity by nearest-next stop; anything past
+3 cars is flagged as **over capacity** (non-B2B only).
 
 **Cleaning-time model** (`CONFIG.ROUTING`, all tunable): turnover = `CLEAN_BASE_MIN`
 (25) + `CLEAN_PER_BEDROOM_MIN` (15) × beds + `CLEAN_PER_BATHROOM_MIN` (20) × baths,
-in crew clock-minutes for a 2-person crew — anchored so a **1BR/1BA = 1 hour**;
-residential & move-in/out = a flat 2h. Travel = straight-line miles × `ROAD_FACTOR`
-÷ `AVG_SPEED_MPH`.
+in clock-minutes for a **`CALIBRATION_CREW`** (2)-person crew — anchored so a
+**1BR/1BA = 1 hour** at 2 people; residential & move-in/out = a flat 2h. The planner
+treats these as labor (time × 2 person-min) and divides by the car's actual crew
+size. Travel = straight-line miles × `ROAD_FACTOR` ÷ `AVG_SPEED_MPH`.
 
 **Set these before going live:**
 1. `CONFIG.ROUTING.BASE_ADDRESS` — the office/home base crews start and end at.
@@ -230,13 +249,21 @@ Valta Realty Cleaning Schedule — Maria's Route Plan
 Mon, Jul 20 (7 units, 2 cars)
 Counts: B2B 3, Next 2, Res 2
 
-🚗 Car 1 — 4 units, 7h20m (5h40m clean + 1h40m drive · 34 mi):
- 1. Elektra 1212 — 1400 Hubbell Pl, Seattle (2BR/1BA) · B2B 1h50m
- 2. Seattle 8415 — 8415 Linden Ave N, Seattle (3BR/3.5BA) · B2B 2h55m
- 3. 1938 Riva Ln NW — 1938 Riva Ln NW, Issaquah · Res 2h
+🚗 Car 1 — 3 cleaners, 4 units, 7h10m (5h7m clean + 2h3m drive · 57 mi):
+ 1. Elektra 1212 — 1400 Hubbell Pl, Seattle (2BR/1BA) · B2B 50m
+ 2. Bellevue 2243 — 2243 W Lake Sammamish Pkwy SE, Bellevue (4BR/3BA) · B2B 1h37m
+ 3. 14701 SE 42nd — 14701 SE 42nd St, Bellevue · Res 1h20m
+ 4. 1938 Riva Ln NW — 1938 Riva Ln NW, Issaquah · Res 1h20m
     ↩ back to base
-🚗 Car 2 — 3 units, …
+🚗 Car 2 — 2 cleaners, 3 units, 6h28m (4h25m clean + 2h3m drive · 57 mi):
+ 1. Seattle 8415 — 8415 Linden Ave N, Seattle (3BR/2BA) · B2B 1h50m
+ 2. Ballard 55 — 5501 8th Ave NW, Seattle (1BR/1BA) · Next 1h
+ 3. Kirkland 9 — 9 Central Way, Kirkland (2BR/2BA) · Next 1h35m
+    ↩ back to base
 ```
+
+Each car shows its crew size and leads with its B2B job; per-stop times reflect the
+crew (Car 1's 3 cleaners clean the 2BR/1BA in 50m, Car 2's 2 clean the 1BR/1BA in 1h).
 
 **Trigger:** function `runMariaRoutes`, **Time-driven → Day timer**, morning (or the
 evening before, matching your daily reminder). Geocoding uses the Maps-service quota

@@ -55,8 +55,9 @@ const CONFIG = {
 
   // ----------------------------------------------------------------------------
   // Route planning (Maria only — previewMariaRoutes / runMariaRoutes).
-  // Geocodes each stop's address, then packs the day's jobs into 1–3 crews (cars),
-  // each a crew of CREW_PER_CAR working up to MAX_HOURS_PER_PERSON clock-hours,
+  // Geocodes each stop's address, sizes the day's workload to decide how many cars
+  // are needed (up to MAX_CARS), staffs each car with 2–4 people (the fewest that
+  // finish within MAX_HOURS_PER_PERSON — more people clean proportionally faster),
   // and orders each crew's stops by shortest travel from the base and back.
   // ----------------------------------------------------------------------------
   ROUTING: {
@@ -65,21 +66,31 @@ const CONFIG = {
     // but can't tell you the first/last drive). Full address, e.g. "123 Main St, Bellevue, WA".
     BASE_ADDRESS: '12834 24th Ave S, SeaTac, WA 98168',
 
-    CREW_PER_CAR: 2,            // cleaners per car.
-    MAX_HOURS_PER_PERSON: 8,    // workday cap. With a crew working together this is the car's clock-hours.
+    // Crew size is chosen per car: the planner sizes the day's workload to decide how
+    // many cars are needed (up to MAX_CARS), then staffs each with the FEWEST people
+    // in [MIN_CREW_PER_CAR, MAX_CREW_PER_CAR] that finish its route within the day.
+    MIN_CREW_PER_CAR: 2,        // smallest crew in a car.
+    MAX_CREW_PER_CAR: 4,        // largest crew in a car.
+    MAX_HOURS_PER_PERSON: 8,    // workday cap (clock-hours). A crew works together, so this is the car's clock-day.
     MAX_UNITS_PER_CAR: 6,       // hard cap on units (stops) per car per day.
     MAX_CARS: 3,                // most cars available. Work beyond this is flagged as unassigned.
 
-    // Turnover cleaning time (crew clock-minutes for a CREW_PER_CAR-person crew) =
-    // base + per-bedroom + per-bathroom. Anchored so a 1BR/1BA = 60 min for 2 people
-    // (25 + 15 + 20); each extra bed adds 15, each extra bath adds 20.
+    // Cleaning times below are clock-minutes for a CALIBRATION_CREW-person crew. The
+    // planner converts them to labor (time × CALIBRATION_CREW person-min) and divides
+    // by the car's actual crew size, so a 1BR/1BA = 60 min at 2 people, 40 at 3, 30 at 4.
+    CALIBRATION_CREW: 2,
+
+    // Turnover cleaning time = base + per-bedroom + per-bathroom. Anchored so a
+    // 1BR/1BA = 60 min for 2 people (25 + 15 + 20); each extra bed adds 15, each
+    // extra bath adds 20.
     CLEAN_BASE_MIN: 25,
     CLEAN_PER_BEDROOM_MIN: 15,
     CLEAN_PER_BATHROOM_MIN: 20,
 
-    // Residential & move-in/out have only an address (no bed/bath) — fixed minutes each.
-    RESIDENTIAL_MIN: 120,       // 2h, 2-person.
-    MOVEINOUT_MIN: 120,         // 2h, 2-person.
+    // Residential & move-in/out have only an address (no bed/bath) — fixed minutes
+    // each (2-person clock-time; scaled by crew size like turnovers).
+    RESIDENTIAL_MIN: 120,       // 2h @ 2 people.
+    MOVEINOUT_MIN: 120,         // 2h @ 2 people.
 
     // Travel model: straight-line miles between geocoded stops ÷ this speed, then
     // inflated by ROAD_FACTOR to approximate real driving. Keeps API calls to one
