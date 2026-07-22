@@ -75,6 +75,12 @@ const CONFIG = {
     MAX_UNITS_PER_CAR: 6,       // hard cap on units (stops) per car per day.
     MAX_CARS: 3,                // most cars available. Work beyond this is flagged as unassigned.
 
+    // Units at the SAME ADDRESS always ride in one car (kept together, never split
+    // across crews) — even if that address alone exceeds MAX_UNITS_PER_CAR or the
+    // 8-hour day, in which case the car overrides those caps. This keeps a whole
+    // building (e.g. all of Elektra at 1400 Hubbell Pl) as one crew's job. No knob —
+    // it's driven by the address on each listing.
+
     // Cleaning times below are clock-minutes for a CALIBRATION_CREW-person crew. The
     // planner converts them to labor (time × CALIBRATION_CREW person-min) and divides
     // by the car's actual crew size, so a 1BR/1BA = 60 min at 2 people, 40 at 3, 30 at 4.

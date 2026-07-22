@@ -204,110 +204,163 @@ function minCrewFor_(base, route) {
 /**
  * Pack geocoded stops into ≤ MAX_CARS crews under MAX_UNITS_PER_CAR and
  * MAX_HOURS_PER_PERSON (clean + travel incl. return to base). Rules:
- *   1. Car count is driven by the day's WORKLOAD — the fewest cars (up to MAX_CARS)
- *      that can hold the units and labor when each is staffed at MAX_CREW_PER_CAR.
- *   2. Each car is then staffed with the FEWEST people in [MIN,MAX]_CREW_PER_CAR
- *      that finish its route within the day (more people = proportionally faster).
- *   3. Back-to-back (B2B) jobs are done FIRST in every car and SPREAD across the
- *      crews, and are NEVER left over capacity — pass 1 places every B2B before any
- *      non-B2B, so only non-B2B can land in `overflow`.
- * Fit tests assume MAX_CREW_PER_CAR (a stop fits if the fastest crew could do it),
- * then minCrewFor_ trims each car to the people it actually needs.
- * Returns { cars, overflow, b2bOverflow }. `b2bOverflow` is normally empty — it is
- * non-empty only if B2B alone exceed every crew's capacity (needs manual action).
+ *   1. Units at the same ADDRESS ride together — all become one cluster assigned to
+ *      a SINGLE car, never split (e.g. every Elektra unit at 1400 Hubbell Pl). If
+ *      that cluster alone exceeds the unit or hour caps, it still stays on one car
+ *      (caps overridden). Unique-address stops are a cluster of one.
+ *   2. Car count is driven by the day's WORKLOAD — the fewest cars (up to MAX_CARS)
+ *      that hold the units and labor at MAX_CREW_PER_CAR. Each car is then staffed
+ *      with the FEWEST people in [MIN,MAX]_CREW_PER_CAR that finish within the day
+ *      (more people = proportionally faster; a forced over-cap building gets MAX).
+ *   3. Back-to-back (B2B) jobs are done FIRST in every car and spread across the
+ *      crews, and are NEVER left in `overflow` — only non-B2B can. A B2B that still
+ *      can't be placed within caps is flagged in `b2bOverflow` (needs another crew).
+ * Returns { cars, overflow, b2bOverflow }.
  */
 function planCars_(base, stops) {
   const R = CONFIG.ROUTING;
   const capMin = R.MAX_HOURS_PER_PERSON * 60;
 
-  const isB2B = function (s) { return s.type === 'backtoback'; };
-  const b2b = stops.filter(isB2B);
-  const rest = stops.filter(function (s) { return !isB2B(s); });
-
-  // A stop fits a car if it stays under the unit cap and the fastest crew (MAX) could
-  // still finish the car's route (clean + drive incl. return) within the day.
-  const fits = function (car, s) {
-    const route = car.route.concat([s]);
-    return car.route.length < R.MAX_UNITS_PER_CAR &&
-      cleanClockMin_(route, R.MAX_CREW_PER_CAR) + routeDriveMin_(base, route) <= capMin;
-  };
-  const add = function (car, s) { car.route.push(s); };
+  const clusters = clusterByBuilding_(stops);
 
   // Car count from the workload: the fewest cars that hold the day's units and its
-  // labor at full (MAX) crews, capped at MAX_CARS. Cars can still grow below (up to
-  // the cap) if drive time makes the estimate too tight.
+  // labor at full (MAX) crews, capped at MAX_CARS. Cars can still grow below.
   const totalLabor = stops.reduce(function (n, s) { return n + stopLaborMin_(s); }, 0);
   const laborBound = Math.ceil(totalLabor / (R.MAX_CREW_PER_CAR * capMin));
   const unitBound = Math.ceil(stops.length / R.MAX_UNITS_PER_CAR);
   const nCars = Math.min(R.MAX_CARS, Math.max(1, laborBound, unitBound));
   const cars = [];
-  for (var c = 0; c < nCars; c++) cars.push({ route: [] });
+  for (var i = 0; i < nCars; i++) cars.push({ clusters: [] });
 
-  // Pass 1 — B2B, spread across crews. Send each B2B to the fittable car with the
-  // fewest stops (load balance), tie-broken by least added drive. Open another crew
-  // if none fits; only when all MAX_CARS are full does a B2B fall to b2bOverflow.
-  const b2bOverflow = [];
-  b2b.forEach(function (s) {
-    var pick = -1, fewest = Infinity, bestMiles = Infinity;
-    cars.forEach(function (car, i) {
-      if (!fits(car, s)) return;
-      const cur = car.route.length ? car.route[car.route.length - 1].coord : base;
-      const miles = cur ? milesBetween_(cur, s.coord) : 0;
-      if (car.route.length < fewest || (car.route.length === fewest && miles < bestMiles)) {
-        fewest = car.route.length; bestMiles = miles; pick = i;
-      }
-    });
-    if (pick === -1 && cars.length < R.MAX_CARS) {
-      cars.push({ route: [] });
-      pick = cars.length - 1;
-    }
-    if (pick === -1) { b2bOverflow.push(s); return; }
-    add(cars[pick], s);
+  // Pass 0 — oversized single-building clusters: each stays together on ONE car,
+  // overriding the unit/hour caps. Prefer an empty car, else open one, else pile on.
+  clusters.forEach(function (cl) {
+    if (withinCaps_([cl], base)) return;         // not oversized — handled in pass 1/2
+    var idx = emptyCarIndex_(cars);
+    if (idx === -1 && cars.length < R.MAX_CARS) { cars.push({ clusters: [] }); idx = cars.length - 1; }
+    if (idx === -1) idx = leastLoadedCarIndex_(cars);
+    cars[idx].clusters.push(cl);
+    cl.placed = true;
   });
 
-  // Order each car's B2B into a sensible nearest-neighbor path from base.
-  cars.forEach(function (car) { car.route = orderByNearest_(base, car.route); });
+  // Pass 1 — B2B clusters, spread across crews (fewest units, tie-broken by nearest).
+  // Grow up to MAX_CARS; a B2B cluster that still can't fit is flagged (never dropped
+  // into the normal overflow).
+  const b2bOverflow = [];
+  clusters.forEach(function (cl) {
+    if (cl.placed || !cl.hasB2B) return;
+    var idx = assignCluster_(cl, cars, base);
+    if (idx === -1) { pushStops_(b2bOverflow, cl); cl.placed = true; return; }
+    cars[idx].clusters.push(cl);
+    cl.placed = true;
+  });
 
-  // Pass 2 — fill leftover capacity with non-B2B, nearest-fit, appended AFTER the
-  // B2B (so B2B stay first). Round-robin over cars keeps the crews balanced.
-  var pool = rest.slice(), progressed = true;
-  while (pool.length && progressed) {
-    progressed = false;
-    cars.forEach(function (car) {
-      const idx = nearestFitIndex_(car, pool, base, fits);
-      if (idx !== -1) { add(car, pool.splice(idx, 1)[0]); progressed = true; }
+  // Pass 2 — remaining (non-B2B) clusters fill leftover capacity; if none fits, the
+  // cluster's stops go to overflow.
+  const overflow = [];
+  clusters.forEach(function (cl) {
+    if (cl.placed) return;
+    var idx = assignCluster_(cl, cars, base);
+    if (idx === -1) { pushStops_(overflow, cl); cl.placed = true; return; }
+    cars[idx].clusters.push(cl);
+    cl.placed = true;
+  });
+
+  const summarized = cars.filter(function (car) { return car.clusters.length; })
+    .map(function (car) {
+      const route = orderRoute_(base, flattenClusters_(car.clusters));
+      return summarizeRoute_(base, route, minCrewFor_(base, route));
     });
-  }
-  // Leftover non-B2B: open any remaining crews for them (all B2B are already placed).
-  while (pool.length && cars.length < R.MAX_CARS) {
-    const car = { route: [] };
-    var idx;
-    while ((idx = nearestFitIndex_(car, pool, base, fits)) !== -1) add(car, pool.splice(idx, 1)[0]);
-    if (!car.route.length) break;
-    cars.push(car);
-  }
-
-  const summarized = cars.filter(function (car) { return car.route.length; })
-    .map(function (car) { return summarizeRoute_(base, car.route, minCrewFor_(base, car.route)); });
-  return { cars: summarized, overflow: pool, b2bOverflow: b2bOverflow };
+  return { cars: summarized, overflow: overflow, b2bOverflow: b2bOverflow };
 }
 
-/** Index of the nearest (to the car's current position) stop in `pool` that fits; -1 if none. */
-function nearestFitIndex_(car, pool, base, fits) {
-  const cur = car.route.length ? car.route[car.route.length - 1].coord : base;
-  var best = -1, bestMiles = Infinity;
-  for (var i = 0; i < pool.length; i++) {
-    if (!fits(car, pool[i])) continue;
-    const miles = cur ? milesBetween_(cur, pool[i].coord) : 0;
-    if (miles < bestMiles) { bestMiles = miles; best = i; }
-  }
-  return best;
+/**
+ * Group stops that share an ADDRESS into clusters. All units at one address (e.g.
+ * every Elektra unit at 1400 Hubbell Pl) become ONE cluster that must ride in a
+ * single car — never split. Stops with a unique address are a cluster of one.
+ */
+function clusterByBuilding_(stops) {
+  const map = {}, order = [];
+  stops.forEach(function (s, idx) {
+    const key = addressKey_(s) || ('solo:' + idx);   // no address → its own cluster
+    if (!map[key]) { map[key] = { key: key, stops: [], coord: s.coord, hasB2B: false }; order.push(key); }
+    map[key].stops.push(s);
+    if (s.type === 'backtoback') map[key].hasB2B = true;
+  });
+  return order.map(function (k) { return map[k]; });
 }
 
-/** Greedy nearest-neighbor ordering of stops starting from base. */
-function orderByNearest_(base, stops) {
+/** Normalized address key for a stop (units in one building share an address), or ''. */
+function addressKey_(s) { return String(s.address || '').trim().toLowerCase(); }
+
+/** Flatten a list of clusters back into their stops. */
+function flattenClusters_(clusters) {
+  const out = [];
+  clusters.forEach(function (cl) { for (var i = 0; i < cl.stops.length; i++) out.push(cl.stops[i]); });
+  return out;
+}
+
+/** Would these clusters fit one car within the unit + hour caps (at the fastest crew)? */
+function withinCaps_(clusters, base) {
+  const R = CONFIG.ROUTING, cap = R.MAX_HOURS_PER_PERSON * 60;
+  const stops = flattenClusters_(clusters);
+  if (stops.length > R.MAX_UNITS_PER_CAR) return false;
+  const route = orderRoute_(base, stops);
+  return cleanClockMin_(route, R.MAX_CREW_PER_CAR) + routeDriveMin_(base, route) <= cap;
+}
+
+/** Place a cluster on the fittable car with the fewest units (tie: nearest); open a
+ *  new car up to MAX_CARS if needed. Returns the car index, or -1 if none can take it. */
+function assignCluster_(cl, cars, base) {
+  var pick = -1, fewest = Infinity, bestMiles = Infinity;
+  cars.forEach(function (car, i) {
+    if (!withinCaps_(car.clusters.concat([cl]), base)) return;
+    const stops = flattenClusters_(car.clusters);
+    const last = stops.length ? orderRoute_(base, stops).slice(-1)[0].coord : base;
+    const miles = last ? milesBetween_(last, cl.coord) : 0;
+    if (stops.length < fewest || (stops.length === fewest && miles < bestMiles)) {
+      fewest = stops.length; bestMiles = miles; pick = i;
+    }
+  });
+  if (pick === -1 && cars.length < CONFIG.ROUTING.MAX_CARS) {
+    cars.push({ clusters: [] });
+    if (withinCaps_([cl], base)) pick = cars.length - 1;
+  }
+  return pick;
+}
+
+/** Index of the first empty car, or -1. */
+function emptyCarIndex_(cars) {
+  for (var i = 0; i < cars.length; i++) if (!cars[i].clusters.length) return i;
+  return -1;
+}
+
+/** Index of the car with the fewest units so far. */
+function leastLoadedCarIndex_(cars) {
+  var idx = 0, fewest = Infinity;
+  cars.forEach(function (car, i) {
+    const u = flattenClusters_(car.clusters).length;
+    if (u < fewest) { fewest = u; idx = i; }
+  });
+  return idx;
+}
+
+function pushStops_(sink, cl) { for (var i = 0; i < cl.stops.length; i++) sink.push(cl.stops[i]); }
+
+/** Order a car's stops: all B2B first (nearest-neighbor), then the rest (nearest-
+ *  neighbor). Same-building units share coordinates, so they stay grouped. */
+function orderRoute_(base, stops) {
+  const b2b = stops.filter(function (s) { return s.type === 'backtoback'; });
+  const rest = stops.filter(function (s) { return s.type !== 'backtoback'; });
+  const head = orderByNearest_(base, b2b);
+  const from = head.length ? head[head.length - 1].coord : base;
+  return head.concat(orderByNearest_(from, rest));
+}
+
+/** Greedy nearest-neighbor ordering of stops starting from `from`. */
+function orderByNearest_(from, stops) {
   const remaining = stops.slice(), ordered = [];
-  var cur = base;
+  var cur = from;
   while (remaining.length) {
     var best = 0, bestMiles = Infinity;
     for (var i = 0; i < remaining.length; i++) {
@@ -324,10 +377,12 @@ function orderByNearest_(base, stops) {
 function summarizeRoute_(base, route, crew) {
   const driveMin = routeDriveMin_(base, route);
   const cleanMin = cleanClockMin_(route, crew);
+  const totalMin = driveMin + cleanMin;
   return {
     stops: route, units: route.length, crew: crew,
-    driveMin: driveMin, cleanMin: cleanMin, totalMin: driveMin + cleanMin,
+    driveMin: driveMin, cleanMin: cleanMin, totalMin: totalMin,
     driveMiles: routeDriveMiles_(base, route),
+    overDay: totalMin > CONFIG.ROUTING.MAX_HOURS_PER_PERSON * 60 + 0.5,
   };
 }
 
@@ -352,8 +407,9 @@ function composeRoutePlan_(name, dayLabel, plan, counts, unmapped, ungeocoded, b
   plan.cars.forEach(function (car, i) {
     lines.push('');
     lines.push('🚗 Car ' + (i + 1) + ' — ' + car.crew + ' cleaners, ' + car.units + ' unit' +
-      (car.units === 1 ? '' : 's') + ', ' + hm_(car.totalMin) + ' (' + hm_(car.cleanMin) +
-      ' clean + ' + hm_(car.driveMin) + ' drive · ' + Math.round(car.driveMiles) + ' mi):');
+      (car.units === 1 ? '' : 's') + ', ' + hm_(car.totalMin) + (car.overDay ? ' ⚠️ over 8h' : '') +
+      ' (' + hm_(car.cleanMin) + ' clean + ' + hm_(car.driveMin) + ' drive · ' +
+      Math.round(car.driveMiles) + ' mi):');
     car.stops.forEach(function (s, j) { lines.push(' ' + (j + 1) + '. ' + stopLine_(s, car.crew)); });
     if (baseSet) lines.push('    ↩ back to base');
   });

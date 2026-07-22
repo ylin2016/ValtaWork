@@ -208,11 +208,19 @@ geocoded once (cached) via the built-in **Maps service** — no API key.
 **Cars and crews (workload-driven).** The planner first sizes the day's work to
 decide **how many cars** are needed — the fewest (up to **3**) that hold the units
 and the labor — then staffs **each car with 2–4 cleaners**: the *fewest* people who
-can finish that car's route within the **8-hour** day. Each car still holds at most
-**6 units**. So a light day might be one 2-person car; a heavy day, three 4-person
-cars. **A bigger crew cleans proportionally faster** — a job that's 1h for 2 people
-is ~40m for 3 and 30m for 4 — so the crew size is shown per car and the per-stop
-times reflect it.
+can finish that car's route within the **8-hour** day. Each car normally holds at
+most **6 units**. So a light day might be one 2-person car; a heavy day, three
+4-person cars. **A bigger crew cleans proportionally faster** — a job that's 1h for
+2 people is ~40m for 3 and 30m for 4 — so the crew size is shown per car and the
+per-stop times reflect it.
+
+**Same address, same car.** Units that share an **address** (e.g. every Elektra unit
+at `1400 Hubbell Pl`) are kept **together on a single car** — never split across
+crews. If one address's units alone exceed the 6-unit or 8-hour limits, that car
+**overrides the caps** to keep them together (staffed at the max crew) and the line
+is marked **`⚠️ over 8h`** — so a whole building is always one crew's job, even on a
+big day. It's keyed off the address on each listing, so it applies to any building
+with multiple same-day turnovers.
 
 **Back-to-back comes first.** B2B turnovers have a same-day check-in deadline, so
 the packer places **every B2B before any other job**:
