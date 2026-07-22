@@ -156,11 +156,16 @@ function cleanerPhones_(cleaner) {
 /* ------------------------------------------------------------------ */
 
 const TYPES = {
-  backtoback:  { label: 'Back-to-back', short: 'B2B' },
+  backtoback:  { label: 'Back-to-back', short: 'B2B', icon: '⚠️' },
   nextday:     { label: 'Next-day',     short: 'Next' },
   residential: { label: 'Residential',  short: 'Res' },
   moveinout:   { label: 'Move-in/out',  short: 'Move' },
 };
+
+/** Emoji prefix (with trailing space) shown before a listing name of this type, or ''. */
+function typeIcon_(type) {
+  return TYPES[type] && TYPES[type].icon ? TYPES[type].icon + ' ' : '';
+}
 
 // Order used in weekly totals / per-day lines.
 const WEEKLY_TYPE_ORDER = ['backtoback', 'nextday', 'residential', 'moveinout'];
@@ -270,7 +275,7 @@ function composeMessage_(name, dayLabel, jobs) {
     lines.push(typeHeader_(job) + ':');
 
     splitUnits_(job.event.getTitle()).forEach(function (unit) {
-      lines.push(' • ' + unit);
+      lines.push(' • ' + typeIcon_(job.type) + unit);
     });
 
     const loc = job.event.getLocation();

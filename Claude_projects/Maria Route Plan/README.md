@@ -250,13 +250,13 @@ Mon, Jul 20 (7 units, 2 cars)
 Counts: B2B 3, Next 2, Res 2
 
 🚗 Car 1 — 3 cleaners, 4 units, 7h10m (5h7m clean + 2h3m drive · 57 mi):
- 1. Elektra 1212 — 1400 Hubbell Pl, Seattle (2BR/1BA) · B2B 50m
- 2. Bellevue 2243 — 2243 W Lake Sammamish Pkwy SE, Bellevue (4BR/3BA) · B2B 1h37m
+ 1. ⚠️ Elektra 1212 — 1400 Hubbell Pl, Seattle (2BR/1BA) · B2B 50m
+ 2. ⚠️ Bellevue 2243 — 2243 W Lake Sammamish Pkwy SE, Bellevue (4BR/3BA) · B2B 1h37m
  3. 14701 SE 42nd — 14701 SE 42nd St, Bellevue · Res 1h20m
  4. 1938 Riva Ln NW — 1938 Riva Ln NW, Issaquah · Res 1h20m
     ↩ back to base
 🚗 Car 2 — 2 cleaners, 3 units, 6h28m (4h25m clean + 2h3m drive · 57 mi):
- 1. Seattle 8415 — 8415 Linden Ave N, Seattle (3BR/2BA) · B2B 1h50m
+ 1. ⚠️ Seattle 8415 — 8415 Linden Ave N, Seattle (3BR/2BA) · B2B 1h50m
  2. Ballard 55 — 5501 8th Ave NW, Seattle (1BR/1BA) · Next 1h
  3. Kirkland 9 — 9 Central Way, Kirkland (2BR/2BA) · Next 1h35m
     ↩ back to base
@@ -264,6 +264,8 @@ Counts: B2B 3, Next 2, Res 2
 
 Each car shows its crew size and leads with its B2B job; per-stop times reflect the
 crew (Car 1's 3 cleaners clean the 2BR/1BA in 50m, Car 2's 2 clean the 1BR/1BA in 1h).
+Back-to-back listings are marked with a **⚠️** before the name (in the daily reminder
+too, matching its `⚠️ BACK-TO-BACK` section), so the deadline turns stand out.
 
 **Trigger:** function `runMariaRoutes`, **Time-driven → Day timer**, morning (or the
 evening before, matching your daily reminder). Geocoding uses the Maps-service quota

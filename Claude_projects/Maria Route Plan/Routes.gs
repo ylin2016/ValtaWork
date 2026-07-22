@@ -392,7 +392,7 @@ function composeRoutePlan_(name, dayLabel, plan, counts, unmapped, ungeocoded, b
 /** One stop line: "Bellevue 2243 — 2243 W Lake Sammamish Pkwy SE, Bellevue (4BR/3BA) · B2B 1h2m".
  *  The time is this stop's clean time at the car's crew size (labor ÷ crew). */
 function stopLine_(s, crew) {
-  var line = s.name + ' — ' + shortAddr_(s.address);
+  var line = typeIcon_(s.type) + s.name + ' — ' + shortAddr_(s.address);
   if (s.beds != null) line += ' (' + s.beds + 'BR/' + s.baths + 'BA)';
   const tag = TYPES[s.type] ? TYPES[s.type].short : s.type;
   return line + ' · ' + tag + ' ' + hm_(stopLaborMin_(s) / crew);
