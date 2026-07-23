@@ -89,6 +89,13 @@ class WheelhouseClient:
                 backoff *= 2
                 continue
 
+            if resp.status_code == 204:
+                # No Content — a valid "nothing for this request" answer, not an
+                # error. Wheelhouse returns it when a date range predates the
+                # available data.
+                self._log_raw(path, ref_id, 204, None)
+                return None
+
             if resp.status_code == 200:
                 try:
                     body = resp.json()

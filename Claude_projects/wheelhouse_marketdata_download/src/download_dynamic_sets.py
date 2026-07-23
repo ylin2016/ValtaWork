@@ -183,16 +183,37 @@ def _pull_aggregated(client, conn, cfg, snapshot_date, sid, start_date, end_date
 
 
 def _pull_time_series(client, conn, cfg, snapshot_date, sid, start_date, end_date):
-    body = _safe(client, cfg["endpoints"]["dynamic_set_time_series"].format(set_id=sid),
-                 f"ds_ts:{sid}", params={"start_date": start_date, "end_date": end_date})
-    if body is None:
-        return 0
-    rows = [
-        {"snapshot_date": snapshot_date, "set_id": sid, "date": d,
-         "metric": m, "value": v, "raw_json": None}
-        for (d, m, v) in flatten_series(body)
-    ]
-    return db.upsert(conn, "dynamic_set_time_series", rows)
+    """Pull a set's daily time series, widest window first.
+
+    Dynamic-set history is shallower than market history (~24 months). If the
+    requested range starts before the set has data, the API answers 204 for the
+    WHOLE range instead of clipping — so step the start forward a year at a time
+    until we get data.
+    """
+    path = cfg["endpoints"]["dynamic_set_time_series"].format(set_id=sid)
+    for start in _start_candidates(start_date, end_date):
+        body = _safe(client, path, f"ds_ts:{sid}",
+                     params={"start_date": start, "end_date": end_date})
+        if not body:
+            continue
+        rows = [
+            {"snapshot_date": snapshot_date, "set_id": sid, "date": d,
+             "metric": m, "value": v, "raw_json": None}
+            for (d, m, v) in flatten_series(body)
+        ]
+        if rows:
+            return db.upsert(conn, "dynamic_set_time_series", rows)
+    return 0
+
+
+def _start_candidates(start_date, end_date):
+    """[configured start, Jan 1 of each later year ... , end's year] — widest first."""
+    from datetime import date as _date
+    y0 = int(start_date[:4])
+    y1 = int(end_date[:4])
+    out = [start_date]
+    out += [_date(y, 1, 1).isoformat() for y in range(y0 + 1, y1 + 1)]
+    return list(dict.fromkeys(out))
 
 
 def _pull_distributions(client, conn, cfg, snapshot_date, sid, months):
