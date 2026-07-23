@@ -11,7 +11,7 @@ from . import db
 from .transforms import (
     first, to_float, as_str, dumps,
     flatten_series, flatten_distribution, flatten_metrics, flatten_members,
-    _extract_list, date_window, month_firsts, _listing_id,
+    _extract_list, year_window, month_firsts, _listing_id, in_window,
 )
 from .wheelhouse_client import WheelhouseError
 
@@ -82,9 +82,9 @@ def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
         client, conn, cfg, snapshot_date, limit=limit)
     print(f"  pulling detail for {len(set_ids)} sets")
 
-    start_date, end_date = date_window(
-        snapshot_date, p.get("history_days", 90), p.get("forward_days", 365))
+    start_date, end_date = year_window(snapshot_date, p.get("history_years", 2))
     months = month_firsts(snapshot_date, p.get("distribution_months", 3))
+    print(f"    date range: {start_date} .. {end_date}")
 
     totals = {"associated_listings": assoc_total, "members": 0,
               "aggregated_metrics": 0, "time_series": 0,
@@ -92,12 +92,14 @@ def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
 
     for sid in set_ids:
         totals["members"] += _pull_members(client, conn, cfg, snapshot_date, sid)
-        totals["aggregated_metrics"] += _pull_aggregated(client, conn, cfg, snapshot_date, sid)
+        totals["aggregated_metrics"] += _pull_aggregated(
+            client, conn, cfg, snapshot_date, sid, start_date, end_date)
         totals["time_series"] += _pull_time_series(
             client, conn, cfg, snapshot_date, sid, start_date, end_date)
         totals["distributions"] += _pull_distributions(
             client, conn, cfg, snapshot_date, sid, months)
-        totals["changelog"] += _pull_changelog(client, conn, cfg, snapshot_date, sid)
+        totals["changelog"] += _pull_changelog(
+            client, conn, cfg, snapshot_date, sid, start_date, end_date)
 
     print("  dynamic set detail rows: " +
           ", ".join(f"{k}={v}" for k, v in totals.items()))
@@ -156,19 +158,20 @@ def _pull_members(client, conn, cfg, snapshot_date, sid):
     return db.upsert(conn, "dynamic_set_members", rows)
 
 
-def _pull_aggregated(client, conn, cfg, snapshot_date, sid):
+def _pull_aggregated(client, conn, cfg, snapshot_date, sid, start_date, end_date):
     body = _safe(client, cfg["endpoints"]["dynamic_set_aggregated_metrics"].format(set_id=sid),
                  f"ds_agg:{sid}")
     if body is None:
         return 0
     # aggregated_metrics is a monthly series: {data:[{start_date,end_date,occupancy,
     # adr,revenue,...}]}. Treat start_date as the period and each numeric column as a
-    # metric. Fall back to a flat metric dict if that yields nothing.
+    # metric. The endpoint returns the set's full history (back to ~2017), so trim it
+    # to the configured window. Fall back to a flat metric dict if that yields nothing.
     series = flatten_series(body, date_keys=("start_date", "end_date", "date", "month"))
     rows = [
         {"snapshot_date": snapshot_date, "set_id": sid, "metric": m,
          "period": d, "value": v, "raw_json": None}
-        for (d, m, v) in series
+        for (d, m, v) in series if in_window(d, start_date, end_date)
     ]
     if not rows:
         rows = [
@@ -207,7 +210,7 @@ def _pull_distributions(client, conn, cfg, snapshot_date, sid, months):
     return total
 
 
-def _pull_changelog(client, conn, cfg, snapshot_date, sid):
+def _pull_changelog(client, conn, cfg, snapshot_date, sid, start_date, end_date):
     body = _safe(client, cfg["endpoints"]["dynamic_set_changelog"].format(set_id=sid),
                  f"ds_changelog:{sid}")
     if body is None:
@@ -215,6 +218,10 @@ def _pull_changelog(client, conn, cfg, snapshot_date, sid):
     rows = []
     for item in _extract_list(body):
         if not isinstance(item, dict):
+            continue
+        # keep only changes inside the configured window (undated rows are kept)
+        when = as_str(first(item, "date", "changed_at", "created_at", "timestamp"))
+        if when and not in_window(when, start_date, end_date):
             continue
         rows.append({
             "snapshot_date": snapshot_date, "set_id": sid,

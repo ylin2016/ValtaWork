@@ -22,6 +22,25 @@ def date_window(snapshot_date: str, back_days: int, forward_days: int):
     )
 
 
+def year_window(snapshot_date: str, history_years: int = 2):
+    """Whole-calendar-year window: Jan 1 of (year - history_years) .. Dec 31 of
+    the snapshot's year.
+
+    history_years=2 run in 2026 -> ("2024-01-01", "2026-12-31") — i.e. the last
+    two years plus the current year.
+    """
+    y = date.fromisoformat(snapshot_date).year
+    return (date(y - max(0, history_years), 1, 1).isoformat(),
+            date(y, 12, 31).isoformat())
+
+
+def in_window(value, start_date: str, end_date: str) -> bool:
+    """True if an ISO date/period string falls inside [start_date, end_date]."""
+    if not value:
+        return False
+    return start_date <= str(value)[:10] <= end_date
+
+
 def month_firsts(snapshot_date: str, n: int):
     """First-of-month ISO dates starting with the snapshot's month, n months forward."""
     d = date.fromisoformat(snapshot_date).replace(day=1)

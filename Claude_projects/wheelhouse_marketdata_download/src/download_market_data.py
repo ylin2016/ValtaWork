@@ -11,7 +11,7 @@ from datetime import datetime, timezone
 from . import db
 from .transforms import (
     first, as_str, dumps, flatten_series, flatten_distribution,
-    date_window, month_firsts,
+    year_window, month_firsts,
 )
 from .wheelhouse_client import WheelhouseError
 
@@ -62,9 +62,9 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
         print("    (no markets matched params.market_names/market_ids in config.yml)")
         return
 
-    start_date, end_date = date_window(
-        snapshot_date, p.get("history_days", 90), p.get("forward_days", 365))
+    start_date, end_date = year_window(snapshot_date, p.get("history_years", 2))
     months = month_firsts(snapshot_date, p.get("distribution_months", 3))
+    print(f"    date range: {start_date} .. {end_date}")
 
     ts_total = dist_total = 0
     for mid in targets:
@@ -86,40 +86,57 @@ def _listing_market_ids(conn, snapshot_date):
 def _select_markets(listed, p, listing_mids):
     """Resolve config selectors to a de-duped, ordered list of market_ids.
 
-    Priority: explicit market_ids > market_names substring match >
-    markets_from_listings (markets where our listings are) > all accessible.
+    markets_from_listings=True : markets where our listings are, PLUS any
+                                 market_names / market_ids as additive extras.
+    markets_from_listings=False: market_ids > market_names as the exact list,
+                                 falling back to every accessible market.
     """
     accessible = [mid for mid, _ in listed]
+    from_listings = p.get("markets_from_listings", True)
 
-    ids = [str(m) for m in (p.get("market_ids") or [])]
-    if ids:
-        return list(dict.fromkeys(ids))
+    explicit = _explicit_markets(listed, p)
 
-    names = [n.lower() for n in (p.get("market_names") or [])]
-    if names:
-        matched, unmatched = [], set(p.get("market_names") or [])
-        for mid, mname in listed:
-            low = (mname or "").lower()
-            hit = next((orig for orig, n in zip(p["market_names"], names) if n in low), None)
-            if hit is not None:
-                matched.append(mid)
-                unmatched.discard(hit)
-        if unmatched:
-            print(f"    note: no accessible market matched {sorted(unmatched)} "
-                  "(need a Pro listing there)")
-        return list(dict.fromkeys(matched))
-
-    if p.get("markets_from_listings", True):
-        # markets where our listings are, that also return market reports.
+    if from_listings:
         picked = [mid for mid in accessible if mid in listing_mids]
+        extras = [mid for mid in explicit if mid not in picked]
         no_report = sorted(listing_mids - set(accessible))
         if no_report:
             print(f"    note: {len(no_report)} listing market(s) have no accessible "
                   f"report (demo/Free tier): {no_report}")
-        return picked
+        if extras:
+            names = dict(listed)
+            print(f"    plus {len(extras)} extra market(s) from config: "
+                  + ", ".join(names.get(m, m) for m in extras))
+        # keep accessible ordering
+        chosen = set(picked) | set(extras)
+        return [mid for mid in accessible if mid in chosen]
 
-    # nothing selected -> all accessible markets
+    if explicit:
+        return explicit
     return list(dict.fromkeys(accessible))
+
+
+def _explicit_markets(listed, p):
+    """market_ids (preferred) or market_names substring matches, as market_ids."""
+    ids = [str(m) for m in (p.get("market_ids") or [])]
+    if ids:
+        return list(dict.fromkeys(ids))
+
+    raw_names = p.get("market_names") or []
+    if not raw_names:
+        return []
+    lowered = [n.lower() for n in raw_names]
+    matched, unmatched = [], set(raw_names)
+    for mid, mname in listed:
+        low = (mname or "").lower()
+        hit = next((orig for orig, n in zip(raw_names, lowered) if n in low), None)
+        if hit is not None:
+            matched.append(mid)
+            unmatched.discard(hit)
+    if unmatched:
+        print(f"    note: no accessible market matched {sorted(unmatched)} "
+              "(need a Pro listing there)")
+    return list(dict.fromkeys(matched))
 
 
 def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date, end_date):

@@ -14,21 +14,23 @@ api:
 params:
   country_codes: ["US"]
 
-  # Market selection, in priority order:
-  #   1. market_ids   — explicit list of market_ids (highest priority)
-  #   2. market_names — case-insensitive substring match vs /market_report names
-  #                     (e.g. "Seattle" matches "Seattle, WA, United States")
-  #   3. markets_from_listings: true — pull the markets where YOUR listings are
-  #      (auto-updates as your portfolio changes). This is the default.
-  #   4. if all of the above are empty/false — every accessible market.
-  # Only markets where you have a Pro listing are accessible; others 404.
+  # Market selection.
+  #   markets_from_listings: true  -> the markets where YOUR listings are
+  #     (auto-updates as the portfolio changes). market_names / market_ids are
+  #     then ADDITIVE extras — markets you want even with no listing there.
+  #   markets_from_listings: false -> market_names / market_ids are the exact list.
+  # Names match case-insensitively as substrings against /market_report names
+  # ("Seattle" matches "Seattle, WA, United States"). Only markets where you have
+  # a Pro listing are accessible; others 404.
   markets_from_listings: true
-  market_names: []          # e.g. ["Seattle", "Bellevue"] to pin a fixed list
-  market_ids: []            # optional precise override (takes priority over names)
+  market_names:
+    - "Wenatchee"           # extra: no listing in-market, but our units are nearby
+  market_ids: []            # extra (or exact list) by id
 
-  # Time-series window, measured in days around the snapshot date.
-  history_days: 90
-  forward_days: 365
+  # How much history to pull for market + dynamic-set time series.
+  # Window = Jan 1 of (current year - history_years) .. Dec 31 of the current year.
+  # history_years: 2 in 2026 -> 2024-01-01 .. 2026-12-31 (last 2 years + this year).
+  history_years: 2
   # Distribution histograms are per-month; pull this many months starting with
   # the snapshot's month (first-of-month is what the API expects).
   distribution_months: 3
