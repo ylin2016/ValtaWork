@@ -44,8 +44,12 @@ def export_snapshot(conn, export_dir: str, snapshot_date: str) -> str:
         for table, df in frames.items():
             if df.empty:
                 continue
+            # Drop raw_json in the workbook only — the blobs blow past Excel's
+            # 32k-char cell limit and aren't useful in a spreadsheet. CSVs + the
+            # SQLite DB keep the full raw payload.
+            sheet_df = df.drop(columns=[c for c in ("raw_json", "json") if c in df.columns])
             # Excel sheet names max 31 chars.
-            df.to_excel(xw, sheet_name=table[:31], index=False)
+            sheet_df.to_excel(xw, sheet_name=table[:31], index=False)
             wrote_any = True
         if not wrote_any:
             pd.DataFrame({"note": ["no rows for this snapshot"]}).to_excel(
