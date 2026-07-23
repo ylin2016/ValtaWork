@@ -184,27 +184,23 @@ function driveMin_(a, b) { return legDrive_(a, b).min; }
 /** Real driving miles between two points. */
 function driveMiles_(a, b) { return legDrive_(a, b).miles; }
 
-/** Drive minutes for base → s1 → … → sn → base (base legs skipped if base is null). */
-function routeDriveMin_(base, stops) {
-  var total = 0, prev = base;
+/** Drive { min, miles } for base → s1 → … → sn → base (base legs skipped if base is
+ *  null). One walk; each leg's min and miles come together from legDrive_. */
+function routeDrive_(base, stops) {
+  var min = 0, miles = 0, prev = base, leg;
   for (var i = 0; i < stops.length; i++) {
-    if (prev) total += driveMin_(prev, stops[i].coord);
+    if (prev) { leg = legDrive_(prev, stops[i].coord); min += leg.min; miles += leg.miles; }
     prev = stops[i].coord;
   }
-  if (base && prev) total += driveMin_(prev, base);
-  return total;
+  if (base && prev) { leg = legDrive_(prev, base); min += leg.min; miles += leg.miles; }
+  return { min: min, miles: miles };
 }
 
+/** Drive minutes for base → s1 → … → sn → base. */
+function routeDriveMin_(base, stops) { return routeDrive_(base, stops).min; }
+
 /** Drive miles for base → s1 → … → sn → base. */
-function routeDriveMiles_(base, stops) {
-  var total = 0, prev = base;
-  for (var i = 0; i < stops.length; i++) {
-    if (prev) total += driveMiles_(prev, stops[i].coord);
-    prev = stops[i].coord;
-  }
-  if (base && prev) total += driveMiles_(prev, base);
-  return total;
-}
+function routeDriveMiles_(base, stops) { return routeDrive_(base, stops).miles; }
 
 /* ------------------------------------------------------------------ */
 /* Car packing (greedy nearest-fit)                                   */
@@ -258,7 +254,7 @@ function planCars_(base, stops) {
 
   // Car count from the workload: the fewest cars that hold the day's units and its
   // labor at full (MAX) crews, capped at MAX_CARS. Cars can still grow below.
-  const totalLabor = stops.reduce(function (n, s) { return n + stopLaborMin_(s); }, 0);
+  const totalLabor = cleanClockMin_(stops, 1);   // labor ÷ 1 crew = total person-minutes
   const laborBound = Math.ceil(totalLabor / (R.MAX_CREW_PER_CAR * capMin));
   const unitBound = Math.ceil(stops.length / R.MAX_UNITS_PER_CAR);
   const nCars = Math.min(R.MAX_CARS, Math.max(1, laborBound, unitBound));
@@ -280,24 +276,12 @@ function planCars_(base, stops) {
   // Grow up to MAX_CARS; a B2B cluster that still can't fit is flagged (never dropped
   // into the normal overflow).
   const b2bOverflow = [];
-  clusters.forEach(function (cl) {
-    if (cl.placed || !cl.hasB2B) return;
-    var idx = assignCluster_(cl, cars, base);
-    if (idx === -1) { pushStops_(b2bOverflow, cl); cl.placed = true; return; }
-    cars[idx].clusters.push(cl);
-    cl.placed = true;
-  });
+  placeClusters_(clusters.filter(function (cl) { return cl.hasB2B; }), cars, base, b2bOverflow);
 
   // Pass 2 — remaining (non-B2B) clusters fill leftover capacity; if none fits, the
   // cluster's stops go to overflow.
   const overflow = [];
-  clusters.forEach(function (cl) {
-    if (cl.placed) return;
-    var idx = assignCluster_(cl, cars, base);
-    if (idx === -1) { pushStops_(overflow, cl); cl.placed = true; return; }
-    cars[idx].clusters.push(cl);
-    cl.placed = true;
-  });
+  placeClusters_(clusters, cars, base, overflow);
 
   const summarized = cars.filter(function (car) { return car.clusters.length; })
     .map(function (car) {
@@ -340,6 +324,19 @@ function withinCaps_(clusters, base) {
   if (stops.length > R.MAX_UNITS_PER_CAR) return false;
   const route = orderRoute_(base, stops);
   return cleanClockMin_(route, R.MAX_CREW_PER_CAR) + routeDriveMin_(base, route) <= cap;
+}
+
+/** Place each not-yet-placed cluster into a car via assignCluster_; a cluster that
+ *  fits nowhere spills its stops into `sink`. Marks every cluster it touches placed.
+ *  Feed it a hasB2B-filtered list for Pass 1, the whole list for Pass 2. */
+function placeClusters_(clusters, cars, base, sink) {
+  clusters.forEach(function (cl) {
+    if (cl.placed) return;
+    var idx = assignCluster_(cl, cars, base);
+    if (idx === -1) { pushStops_(sink, cl); cl.placed = true; return; }
+    cars[idx].clusters.push(cl);
+    cl.placed = true;
+  });
 }
 
 /** Place a cluster on the fittable car with the fewest units (tie: nearest); open a
@@ -433,13 +430,13 @@ function optimizeRoute_(base, route) {
 }
 
 function summarizeRoute_(base, route, crew) {
-  const driveMin = routeDriveMin_(base, route);
+  const drive = routeDrive_(base, route);
   const cleanMin = cleanClockMin_(route, crew);
-  const totalMin = driveMin + cleanMin;
+  const totalMin = drive.min + cleanMin;
   return {
     stops: route, units: route.length, crew: crew,
-    driveMin: driveMin, cleanMin: cleanMin, totalMin: totalMin,
-    driveMiles: routeDriveMiles_(base, route),
+    driveMin: drive.min, cleanMin: cleanMin, totalMin: totalMin,
+    driveMiles: drive.miles,
     overDay: totalMin > CONFIG.ROUTING.MAX_HOURS_PER_PERSON * 60 + 0.5,
   };
 }
