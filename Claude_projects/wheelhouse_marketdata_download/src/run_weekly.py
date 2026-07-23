@@ -17,8 +17,17 @@ from . import db
 from .wheelhouse_client import WheelhouseClient
 from .download_listings import download_listings
 from .download_market_data import download_markets, download_neighborhood
-from .download_dynamic_sets import download_dynamic_sets
+from .download_dynamic_sets import download_dynamic_sets, collect_associated_listings
 from .export_csv import export_snapshot
+
+
+def _merge_listings(demo, real):
+    """Union of /listings and set-derived listings, deduped by listing_id.
+    Real (portfolio) listings take precedence over the demo listing."""
+    by_id = {l["listing_id"]: l for l in demo}
+    for l in real:
+        by_id[l["listing_id"]] = l
+    return list(by_id.values())
 
 
 def parse_args(argv=None):
@@ -47,22 +56,30 @@ def main(argv=None) -> int:
 
     do_all = args.only is None
 
-    # Listings are needed by market (neighborhood) pulls, so fetch them whenever
-    # we're doing market data or listings.
-    listings = []
+    # GET /listings only returns a demo listing; our real portfolio is exposed as
+    # the associated listings on each dynamic set. So dynamic sets run first and
+    # hand their real listings to the market/neighborhood pulls.
+    listings = []           # from /listings (demo)
+    real_listings = []      # from dynamic-set associated listings (real portfolio)
+
     if do_all or args.only in ("listings", "market"):
         print("Listings...")
         listings = download_listings(client, conn, cfg, snapshot_date, limit=args.limit)
 
-    if do_all or args.only == "market":
-        print("Market data...")
-        market_ids = sorted({l["market_id"] for l in listings if l.get("market_id")})
-        download_markets(client, conn, cfg, snapshot_date, market_ids, limit=args.limit)
-        download_neighborhood(client, conn, cfg, snapshot_date, listings, limit=args.limit)
-
     if do_all or args.only == "dynamic_sets":
         print("Dynamic sets...")
-        download_dynamic_sets(client, conn, cfg, snapshot_date, limit=args.limit)
+        real_listings = download_dynamic_sets(client, conn, cfg, snapshot_date, limit=args.limit)
+
+    if do_all or args.only == "market":
+        print("Market data...")
+        if not real_listings:
+            # market run on its own — harvest real listings from the sets (no detail).
+            _, real_listings, _ = collect_associated_listings(
+                client, conn, cfg, snapshot_date, limit=args.limit)
+        market_listings = _merge_listings(listings, real_listings)
+        market_ids = sorted({l["market_id"] for l in market_listings if l.get("market_id")})
+        download_markets(client, conn, cfg, snapshot_date, market_ids, limit=args.limit)
+        download_neighborhood(client, conn, cfg, snapshot_date, market_listings, limit=args.limit)
 
     if not args.no_export:
         print("Export...")

@@ -16,14 +16,21 @@ from .transforms import (
 from .wheelhouse_client import WheelhouseError
 
 
-def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
+def collect_associated_listings(client, conn, cfg, snapshot_date, limit=None):
+    """List sets, store each set + its associated (real) listings, and upsert those
+    real listings into the `listings` table.
+
+    GET /listings only returns a demo listing; our actual portfolio is exposed as
+    the `associated_listings` on each dynamic set (with wheelhouse_id + channel).
+    This harvests them so the per-listing neighborhood pulls cover real units.
+
+    Returns (set_ids, real_listings, associated_row_count) where real_listings is a
+    list of {listing_id, channel, market_id} dicts (listing_id = wheelhouse_id).
+    """
     ep = cfg["endpoints"]
-    p = cfg.get("params", {})
     pulled_at = datetime.now(timezone.utc).isoformat()
 
-    # 1) List all dynamic sets.
-    set_rows = []
-    set_ids = []
+    set_rows, set_ids = [], []
     for item in client.get_paginated(ep["dynamic_sets"], ref_id="dynamic_sets"):
         sid = first(item, "id", "set_id", "uuid")
         if sid is None:
@@ -42,18 +49,48 @@ def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
 
     if limit:
         set_ids = set_ids[:limit]
-    print(f"  dynamic_sets: {len(set_rows)} listed, pulling detail for {len(set_ids)}")
+
+    real, assoc_total = {}, 0
+    for sid in set_ids:
+        cnt, light = _pull_associated(client, conn, cfg, snapshot_date, sid)
+        assoc_total += cnt
+        for rl in light:
+            real.setdefault(rl["listing_id"], rl)
+
+    listing_rows = [{
+        "snapshot_date": snapshot_date,
+        "listing_id": rl["listing_id"],
+        "channel": rl.get("channel"),
+        "name": rl.get("name"),
+        "bedrooms": rl.get("bedrooms"),
+        "market_id": rl.get("market_id"),
+        "raw_json": None,
+        "pulled_at": pulled_at,
+    } for rl in real.values()]
+    db.upsert(conn, "listings", listing_rows)
+
+    print(f"  dynamic_sets: {len(set_rows)} listed; "
+          f"real (associated) listings harvested: {len(real)}")
+    return set_ids, list(real.values()), assoc_total
+
+
+def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
+    """Full dynamic-set pull. Returns the real listings harvested from the sets so
+    the caller can drive per-listing neighborhood pulls off the real portfolio."""
+    p = cfg.get("params", {})
+    set_ids, real_listings, assoc_total = collect_associated_listings(
+        client, conn, cfg, snapshot_date, limit=limit)
+    print(f"  pulling detail for {len(set_ids)} sets")
 
     start_date, end_date = date_window(
         snapshot_date, p.get("history_days", 90), p.get("forward_days", 365))
     months = month_firsts(snapshot_date, p.get("distribution_months", 3))
 
-    totals = {k: 0 for k in (
-        "associated_listings", "members", "aggregated_metrics",
-        "time_series", "distributions", "changelog")}
+    totals = {"associated_listings": assoc_total, "members": 0,
+              "aggregated_metrics": 0, "time_series": 0,
+              "distributions": 0, "changelog": 0}
 
     for sid in set_ids:
-        totals["associated_listings"] += _pull_associated(client, conn, cfg, snapshot_date, sid)
         totals["members"] += _pull_members(client, conn, cfg, snapshot_date, sid)
         totals["aggregated_metrics"] += _pull_aggregated(client, conn, cfg, snapshot_date, sid)
         totals["time_series"] += _pull_time_series(
@@ -64,6 +101,7 @@ def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
 
     print("  dynamic set detail rows: " +
           ", ".join(f"{k}={v}" for k, v in totals.items()))
+    return real_listings
 
 
 def _safe(client, path, ref, params=None):
@@ -75,11 +113,14 @@ def _safe(client, path, ref, params=None):
 
 
 def _pull_associated(client, conn, cfg, snapshot_date, sid):
+    """Store the set's associated (our real) listings. Returns (row_count, light)
+    where light lists {listing_id, channel, market_id, name, bedrooms} per listing,
+    keyed by wheelhouse_id (the numeric id the per-listing endpoints expect)."""
     body = _safe(client, cfg["endpoints"]["dynamic_set_associated_listings"].format(set_id=sid),
                  f"ds_associated:{sid}")
     if body is None:
-        return 0
-    rows = []
+        return 0, []
+    rows, light = [], []
     for item in _extract_list(body):
         lid = _listing_id(item)
         if lid is None:
@@ -89,7 +130,17 @@ def _pull_associated(client, conn, cfg, snapshot_date, sid):
             "user_listing_id": lid,
             "raw_json": dumps(item) if isinstance(item, dict) else None,
         })
-    return db.upsert(conn, "dynamic_set_associated_listings", rows)
+        if isinstance(item, dict):
+            # Per-listing endpoints (neighborhood/*) key on the channel listing id
+            # (the `id` field, e.g. the Guesty id) + channel — NOT wheelhouse_id.
+            light.append({
+                "listing_id": lid,
+                "channel": as_str(first(item, "channel", "channel_name", "platform")),
+                "market_id": as_str(first(item, "market_id", "market")),
+                "name": as_str(first(item, "nickname", "title", "name")),
+                "bedrooms": to_float(first(item, "num_bedrooms", "bedrooms", "beds")),
+            })
+    return db.upsert(conn, "dynamic_set_associated_listings", rows), light
 
 
 def _pull_members(client, conn, cfg, snapshot_date, sid):
