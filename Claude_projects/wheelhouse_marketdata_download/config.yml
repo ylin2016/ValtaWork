@@ -1,0 +1,49 @@
+app:
+  db_path: "./data/wheelhouse.sqlite"
+  export_dir: "./data/exports"
+  timezone: "America/Los_Angeles"
+
+api:
+  base_url: "https://api.usewheelhouse.com/ss_api/v1"
+  # Stay comfortably under the ~60 req/min rate limit.
+  requests_per_minute: 55
+  timeout_seconds: 60
+  max_retries: 5
+
+# Request-shaping parameters (see help.usewheelhouse.com "APIs & MCPs").
+params:
+  # Markets to pull detail (time_series/distribution) for. Left empty = use the
+  # market_ids discovered from our listings. /market_report itself lists every
+  # market in each country below, so we never fan out time_series over all of them.
+  country_codes: ["US"]
+  market_ids: []            # optional explicit override
+  # Time-series window, measured in days around the snapshot date.
+  history_days: 90
+  forward_days: 365
+  # Distribution histograms are per-month; pull this many months starting with
+  # the snapshot's month (first-of-month is what the API expects).
+  distribution_months: 3
+
+# Endpoint path templates (aligned to the Wheelhouse RM API help docs, Jul 2026).
+# {listing_id} / {market_id} / {set_id} are filled in per call. If a live call
+# 404s, fix the path here only — the code reads every path from this map.
+endpoints:
+  listings: "/listings"
+  listing: "/listings/{listing_id}"
+
+  # Market data
+  market_report: "/market_report"
+  market_time_series: "/market_report/{market_id}/time_series"
+  market_distribution: "/market_report/{market_id}/distribution"
+  neighborhood_pricing: "/listings/{listing_id}/neighborhood/pricing"
+  neighborhood_occupancy: "/listings/{listing_id}/neighborhood/occupancy"
+
+  # Dynamic sets ("dynamite sets") — live under /sets
+  dynamic_sets: "/sets"
+  dynamic_set: "/sets/{set_id}"
+  dynamic_set_associated_listings: "/sets/{set_id}/associated_listings"
+  dynamic_set_listings: "/sets/{set_id}/listings"
+  dynamic_set_aggregated_metrics: "/sets/{set_id}/aggregated_metrics"
+  dynamic_set_time_series: "/sets/{set_id}/time_series"
+  dynamic_set_distribution: "/sets/{set_id}/distribution"
+  dynamic_set_changelog: "/sets/{set_id}/changelog"
