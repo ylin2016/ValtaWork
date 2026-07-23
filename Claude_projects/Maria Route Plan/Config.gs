@@ -98,11 +98,14 @@ const CONFIG = {
     RESIDENTIAL_MIN: 120,       // 2h @ 2 people.
     MOVEINOUT_MIN: 120,         // 2h @ 2 people.
 
-    // Travel model: straight-line miles between geocoded stops ÷ this speed, then
-    // inflated by ROAD_FACTOR to approximate real driving. Keeps API calls to one
-    // geocode per unique address (cached in Script Properties).
+    // Travel model: REAL driving time + distance between stops from the built-in Maps
+    // DirectionFinder (no API key), cached per address-pair in Script Properties so
+    // repeats are free. This is what the route order, capacity and mileage use — it
+    // accounts for real roads (e.g. the Lake Washington bridges).
+    // The two values below are only a FALLBACK, used when the Maps directions service
+    // is unavailable: straight-line miles ÷ AVG_SPEED_MPH, inflated by ROAD_FACTOR.
     AVG_SPEED_MPH: 28,
-    ROAD_FACTOR: 1.3,           // road distance ≈ 1.3 × straight-line.
+    ROAD_FACTOR: 1.3,           // fallback only: road distance ≈ 1.3 × straight-line.
 
     // Optional: a Google Sheet (columns Listing, Address, Bedrooms, Bathrooms) that
     // overrides/extends the embedded Listings.gs table. '' = use embedded table only.

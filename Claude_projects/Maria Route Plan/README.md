@@ -232,15 +232,24 @@ the packer places **every B2B before any other job**:
   B2B is never deferred. (In the rare case B2B alone exceed every crew's capacity,
   the plan flags a loud `🚨 B2B OVER CAPACITY — add a crew`.)
 
-Non-B2B jobs then fill the leftover capacity by nearest-next stop; anything past
-3 cars is flagged as **over capacity** (non-B2B only).
+Non-B2B jobs then fill the leftover capacity; anything past 3 cars is flagged as
+**over capacity** (non-B2B only).
+
+**Route order (real driving).** Within each car the stops are ordered to **minimize
+real driving time**, not straight-line distance. Leg times come from the built-in
+Maps **DirectionFinder** (real roads, no API key, cached per address-pair), and a
+2-opt pass untangles any zig-zag — so it won't cross **Lake Washington** twice when
+once will do. B2B stops still come first (the optimizer never moves a B2B after a
+non-B2B). If the directions service is ever unavailable it falls back to straight-
+line × `ROAD_FACTOR`. (This adds a few Maps-directions lookups per day beyond the
+geocoding; results are cached, so repeated address-pairs are free.)
 
 **Cleaning-time model** (`CONFIG.ROUTING`, all tunable): turnover = `CLEAN_BASE_MIN`
 (25) + `CLEAN_PER_BEDROOM_MIN` (15) × beds + `CLEAN_PER_BATHROOM_MIN` (20) × baths,
 in clock-minutes for a **`CALIBRATION_CREW`** (2)-person crew — anchored so a
 **1BR/1BA = 1 hour** at 2 people; residential & move-in/out = a flat 2h. The planner
 treats these as labor (time × 2 person-min) and divides by the car's actual crew
-size. Travel = straight-line miles × `ROAD_FACTOR` ÷ `AVG_SPEED_MPH`.
+size.
 
 **Set these before going live:**
 1. `CONFIG.ROUTING.BASE_ADDRESS` — the office/home base crews start and end at.

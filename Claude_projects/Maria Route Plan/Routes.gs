@@ -13,9 +13,10 @@
  *   runMariaRoutes()          — build + send (honors CONFIG.DRY_RUN). Trigger daily.
  *   checkListings()           — log which of tomorrow's units resolve to an address.
  *
- * Travel is estimated from geocoded coordinates (straight-line × ROAD_FACTOR ÷
- * AVG_SPEED_MPH), so it needs only one geocode per unique address — cached in
- * Script Properties. Uses the built-in Apps Script Maps service (no API key).
+ * Travel uses REAL driving time/distance from the built-in Maps DirectionFinder
+ * (no API key), cached per address-pair in Script Properties (repeats are free); it
+ * falls back to straight-line × ROAD_FACTOR ÷ AVG_SPEED_MPH if directions are
+ * unavailable. Addresses are geocoded once (also cached) via the same Maps service.
  */
 
 function previewMariaRoutes() {
@@ -134,7 +135,7 @@ function geocode_(address) {
   return null;
 }
 
-/** Straight-line miles between two { lat, lng } points (haversine). */
+/** Straight-line miles between two { lat, lng } points (haversine). Fallback only. */
 function milesBetween_(a, b) {
   if (!a || !b) return 0;
   const R = 3958.8;
@@ -145,11 +146,43 @@ function milesBetween_(a, b) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-/** Estimated road miles between two points. */
-function roadMiles_(a, b) { return milesBetween_(a, b) * CONFIG.ROUTING.ROAD_FACTOR; }
+// Per-execution memo of driving legs (backed by Script Properties for reuse across runs).
+var DRIVE_CACHE_ = {};
 
-/** Estimated drive minutes between two points. */
-function driveMin_(a, b) { return roadMiles_(a, b) / CONFIG.ROUTING.AVG_SPEED_MPH * 60; }
+/**
+ * Real driving { min, miles } from point a to b via the built-in Maps DirectionFinder
+ * (no API key). Cached per leg in memory + Script Properties, so a repeated address
+ * pair is free. Same point → 0. Falls back to straight-line × ROAD_FACTOR if the Maps
+ * service is unavailable or returns no route (also lets the model run outside Apps Script).
+ */
+function legDrive_(a, b) {
+  if (!a || !b) return { min: 0, miles: 0 };
+  if (a.lat === b.lat && a.lng === b.lng) return { min: 0, miles: 0 };
+  const key = 'DRV:' + a.lat.toFixed(5) + ',' + a.lng.toFixed(5) + '>' + b.lat.toFixed(5) + ',' + b.lng.toFixed(5);
+  if (DRIVE_CACHE_[key]) return DRIVE_CACHE_[key];
+  try {
+    const props = PropertiesService.getScriptProperties();
+    const cached = props.getProperty(key);
+    if (cached) return (DRIVE_CACHE_[key] = JSON.parse(cached));
+    const res = Maps.newDirectionFinder()
+      .setOrigin(a.lat, a.lng).setDestination(b.lat, b.lng)
+      .setMode(Maps.DirectionFinder.Mode.DRIVING).getDirections();
+    if (res && res.routes && res.routes.length) {
+      const leg = res.routes[0].legs[0];
+      const out = { min: leg.duration.value / 60, miles: leg.distance.value / 1609.344 };
+      props.setProperty(key, JSON.stringify(out));
+      return (DRIVE_CACHE_[key] = out);
+    }
+  } catch (e) { /* Maps/Properties unavailable or no route → straight-line fallback below */ }
+  const miles = milesBetween_(a, b) * CONFIG.ROUTING.ROAD_FACTOR;
+  return (DRIVE_CACHE_[key] = { min: miles / CONFIG.ROUTING.AVG_SPEED_MPH * 60, miles: miles });
+}
+
+/** Real driving minutes between two points. */
+function driveMin_(a, b) { return legDrive_(a, b).min; }
+
+/** Real driving miles between two points. */
+function driveMiles_(a, b) { return legDrive_(a, b).miles; }
 
 /** Drive minutes for base → s1 → … → sn → base (base legs skipped if base is null). */
 function routeDriveMin_(base, stops) {
@@ -162,14 +195,14 @@ function routeDriveMin_(base, stops) {
   return total;
 }
 
-/** Road miles for base → s1 → … → sn → base. */
+/** Drive miles for base → s1 → … → sn → base. */
 function routeDriveMiles_(base, stops) {
   var total = 0, prev = base;
   for (var i = 0; i < stops.length; i++) {
-    if (prev) total += roadMiles_(prev, stops[i].coord);
+    if (prev) total += driveMiles_(prev, stops[i].coord);
     prev = stops[i].coord;
   }
-  if (base && prev) total += roadMiles_(prev, base);
+  if (base && prev) total += driveMiles_(prev, base);
   return total;
 }
 
@@ -268,7 +301,7 @@ function planCars_(base, stops) {
 
   const summarized = cars.filter(function (car) { return car.clusters.length; })
     .map(function (car) {
-      const route = orderRoute_(base, flattenClusters_(car.clusters));
+      const route = optimizeRoute_(base, orderRoute_(base, flattenClusters_(car.clusters)));
       return summarizeRoute_(base, route, minCrewFor_(base, route));
     });
   return { cars: summarized, overflow: overflow, b2bOverflow: b2bOverflow };
@@ -317,9 +350,9 @@ function assignCluster_(cl, cars, base) {
     if (!withinCaps_(car.clusters.concat([cl]), base)) return;
     const stops = flattenClusters_(car.clusters);
     const last = stops.length ? orderRoute_(base, stops).slice(-1)[0].coord : base;
-    const miles = last ? milesBetween_(last, cl.coord) : 0;
-    if (stops.length < fewest || (stops.length === fewest && miles < bestMiles)) {
-      fewest = stops.length; bestMiles = miles; pick = i;
+    const mins = last ? driveMin_(last, cl.coord) : 0;
+    if (stops.length < fewest || (stops.length === fewest && mins < bestMiles)) {
+      fewest = stops.length; bestMiles = mins; pick = i;
     }
   });
   if (pick === -1 && cars.length < CONFIG.ROUTING.MAX_CARS) {
@@ -357,21 +390,46 @@ function orderRoute_(base, stops) {
   return head.concat(orderByNearest_(from, rest));
 }
 
-/** Greedy nearest-neighbor ordering of stops starting from `from`. */
+/** Greedy nearest-neighbor ordering of stops starting from `from` (by drive time). */
 function orderByNearest_(from, stops) {
   const remaining = stops.slice(), ordered = [];
   var cur = from;
   while (remaining.length) {
-    var best = 0, bestMiles = Infinity;
+    var best = 0, bestMin = Infinity;
     for (var i = 0; i < remaining.length; i++) {
-      const miles = cur ? milesBetween_(cur, remaining[i].coord) : 0;
-      if (miles < bestMiles) { bestMiles = miles; best = i; }
+      const mins = cur ? driveMin_(cur, remaining[i].coord) : 0;
+      if (mins < bestMin) { bestMin = mins; best = i; }
     }
     const next = remaining.splice(best, 1)[0];
     ordered.push(next);
     cur = next.coord;
   }
   return ordered;
+}
+
+/**
+ * Shorten a route with 2-opt (reverse segments while the total base→…→base DRIVE
+ * TIME drops), so it stops zig-zagging between areas — e.g. it won't cross Lake
+ * Washington twice when once will do. B2B-first is preserved: reversals never
+ * straddle the B2B/non-B2B boundary, so every B2B still precedes every other stop.
+ */
+function optimizeRoute_(base, route) {
+  if (route.length < 3) return route;
+  var boundary = 0;
+  for (var i = 0; i < route.length; i++) { if (route[i].type === 'backtoback') boundary++; }
+  var best = route.slice(), bestMin = routeDriveMin_(base, best), improved = true;
+  while (improved) {
+    improved = false;
+    for (var a = 0; a < best.length - 1; a++) {
+      for (var b = a + 1; b < best.length; b++) {
+        if (a < boundary && b >= boundary) continue;   // don't reverse across the B2B boundary
+        const cand = best.slice(0, a).concat(best.slice(a, b + 1).reverse(), best.slice(b + 1));
+        const candMin = routeDriveMin_(base, cand);
+        if (candMin + 1e-9 < bestMin) { best = cand; bestMin = candMin; improved = true; }
+      }
+    }
+  }
+  return best;
 }
 
 function summarizeRoute_(base, route, crew) {
