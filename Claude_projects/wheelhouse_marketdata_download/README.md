@@ -6,8 +6,9 @@ into a snapshot-tagged SQLite database and exports each pull to CSV + Excel.
 Two datasets:
 
 1. **Market data** (refresh weekly) — market reports (daily time series + monthly
-   distributions) for a chosen list of cities/markets (`params.market_names` in
-   `config.yml`).
+   distributions). By default it pulls the markets **where your listings are**
+   (`params.markets_from_listings: true`), auto-updating as your portfolio changes.
+   Pin a fixed list instead with `params.market_names` / `market_ids`.
 2. **Dynamic sets** ("dynamite sets") — Wheelhouse's comparable-property groupings:
    which of our listings map to each set, the comp members, and each set's
    aggregated metrics, time series, distributions, and membership changelog.

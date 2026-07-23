@@ -49,7 +49,8 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
     db.upsert(conn, "markets", market_rows)
 
     # 2) Select which markets to pull detail for.
-    targets = _select_markets(listed, p)
+    listing_mids = _listing_market_ids(conn, snapshot_date)
+    targets = _select_markets(listed, p, listing_mids)
     if limit:
         targets = targets[:limit]
 
@@ -75,11 +76,21 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
     print(f"  market_time_series: {ts_total} rows; market_distributions: {dist_total} rows")
 
 
-def _select_markets(listed, p):
+def _listing_market_ids(conn, snapshot_date):
+    """Distinct market_ids across our harvested listings for this snapshot."""
+    return {str(r[0]) for r in conn.execute(
+        "SELECT DISTINCT market_id FROM listings "
+        "WHERE snapshot_date = ? AND market_id IS NOT NULL", (snapshot_date,))}
+
+
+def _select_markets(listed, p, listing_mids):
     """Resolve config selectors to a de-duped, ordered list of market_ids.
 
-    Priority: explicit market_ids > market_names substring match > all accessible.
+    Priority: explicit market_ids > market_names substring match >
+    markets_from_listings (markets where our listings are) > all accessible.
     """
+    accessible = [mid for mid, _ in listed]
+
     ids = [str(m) for m in (p.get("market_ids") or [])]
     if ids:
         return list(dict.fromkeys(ids))
@@ -98,8 +109,17 @@ def _select_markets(listed, p):
                   "(need a Pro listing there)")
         return list(dict.fromkeys(matched))
 
-    # neither selector set -> all accessible markets
-    return list(dict.fromkeys(mid for mid, _ in listed))
+    if p.get("markets_from_listings", True):
+        # markets where our listings are, that also return market reports.
+        picked = [mid for mid in accessible if mid in listing_mids]
+        no_report = sorted(listing_mids - set(accessible))
+        if no_report:
+            print(f"    note: {len(no_report)} listing market(s) have no accessible "
+                  f"report (demo/Free tier): {no_report}")
+        return picked
+
+    # nothing selected -> all accessible markets
+    return list(dict.fromkeys(accessible))
 
 
 def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date, end_date):

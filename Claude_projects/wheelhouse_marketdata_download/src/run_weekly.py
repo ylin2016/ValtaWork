@@ -20,7 +20,7 @@ from . import db
 from .wheelhouse_client import WheelhouseClient
 from .download_listings import download_listings
 from .download_market_data import download_markets
-from .download_dynamic_sets import download_dynamic_sets
+from .download_dynamic_sets import download_dynamic_sets, collect_associated_listings
 from .export_csv import export_snapshot
 
 
@@ -56,13 +56,19 @@ def main(argv=None) -> int:
         print("Listings...")
         download_listings(client, conn, cfg, snapshot_date, limit=args.limit)
 
-    if do_all or args.only == "market":
-        print("Market data...")
-        download_markets(client, conn, cfg, snapshot_date, limit=args.limit)
-
+    # Dynamic sets run first: they harvest the real listings (and their markets),
+    # which market selection uses when markets_from_listings is on.
     if do_all or args.only == "dynamic_sets":
         print("Dynamic sets...")
         download_dynamic_sets(client, conn, cfg, snapshot_date, limit=args.limit)
+
+    if do_all or args.only == "market":
+        # A market-only run still needs to know which markets our listings are in,
+        # so harvest them (lists sets + associated listings; no heavy detail).
+        if args.only == "market":
+            collect_associated_listings(client, conn, cfg, snapshot_date, limit=args.limit)
+        print("Market data...")
+        download_markets(client, conn, cfg, snapshot_date, limit=args.limit)
 
     if not args.no_export:
         print("Export...")

@@ -14,19 +14,16 @@ api:
 params:
   country_codes: ["US"]
 
-  # Which cities/markets to pull market reports for. Names are matched
-  # case-insensitively as substrings against the market names returned by
-  # /market_report (e.g. "Seattle" matches "Seattle, WA, United States").
+  # Market selection, in priority order:
+  #   1. market_ids   — explicit list of market_ids (highest priority)
+  #   2. market_names — case-insensitive substring match vs /market_report names
+  #                     (e.g. "Seattle" matches "Seattle, WA, United States")
+  #   3. markets_from_listings: true — pull the markets where YOUR listings are
+  #      (auto-updates as your portfolio changes). This is the default.
+  #   4. if all of the above are empty/false — every accessible market.
   # Only markets where you have a Pro listing are accessible; others 404.
-  # Leave BOTH market_names and market_ids empty to pull every accessible market.
-  market_names:
-    - "Seattle"
-    - "Bellevue"
-    - "Aberdeen"
-    - "Bremerton"
-    - "Wenatchee"
-    - "Olympic National Park"
-    - "Big Island"          # covers Keaau, HI
+  markets_from_listings: true
+  market_names: []          # e.g. ["Seattle", "Bellevue"] to pin a fixed list
   market_ids: []            # optional precise override (takes priority over names)
 
   # Time-series window, measured in days around the snapshot date.
