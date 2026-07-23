@@ -1,12 +1,10 @@
-"""Weekly market data: market reports (time series + distributions) and
-per-listing neighborhood pricing/occupancy.
+"""Weekly market data: market reports (daily time series + monthly distributions)
+for a configured list of cities/markets.
 
 Required query params (per the RM API help docs):
-  /market_report                         -> country_code
-  /market_report/{id}/time_series        -> start_date, end_date
-  /market_report/{id}/distribution       -> month (first of month)
-  /listings/{id}/neighborhood/pricing    -> channel
-  /listings/{id}/neighborhood/occupancy  -> channel
+  /market_report                    -> country_code
+  /market_report/{id}/time_series   -> start_date, end_date
+  /market_report/{id}/distribution  -> month (first of month)
 """
 from datetime import datetime, timezone
 
@@ -18,19 +16,16 @@ from .transforms import (
 from .wheelhouse_client import WheelhouseError
 
 
-def _channel_params(channel):
-    return {"channel": channel} if channel else None
-
-
-def download_markets(client, conn, cfg, snapshot_date, market_ids, limit=None):
-    """List markets per country, then pull time_series + distribution for the
-    markets relevant to us (listing-derived ids, or an explicit config override)."""
+def download_markets(client, conn, cfg, snapshot_date, limit=None):
+    """List accessible markets per country, then pull time_series + distribution
+    for the cities selected in config.yml (params.market_names / market_ids)."""
     ep = cfg["endpoints"]
     p = cfg.get("params", {})
     pulled_at = datetime.now(timezone.utc).isoformat()
 
-    # 1) Market list per country (cheap: one call each). Also records geometry/postal
-    #    codes in raw_json so markets can be matched to listings later if needed.
+    # 1) List accessible markets per country (cheap: one call each). /market_report
+    #    only returns markets where you have a Pro listing.
+    listed = []   # (market_id, name)
     market_rows = []
     for country in p.get("country_codes", ["US"]):
         try:
@@ -40,10 +35,12 @@ def download_markets(client, conn, cfg, snapshot_date, market_ids, limit=None):
                 mid = first(item, "market_id", "id", "uuid")
                 if mid is None:
                     continue
+                name = as_str(first(item, "market_name", "name", "title"))
+                listed.append((str(mid), name or ""))
                 market_rows.append({
                     "snapshot_date": snapshot_date,
                     "market_id": str(mid),
-                    "name": as_str(first(item, "market_name", "name", "title")),
+                    "name": name,
                     "raw_json": dumps(item),
                     "pulled_at": pulled_at,
                 })
@@ -51,15 +48,17 @@ def download_markets(client, conn, cfg, snapshot_date, market_ids, limit=None):
             print(f"  market_report[{country}]: list failed ({exc})")
     db.upsert(conn, "markets", market_rows)
 
-    # 2) Which markets to pull detail for: explicit override, else listing-derived.
-    targets = [str(m) for m in (p.get("market_ids") or [])] or sorted(
-        {str(m) for m in (market_ids or [])})
+    # 2) Select which markets to pull detail for.
+    targets = _select_markets(listed, p)
     if limit:
         targets = targets[:limit]
-    print(f"  markets: {len(market_rows)} listed; pulling detail for {len(targets)}")
+
+    id_to_name = dict(listed)
+    picked = ", ".join(id_to_name.get(mid, mid) for mid in targets) or "(none)"
+    print(f"  markets: {len(market_rows)} accessible; pulling detail for "
+          f"{len(targets)}: {picked}")
     if not targets:
-        print("    (no listing-derived market_ids; set params.market_ids in config.yml "
-              "to pull market reports)")
+        print("    (no markets matched params.market_names/market_ids in config.yml)")
         return
 
     start_date, end_date = date_window(
@@ -74,6 +73,33 @@ def download_markets(client, conn, cfg, snapshot_date, market_ids, limit=None):
             dist_total += _pull_market_distribution(
                 client, conn, cfg, snapshot_date, mid, month)
     print(f"  market_time_series: {ts_total} rows; market_distributions: {dist_total} rows")
+
+
+def _select_markets(listed, p):
+    """Resolve config selectors to a de-duped, ordered list of market_ids.
+
+    Priority: explicit market_ids > market_names substring match > all accessible.
+    """
+    ids = [str(m) for m in (p.get("market_ids") or [])]
+    if ids:
+        return list(dict.fromkeys(ids))
+
+    names = [n.lower() for n in (p.get("market_names") or [])]
+    if names:
+        matched, unmatched = [], set(p.get("market_names") or [])
+        for mid, mname in listed:
+            low = (mname or "").lower()
+            hit = next((orig for orig, n in zip(p["market_names"], names) if n in low), None)
+            if hit is not None:
+                matched.append(mid)
+                unmatched.discard(hit)
+        if unmatched:
+            print(f"    note: no accessible market matched {sorted(unmatched)} "
+                  "(need a Pro listing there)")
+        return list(dict.fromkeys(matched))
+
+    # neither selector set -> all accessible markets
+    return list(dict.fromkeys(mid for mid, _ in listed))
 
 
 def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date, end_date):
@@ -105,38 +131,3 @@ def _pull_market_distribution(client, conn, cfg, snapshot_date, mid, month):
         for row in flatten_distribution(body)
     ]
     return db.upsert(conn, "market_distributions", rows)
-
-
-def download_neighborhood(client, conn, cfg, snapshot_date, listings, limit=None):
-    """Per-listing neighborhood pricing + occupancy (requires channel)."""
-    ep = cfg["endpoints"]
-    targets = listings[:limit] if limit else listings
-    pricing_total = occ_total = 0
-    for lst in targets:
-        lid = lst["listing_id"]
-        params = _channel_params(lst.get("channel"))
-
-        pricing_total += _pull_neighborhood(
-            client, conn, cfg, snapshot_date, lid, params,
-            ep["neighborhood_pricing"], "neighborhood_pricing", "nbhd_price")
-        occ_total += _pull_neighborhood(
-            client, conn, cfg, snapshot_date, lid, params,
-            ep["neighborhood_occupancy"], "neighborhood_occupancy", "nbhd_occ")
-
-    print(f"  neighborhood_pricing: {pricing_total} rows; "
-          f"neighborhood_occupancy: {occ_total} rows (over {len(targets)} listings)")
-
-
-def _pull_neighborhood(client, conn, cfg, snapshot_date, lid, params, path_tmpl, table, ref):
-    path = path_tmpl.format(listing_id=lid)
-    try:
-        body = client.get_json(path, params=params, ref_id=f"{ref}:{lid}")
-    except WheelhouseError as exc:
-        print(f"    listing {lid} {table} skipped: {exc}")
-        return 0
-    rows = [
-        {"snapshot_date": snapshot_date, "listing_id": lid, "date": d,
-         "metric": m, "value": v, "raw_json": None}
-        for (d, m, v) in flatten_series(body)
-    ]
-    return db.upsert(conn, table, rows)

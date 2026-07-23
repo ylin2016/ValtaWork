@@ -6,7 +6,8 @@ into a snapshot-tagged SQLite database and exports each pull to CSV + Excel.
 Two datasets:
 
 1. **Market data** (refresh weekly) — market reports (daily time series + monthly
-   distributions) and, per listing, neighborhood pricing & occupancy/booking pace.
+   distributions) for a chosen list of cities/markets (`params.market_names` in
+   `config.yml`).
 2. **Dynamic sets** ("dynamite sets") — Wheelhouse's comparable-property groupings:
    which of our listings map to each set, the comp members, and each set's
    aggregated metrics, time series, distributions, and membership changelog.
@@ -29,10 +30,10 @@ requires request-access approval first.
 # Full weekly pull, tagged with today's date, then export CSV + xlsx
 python -m src.run_weekly
 
-# Smoke-test auth / endpoint paths first (recommended on day one)
-python -m src.run_weekly --only listings --limit 3
-python -m src.run_weekly --only market --limit 3
-python -m src.run_weekly --only dynamic_sets --limit 3
+# Run one part only
+python -m src.run_weekly --only market          # market reports for configured cities
+python -m src.run_weekly --only dynamic_sets     # portfolio comp sets
+python -m src.run_weekly --only listings --limit 3   # /listings demo (auth smoke test)
 
 # Other flags
 python -m src.run_weekly --snapshot-date 2026-07-20   # backfill/label a snapshot
@@ -54,7 +55,8 @@ includes the snapshot date, so it overwrites rather than duplicates).
 - `src/download_*.py` — one module per dataset; tolerant normalizers (`src/transforms.py`)
   flatten metrics into tidy `(date, metric, value)` / `(month, metric, bucket, value)`
   rows and always keep the full payload in a `raw_json` column.
-- `src/run_weekly.py` — orchestrates listings → market → dynamic sets → export.
+- `src/run_weekly.py` — orchestrates market → dynamic sets → export. Market reports
+  cover the cities in `params.market_names`; dynamic sets cover the whole portfolio.
 - `config.yml` — base URL, rate limit, request params, and **all endpoint path
   templates**. Paths are aligned to the Wheelhouse RM API help docs (Jul 2026); if a
   live call 404s, fix the path here only.
@@ -66,8 +68,6 @@ includes the snapshot date, so it overwrites rather than duplicates).
 | Markets | `GET /market_report` | `country_code` |
 | Market time series | `GET /market_report/{id}/time_series` | `start_date`, `end_date` |
 | Market distribution | `GET /market_report/{id}/distribution` | `month` (first of month) |
-| Neighborhood pricing | `GET /listings/{id}/neighborhood/pricing` | `channel` |
-| Neighborhood occupancy | `GET /listings/{id}/neighborhood/occupancy` | `channel` |
 | Dynamic sets | `GET /sets`, `GET /sets/{id}/...` | (dates/month optional) |
 
 Metric keys: `asking_rate_w_fees, occupancy, occupancy_adjusted, adr_w_fees, lead_time,

@@ -11,8 +11,6 @@ EXPORT_TABLES = [
     "markets",
     "market_time_series",
     "market_distributions",
-    "neighborhood_pricing",
-    "neighborhood_occupancy",
     "dynamic_sets",
     "dynamic_set_associated_listings",
     "dynamic_set_members",

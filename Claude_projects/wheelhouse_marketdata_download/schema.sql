@@ -68,26 +68,6 @@ CREATE TABLE IF NOT EXISTS market_distributions (
   PRIMARY KEY (snapshot_date, market_id, month, metric, bucket)
 );
 
-CREATE TABLE IF NOT EXISTS neighborhood_pricing (
-  snapshot_date TEXT NOT NULL,
-  listing_id    TEXT NOT NULL,
-  date          TEXT NOT NULL,
-  metric        TEXT NOT NULL,
-  value         REAL,
-  raw_json      TEXT,
-  PRIMARY KEY (snapshot_date, listing_id, date, metric)
-);
-
-CREATE TABLE IF NOT EXISTS neighborhood_occupancy (
-  snapshot_date TEXT NOT NULL,
-  listing_id    TEXT NOT NULL,
-  date          TEXT NOT NULL,
-  metric        TEXT NOT NULL,
-  value         REAL,
-  raw_json      TEXT,
-  PRIMARY KEY (snapshot_date, listing_id, date, metric)
-);
-
 -- ---------------------------------------------------------------------------
 -- Dynamic sets ("dynamite sets") — comparable-property groupings
 -- ---------------------------------------------------------------------------
