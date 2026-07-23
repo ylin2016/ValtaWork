@@ -110,11 +110,21 @@ def _pull_aggregated(client, conn, cfg, snapshot_date, sid):
                  f"ds_agg:{sid}")
     if body is None:
         return 0
+    # aggregated_metrics is a monthly series: {data:[{start_date,end_date,occupancy,
+    # adr,revenue,...}]}. Treat start_date as the period and each numeric column as a
+    # metric. Fall back to a flat metric dict if that yields nothing.
+    series = flatten_series(body, date_keys=("start_date", "end_date", "date", "month"))
     rows = [
         {"snapshot_date": snapshot_date, "set_id": sid, "metric": m,
-         "period": p, "value": v, "raw_json": None}
-        for (m, p, v) in flatten_metrics(body)
+         "period": d, "value": v, "raw_json": None}
+        for (d, m, v) in series
     ]
+    if not rows:
+        rows = [
+            {"snapshot_date": snapshot_date, "set_id": sid, "metric": m,
+             "period": p, "value": v, "raw_json": None}
+            for (m, p, v) in flatten_metrics(body)
+        ]
     return db.upsert(conn, "dynamic_set_aggregated_metrics", rows)
 
 
