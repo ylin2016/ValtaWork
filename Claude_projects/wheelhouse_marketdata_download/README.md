@@ -1,7 +1,7 @@
 # Wheelhouse Market Data & Dynamic Set Downloader
 
 Pulls listing-performance data from the [Wheelhouse Revenue Management API](https://api.usewheelhouse.com/wheelhouse_rm_api)
-into a snapshot-tagged SQLite database and exports each pull to CSV + Excel.
+into a snapshot-tagged SQLite database and exports each pull to CSV (one file per table).
 
 Two datasets:
 
@@ -28,7 +28,7 @@ requires request-access approval first.
 ## Usage
 
 ```bash
-# Full weekly pull, tagged with today's date, then export CSV + xlsx
+# Full weekly pull, tagged with today's date, then export CSVs
 python -m src.run_weekly
 
 # Run one part only
@@ -43,7 +43,7 @@ python -m src.run_weekly --no-export                   # DB only, skip files
 
 Outputs:
 - SQLite DB: `data/wheelhouse.sqlite`
-- Exports: `data/exports/<snapshot_date>/*.csv` and `wheelhouse_<snapshot_date>.xlsx`
+- Exports: `data/exports/<snapshot_date>/<table>.csv` (one per table)
 
 Re-running the same `--snapshot-date` is **idempotent** (every row's primary key
 includes the snapshot date, so it overwrites rather than duplicates).

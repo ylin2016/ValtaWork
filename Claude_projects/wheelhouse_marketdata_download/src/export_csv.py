@@ -22,12 +22,16 @@ EXPORT_TABLES = [
 
 
 def export_snapshot(conn, export_dir: str, snapshot_date: str) -> str:
-    """Write each table's rows for snapshot_date to CSV + one xlsx. Returns the folder."""
+    """Write each table's rows for snapshot_date to one CSV per table.
+
+    Returns the folder. (The SQLite DB remains the full source of truth,
+    including raw_json blobs.)
+    """
     out_dir = Path(export_dir) / snapshot_date
     out_dir.mkdir(parents=True, exist_ok=True)
     existing = set(db.tables(conn))
 
-    frames = {}
+    total = n_tables = 0
     for table in EXPORT_TABLES:
         if table not in existing:
             continue
@@ -35,26 +39,9 @@ def export_snapshot(conn, export_dir: str, snapshot_date: str) -> str:
             f"SELECT * FROM {table} WHERE snapshot_date = ?",
             conn, params=(snapshot_date,),
         )
-        frames[table] = df
         df.to_csv(out_dir / f"{table}.csv", index=False)
+        total += len(df)
+        n_tables += 1
 
-    xlsx_path = out_dir / f"wheelhouse_{snapshot_date}.xlsx"
-    with pd.ExcelWriter(xlsx_path, engine="openpyxl") as xw:
-        wrote_any = False
-        for table, df in frames.items():
-            if df.empty:
-                continue
-            # Drop raw_json in the workbook only — the blobs blow past Excel's
-            # 32k-char cell limit and aren't useful in a spreadsheet. CSVs + the
-            # SQLite DB keep the full raw payload.
-            sheet_df = df.drop(columns=[c for c in ("raw_json", "json") if c in df.columns])
-            # Excel sheet names max 31 chars.
-            sheet_df.to_excel(xw, sheet_name=table[:31], index=False)
-            wrote_any = True
-        if not wrote_any:
-            pd.DataFrame({"note": ["no rows for this snapshot"]}).to_excel(
-                xw, sheet_name="empty", index=False)
-
-    total = sum(len(df) for df in frames.values())
-    print(f"  export: {total} rows across {len(frames)} tables -> {out_dir}")
+    print(f"  export: {total} rows across {n_tables} tables -> {out_dir}")
     return str(out_dir)
