@@ -70,15 +70,20 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
     seg_desc = ", ".join(_seg_label(s) for s in segments)
     print(f"    segments ({len(segments)}): {seg_desc}")
 
+    want_dist = (cfg.get("pull") or {}).get("market_distribution", False)
     ts_total = dist_total = 0
     for mid in targets:
         for seg in segments:
-            ts_total += _pull_market_time_series(
+            ts_total += _pull_market_monthly(
                 client, conn, cfg, snapshot_date, mid, start_date, end_date, seg)
-            for month in months:
-                dist_total += _pull_market_distribution(
-                    client, conn, cfg, snapshot_date, mid, month, seg)
-    print(f"  market_time_series: {ts_total} rows; market_distributions: {dist_total} rows")
+            if want_dist:
+                for month in months:
+                    dist_total += _pull_market_distribution(
+                        client, conn, cfg, snapshot_date, mid, month, seg)
+    msg = f"  market_monthly: {ts_total} rows"
+    if want_dist:
+        msg += f"; market_distributions: {dist_total} rows"
+    print(msg)
 
 
 def _segments(p):
@@ -190,8 +195,12 @@ def _explicit_markets(listed, p):
     return list(dict.fromkeys(matched))
 
 
-def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date,
-                             end_date, seg=("", "")):
+def _pull_market_monthly(client, conn, cfg, snapshot_date, mid, start_date,
+                         end_date, seg=("", "")):
+    """Fetch the daily market series and store only the monthly averages.
+
+    The API returns daily rows; we roll them up to a per-month mean per metric so
+    the DB stays small (this is all any export needs)."""
     path = cfg["endpoints"]["market_time_series"].format(market_id=mid)
     params = {"start_date": start_date, "end_date": end_date}
     params.update(_metric_param(cfg, "time_series"))
@@ -200,18 +209,27 @@ def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date,
         body = client.get_json(path, params=params,
                                ref_id=f"market_ts:{mid}:{_seg_label(seg)}")
     except WheelhouseError as exc:
-        print(f"    market {mid} time_series [{_seg_label(seg)}] skipped: {exc}")
+        print(f"    market {mid} monthly [{_seg_label(seg)}] skipped: {exc}")
         return 0
     if not body:
         return 0
     perf, bed = seg
+    # (month, metric) -> [sum, count]
+    agg = {}
+    for (d, m, v) in flatten_series(body):
+        if v is None:
+            continue
+        key = (str(d)[:7], m)
+        acc = agg.setdefault(key, [0.0, 0])
+        acc[0] += v
+        acc[1] += 1
     rows = [
         {"snapshot_date": snapshot_date, "market_id": mid,
-         "performance": perf, "bedrooms": bed, "date": d,
-         "metric": m, "value": v, "raw_json": None}
-        for (d, m, v) in flatten_series(body)
+         "performance": perf, "bedrooms": bed, "month": month,
+         "metric": m, "value": round(s / n, 4), "days_in_avg": n}
+        for (month, m), (s, n) in agg.items()
     ]
-    return db.upsert(conn, "market_time_series", rows)
+    return db.upsert(conn, "market_monthly", rows)
 
 
 def _pull_market_distribution(client, conn, cfg, snapshot_date, mid, month, seg=("", "")):

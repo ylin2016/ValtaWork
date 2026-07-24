@@ -30,6 +30,7 @@ class WheelhouseClient:
 
         self.conn = conn
         self.snapshot_date = snapshot_date
+        self.log_raw = bool(api.get("log_raw_responses", False))
 
         self.api_key = env("WHEELHOUSE_API_KEY")
         if not self.api_key:
@@ -55,7 +56,7 @@ class WheelhouseClient:
         self._last_call = time.monotonic()
 
     def _log_raw(self, endpoint: str, ref_id: str, status: int, body) -> None:
-        if self.conn is None or self.snapshot_date is None:
+        if not self.log_raw or self.conn is None or self.snapshot_date is None:
             return
         self.conn.execute(
             "INSERT OR REPLACE INTO raw_responses "

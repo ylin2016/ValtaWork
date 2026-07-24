@@ -2,6 +2,9 @@ app:
   db_path: "./data/wheelhouse.sqlite"
   export_dir: "./data/exports"
   timezone: "America/Los_Angeles"
+  # How many past weekly snapshots to keep in the DB (older ones are pruned
+  # after each run). 1 = keep only the latest. null = keep everything.
+  keep_snapshots: 1
 
 api:
   base_url: "https://api.usewheelhouse.com/ss_api/v1"
@@ -9,6 +12,19 @@ api:
   requests_per_minute: 55
   timeout_seconds: 60
   max_retries: 5
+  # Log every raw API payload into raw_responses (debug only; large). Off = lean.
+  log_raw_responses: false
+
+# What to download. The high-volume detail tables are off by default — they were
+# not being exported and bloated the DB. Flip to true to pull them again.
+pull:
+  set_members: true          # comp listings per set (dynamic_set_members.csv)
+  set_time_series: false     # daily set metrics (DB only, unused)
+  set_distributions: false   # monthly set histograms (DB only, unused)
+  set_changelog: false       # set membership history (DB only, unused)
+  market_distribution: false # monthly market histograms (DB only, unused)
+  # Market daily series is always fetched but stored ONLY as monthly averages
+  # (market_monthly) — that's all any export needs.
 
 # Request-shaping parameters (see help.usewheelhouse.com "APIs & MCPs").
 params:

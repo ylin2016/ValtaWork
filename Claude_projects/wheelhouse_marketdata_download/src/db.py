@@ -47,3 +47,33 @@ def latest_snapshot_date(conn: sqlite3.Connection) -> str | None:
     cur = conn.execute("SELECT MAX(snapshot_date) FROM raw_responses")
     row = cur.fetchone()
     return row[0] if row else None
+
+
+def _snapshot_tables(conn: sqlite3.Connection) -> list[str]:
+    """Tables that have a snapshot_date column."""
+    out = []
+    for t in tables(conn):
+        cols = [r[1] for r in conn.execute(f"PRAGMA table_info({t})")]
+        if "snapshot_date" in cols:
+            out.append(t)
+    return out
+
+
+def prune_snapshots(conn: sqlite3.Connection, keep: int | None) -> list[str]:
+    """Keep only the newest `keep` snapshot_dates; delete older rows everywhere.
+
+    keep=None (or <=0) keeps everything. Returns the snapshot_dates removed.
+    """
+    if not keep or keep <= 0:
+        return []
+    snaps = [r[0] for r in conn.execute(
+        "SELECT DISTINCT snapshot_date FROM listings ORDER BY snapshot_date DESC")]
+    drop = snaps[keep:]
+    if not drop:
+        return []
+    marks = ",".join("?" * len(drop))
+    for t in _snapshot_tables(conn):
+        conn.execute(f"DELETE FROM {t} WHERE snapshot_date IN ({marks})", drop)
+    conn.commit()
+    conn.execute("VACUUM")
+    return drop

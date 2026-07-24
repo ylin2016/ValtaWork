@@ -86,23 +86,35 @@ def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
     months = month_firsts(snapshot_date, p.get("distribution_months", 3))
     print(f"    date range: {start_date} .. {end_date}")
 
+    pull = cfg.get("pull", {})
+    want = {
+        "members": pull.get("set_members", True),
+        "time_series": pull.get("set_time_series", False),
+        "distributions": pull.get("set_distributions", False),
+        "changelog": pull.get("set_changelog", False),
+    }
     totals = {"associated_listings": assoc_total, "members": 0,
               "aggregated_metrics": 0, "time_series": 0,
               "distributions": 0, "changelog": 0}
 
     for sid in set_ids:
-        totals["members"] += _pull_members(client, conn, cfg, snapshot_date, sid)
+        if want["members"]:
+            totals["members"] += _pull_members(client, conn, cfg, snapshot_date, sid)
+        # aggregated_metrics (monthly) is always pulled — it feeds a CSV.
         totals["aggregated_metrics"] += _pull_aggregated(
             client, conn, cfg, snapshot_date, sid, start_date, end_date)
-        totals["time_series"] += _pull_time_series(
-            client, conn, cfg, snapshot_date, sid, start_date, end_date)
-        totals["distributions"] += _pull_distributions(
-            client, conn, cfg, snapshot_date, sid, months)
-        totals["changelog"] += _pull_changelog(
-            client, conn, cfg, snapshot_date, sid, start_date, end_date)
+        if want["time_series"]:
+            totals["time_series"] += _pull_time_series(
+                client, conn, cfg, snapshot_date, sid, start_date, end_date)
+        if want["distributions"]:
+            totals["distributions"] += _pull_distributions(
+                client, conn, cfg, snapshot_date, sid, months)
+        if want["changelog"]:
+            totals["changelog"] += _pull_changelog(
+                client, conn, cfg, snapshot_date, sid, start_date, end_date)
 
     print("  dynamic set detail rows: " +
-          ", ".join(f"{k}={v}" for k, v in totals.items()))
+          ", ".join(f"{k}={v}" for k, v in totals.items() if want.get(k, True)))
     return real_listings
 
 

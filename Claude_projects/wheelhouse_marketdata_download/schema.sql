@@ -41,6 +41,22 @@ CREATE TABLE IF NOT EXISTS markets (
   PRIMARY KEY (snapshot_date, market_id)
 );
 
+-- Monthly market metrics per segment: the daily series averaged per calendar
+-- month. This is what the exports use; the raw daily series is not stored.
+-- performance ('' | low | average | high), bedrooms ('' | 0 | 1 | 2 | 3 | 4+);
+-- '' means unsegmented (whole market).
+CREATE TABLE IF NOT EXISTS market_monthly (
+  snapshot_date TEXT NOT NULL,
+  market_id     TEXT NOT NULL,
+  performance   TEXT NOT NULL DEFAULT '',
+  bedrooms      TEXT NOT NULL DEFAULT '',
+  month         TEXT NOT NULL,
+  metric        TEXT NOT NULL,
+  value         REAL,
+  days_in_avg   INTEGER,
+  PRIMARY KEY (snapshot_date, market_id, performance, bedrooms, month, metric)
+);
+
 -- performance ('' | low | average | high) and bedrooms ('' | 0 | 1 | 2 | 3 | 4+)
 -- tag the market segment a row came from; '' means unsegmented (whole market).
 CREATE TABLE IF NOT EXISTS market_time_series (

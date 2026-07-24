@@ -43,22 +43,22 @@ LEFT JOIN (
 WHERE l.snapshot_date = ?
 """
 
-# Compact monthly market summary for HIGH performers, by bedroom — the daily
-# market_time_series rows averaged per calendar month.
+# Compact monthly market summary for HIGH performers, by bedroom — pivoted from
+# the pre-aggregated market_monthly table.
 _MARKET_HIGH_PERF_MONTHLY_SQL = """
 SELECT t.market_id,
        (SELECT name FROM markets m
         WHERE m.market_id = t.market_id AND m.snapshot_date = t.snapshot_date) AS market_name,
        t.bedrooms,
-       substr(t.date, 1, 7) AS month,
-       ROUND(AVG(CASE WHEN t.metric = 'adr_w_fees'        THEN t.value END), 2) AS adr,
-       ROUND(AVG(CASE WHEN t.metric = 'occupancy_adjusted' THEN t.value END), 4) AS occupancy_adjusted,
-       ROUND(AVG(CASE WHEN t.metric = 'revpar_w_fees'      THEN t.value END), 2) AS revpar,
-       COUNT(DISTINCT t.date) AS days_in_avg
-FROM market_time_series t
+       t.month,
+       MAX(CASE WHEN t.metric = 'adr_w_fees'         THEN t.value END) AS adr,
+       MAX(CASE WHEN t.metric = 'occupancy_adjusted' THEN t.value END) AS occupancy_adjusted,
+       MAX(CASE WHEN t.metric = 'revpar_w_fees'      THEN t.value END) AS revpar,
+       MAX(t.days_in_avg) AS days_in_avg
+FROM market_monthly t
 WHERE t.snapshot_date = ? AND t.performance = 'high'
-GROUP BY t.market_id, t.bedrooms, month
-ORDER BY market_name, t.bedrooms, month
+GROUP BY t.market_id, t.bedrooms, t.month
+ORDER BY market_name, t.bedrooms, t.month
 """
 
 
@@ -85,7 +85,7 @@ def export_snapshot(conn, export_dir: str, snapshot_date: str) -> str:
         n_files += 1
 
     # Derived: monthly high-performer market summary by bedroom.
-    if "market_time_series" in existing:
+    if "market_monthly" in existing:
         df = pd.read_sql_query(
             _MARKET_HIGH_PERF_MONTHLY_SQL, conn, params=(snapshot_date,))
         if not df.empty:

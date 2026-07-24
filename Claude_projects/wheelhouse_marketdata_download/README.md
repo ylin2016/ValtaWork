@@ -42,8 +42,12 @@ python -m src.run_weekly --no-export                   # DB only, skip files
 ```
 
 Outputs:
-- SQLite DB: `data/wheelhouse.sqlite` (full source of truth, incl. the high-volume
-  time_series / distributions / changelog tables that are not exported to CSV)
+- SQLite DB: `data/wheelhouse.sqlite` — kept lean (~5 MB). Only the latest snapshot
+  is retained (`app.keep_snapshots`), raw-response logging is off
+  (`api.log_raw_responses`), market data is stored as monthly averages
+  (`market_monthly`, not the raw daily series), and the high-volume set
+  time_series / distributions / changelog tables are not downloaded by default
+  (`pull:` toggles — flip any to `true` to re-enable).
 - Exports: `data/exports/<snapshot_date>/`
   - one CSV per summary table (`listings`, `markets`, `dynamic_sets`,
     `dynamic_set_associated_listings`, `dynamic_set_members`,

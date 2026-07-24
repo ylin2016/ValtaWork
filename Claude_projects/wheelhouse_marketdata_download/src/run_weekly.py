@@ -74,6 +74,12 @@ def main(argv=None) -> int:
         print("Export...")
         export_snapshot(conn, cfg["app"]["export_dir"], snapshot_date)
 
+    keep = cfg["app"].get("keep_snapshots")
+    if do_all and keep:
+        dropped = db.prune_snapshots(conn, keep)
+        if dropped:
+            print(f"Pruned old snapshots (kept latest {keep}): removed {dropped}")
+
     conn.close()
     print("Done.")
     return 0
