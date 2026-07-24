@@ -18,16 +18,27 @@ EXPORT_TABLES = [
 ]
 
 
-# listings.csv gets an extra dynamic_set_ids column: the set(s) each listing is
-# associated with (comma-joined for the few listings that sit in more than one).
+# listings.csv gets extra columns:
+#   market_name        — resolved from the listing's market_id
+#   dynamic_set_ids    — the set(s) the listing is in (comma-joined)
+#   dynamic_set_names  — the matching set name(s) (joined with ' | ', since set
+#                        and market names themselves contain commas)
 _LISTINGS_SQL = """
-SELECT l.*, s.dynamic_set_ids
+SELECT l.*,
+       mk.name AS market_name,
+       s.dynamic_set_ids,
+       s.dynamic_set_names
 FROM listings l
+LEFT JOIN markets mk
+  ON mk.market_id = l.market_id AND mk.snapshot_date = l.snapshot_date
 LEFT JOIN (
-  SELECT snapshot_date, user_listing_id,
-         GROUP_CONCAT(set_id) AS dynamic_set_ids
-  FROM dynamic_set_associated_listings
-  GROUP BY snapshot_date, user_listing_id
+  SELECT a.snapshot_date, a.user_listing_id,
+         GROUP_CONCAT(a.set_id)        AS dynamic_set_ids,
+         GROUP_CONCAT(d.name, ' | ')   AS dynamic_set_names
+  FROM dynamic_set_associated_listings a
+  LEFT JOIN dynamic_sets d
+    ON d.set_id = a.set_id AND d.snapshot_date = a.snapshot_date
+  GROUP BY a.snapshot_date, a.user_listing_id
 ) s ON s.snapshot_date = l.snapshot_date AND s.user_listing_id = l.listing_id
 WHERE l.snapshot_date = ?
 """

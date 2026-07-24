@@ -48,8 +48,9 @@ Outputs:
   - one CSV per summary table (`listings`, `markets`, `dynamic_sets`,
     `dynamic_set_associated_listings`, `dynamic_set_members`,
     `dynamic_set_aggregated_metrics`)
-  - `listings.csv` includes a `dynamic_set_ids` column (the set(s) each listing
-    is in; comma-joined when a listing sits in more than one)
+  - `listings.csv` includes `market_name`, `dynamic_set_ids`, and
+    `dynamic_set_names` (the set(s) each listing is in — ids comma-joined, names
+    joined with ` | `; aligned position-for-position when a listing is in >1 set)
   - `market_high_performer_monthly.csv` — derived monthly summary for
     `performance=high` by bedroom: ADR / occupancy_adjusted / RevPAR, averaged
     per calendar month from the daily market series
