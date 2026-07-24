@@ -42,8 +42,17 @@ python -m src.run_weekly --no-export                   # DB only, skip files
 ```
 
 Outputs:
-- SQLite DB: `data/wheelhouse.sqlite`
-- Exports: `data/exports/<snapshot_date>/<table>.csv` (one per table)
+- SQLite DB: `data/wheelhouse.sqlite` (full source of truth, incl. the high-volume
+  time_series / distributions / changelog tables that are not exported to CSV)
+- Exports: `data/exports/<snapshot_date>/`
+  - one CSV per summary table (`listings`, `markets`, `dynamic_sets`,
+    `dynamic_set_associated_listings`, `dynamic_set_members`,
+    `dynamic_set_aggregated_metrics`)
+  - `listings.csv` includes a `dynamic_set_ids` column (the set(s) each listing
+    is in; comma-joined when a listing sits in more than one)
+  - `market_high_performer_monthly.csv` — derived monthly summary for
+    `performance=high` by bedroom: ADR / occupancy_adjusted / RevPAR, averaged
+    per calendar month from the daily market series
 
 Re-running the same `--snapshot-date` is **idempotent** (every row's primary key
 includes the snapshot date, so it overwrites rather than duplicates).
