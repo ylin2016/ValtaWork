@@ -66,14 +66,65 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
     months = month_firsts(snapshot_date, p.get("distribution_months", 3))
     print(f"    date range: {start_date} .. {end_date}")
 
+    segments = _segments(p)
+    seg_desc = ", ".join(_seg_label(s) for s in segments)
+    print(f"    segments ({len(segments)}): {seg_desc}")
+
     ts_total = dist_total = 0
     for mid in targets:
-        ts_total += _pull_market_time_series(
-            client, conn, cfg, snapshot_date, mid, start_date, end_date)
-        for month in months:
-            dist_total += _pull_market_distribution(
-                client, conn, cfg, snapshot_date, mid, month)
+        for seg in segments:
+            ts_total += _pull_market_time_series(
+                client, conn, cfg, snapshot_date, mid, start_date, end_date, seg)
+            for month in months:
+                dist_total += _pull_market_distribution(
+                    client, conn, cfg, snapshot_date, mid, month, seg)
     print(f"  market_time_series: {ts_total} rows; market_distributions: {dist_total} rows")
+
+
+def _segments(p):
+    """Build the list of (performance, bedrooms) segments to request.
+
+    The API accepts one performance and one bedrooms value per call, so each
+    combination is its own request. ('', '') means unsegmented.
+    """
+    seg_cfg = p.get("market_segments") or {}
+    out = []
+    if seg_cfg.get("include_overall", True):
+        out.append(("", ""))
+    for perf in (seg_cfg.get("performance") or []):
+        beds = seg_cfg.get("bedrooms") or [""]
+        for bed in beds:
+            out.append((str(perf), str(bed)))
+    if not out:
+        out = [("", "")]
+    return list(dict.fromkeys(out))
+
+
+def _seg_label(seg):
+    perf, bed = seg
+    if not perf and not bed:
+        return "overall"
+    return f"{perf or 'all'}/{bed or 'all'}br"
+
+
+def _seg_params(seg):
+    perf, bed = seg
+    p = {}
+    if perf:
+        p["performance"] = perf
+    if bed:
+        p["bedrooms"] = bed
+    return p
+
+
+def _metric_param(cfg, kind):
+    """Metric filter from config (empty list -> no filter).
+
+    NOTE: the param must be sent as `metric[]=a&metric[]=b`. Plain repeated
+    `metric=` silently keeps only the LAST value, and a comma-separated list 400s.
+    """
+    metrics = ((cfg.get("params") or {}).get("metrics") or {}).get(kind) or []
+    return {"metric[]": list(metrics)} if metrics else {}
 
 
 def _listing_market_ids(conn, snapshot_date):
@@ -139,32 +190,47 @@ def _explicit_markets(listed, p):
     return list(dict.fromkeys(matched))
 
 
-def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date, end_date):
+def _pull_market_time_series(client, conn, cfg, snapshot_date, mid, start_date,
+                             end_date, seg=("", "")):
     path = cfg["endpoints"]["market_time_series"].format(market_id=mid)
+    params = {"start_date": start_date, "end_date": end_date}
+    params.update(_metric_param(cfg, "time_series"))
+    params.update(_seg_params(seg))
     try:
-        body = client.get_json(
-            path, params={"start_date": start_date, "end_date": end_date},
-            ref_id=f"market_ts:{mid}")
+        body = client.get_json(path, params=params,
+                               ref_id=f"market_ts:{mid}:{_seg_label(seg)}")
     except WheelhouseError as exc:
-        print(f"    market {mid} time_series skipped: {exc}")
+        print(f"    market {mid} time_series [{_seg_label(seg)}] skipped: {exc}")
         return 0
+    if not body:
+        return 0
+    perf, bed = seg
     rows = [
-        {"snapshot_date": snapshot_date, "market_id": mid, "date": d,
+        {"snapshot_date": snapshot_date, "market_id": mid,
+         "performance": perf, "bedrooms": bed, "date": d,
          "metric": m, "value": v, "raw_json": None}
         for (d, m, v) in flatten_series(body)
     ]
     return db.upsert(conn, "market_time_series", rows)
 
 
-def _pull_market_distribution(client, conn, cfg, snapshot_date, mid, month):
+def _pull_market_distribution(client, conn, cfg, snapshot_date, mid, month, seg=("", "")):
     path = cfg["endpoints"]["market_distribution"].format(market_id=mid)
+    params = {"month": month}
+    params.update(_metric_param(cfg, "distribution"))
+    params.update(_seg_params(seg))
     try:
-        body = client.get_json(path, params={"month": month}, ref_id=f"market_dist:{mid}:{month}")
+        body = client.get_json(path, params=params,
+                               ref_id=f"market_dist:{mid}:{month}:{_seg_label(seg)}")
     except WheelhouseError as exc:
-        print(f"    market {mid} distribution ({month}) skipped: {exc}")
+        print(f"    market {mid} distribution ({month}) [{_seg_label(seg)}] skipped: {exc}")
         return 0
+    if not body:
+        return 0
+    perf, bed = seg
     rows = [
-        {"snapshot_date": snapshot_date, "market_id": mid, **row}
+        {"snapshot_date": snapshot_date, "market_id": mid,
+         "performance": perf, "bedrooms": bed, **row}
         for row in flatten_distribution(body)
     ]
     return db.upsert(conn, "market_distributions", rows)

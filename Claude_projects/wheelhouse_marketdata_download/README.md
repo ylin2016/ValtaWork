@@ -71,8 +71,27 @@ includes the snapshot date, so it overwrites rather than duplicates).
 | Market distribution | `GET /market_report/{id}/distribution` | `month` (first of month) |
 | Dynamic sets | `GET /sets`, `GET /sets/{id}/...` | (dates/month optional) |
 
-Metric keys: `asking_rate_w_fees, occupancy, occupancy_adjusted, adr_w_fees, lead_time,
-revpar_adjusted_w_fees, revpar_w_fees, revenue_w_fees, nights_bookable`. The `params:`
+### Metrics & market segments
+
+We keep three metrics (`params.metrics` in `config.yml`). Wheelhouse names them
+differently per endpoint family:
+
+| Wanted | time_series / distribution | aggregated_metrics (monthly) |
+|---|---|---|
+| ADR | `adr_w_fees` | `adr` |
+| Adjusted occupancy | `occupancy_adjusted` | `occupancy_adjusted` |
+| RevPAR | `revpar_w_fees` | `revpar` |
+
+Market reports are also pulled **by segment** (`params.market_segments`): an overall
+baseline plus `performance=high` × `bedrooms` in `0,1,2,3,4+`. Each combination is a
+separate request (the API accepts one value each per call) and rows are tagged with
+`performance` / `bedrooms` columns (`''` = unsegmented).
+
+> **Gotcha:** the metric filter must be sent as `metric[]=a&metric[]=b`. Plain repeated
+> `metric=` silently returns only the LAST metric, and a comma-separated list 400s.
+
+Full metric vocabulary: `asking_rate_w_fees, occupancy, occupancy_adjusted, adr_w_fees,
+lead_time, revpar_adjusted_w_fees, revpar_w_fees, revenue_w_fees, nights_bookable`. The `params:`
 block in `config.yml` controls the country codes, time-series window (`history_days` /
 `forward_days`), how many months of distributions to pull, and an optional explicit
 `market_ids` override.

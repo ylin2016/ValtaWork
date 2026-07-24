@@ -106,6 +106,26 @@ def download_dynamic_sets(client, conn, cfg, snapshot_date, limit=None):
     return real_listings
 
 
+def _metric_names(cfg, kind):
+    """Configured metric list for an endpoint family ([] = keep everything)."""
+    return list(((cfg.get("params") or {}).get("metrics") or {}).get(kind) or [])
+
+
+def _metric_param(cfg, kind):
+    """Server-side metric filter.
+
+    Must be `metric[]=a&metric[]=b` — plain repeated `metric=` silently keeps only
+    the LAST value, and a comma-separated list 400s.
+    """
+    metrics = _metric_names(cfg, kind)
+    return {"metric[]": metrics} if metrics else {}
+
+
+def _metric_filter(cfg, kind):
+    """Set of metric names to keep when filtering client-side."""
+    return set(_metric_names(cfg, kind))
+
+
 def _safe(client, path, ref, params=None):
     try:
         return client.get_json(path, params=params, ref_id=ref)
@@ -168,10 +188,12 @@ def _pull_aggregated(client, conn, cfg, snapshot_date, sid, start_date, end_date
     # metric. The endpoint returns the set's full history (back to ~2017), so trim it
     # to the configured window. Fall back to a flat metric dict if that yields nothing.
     series = flatten_series(body, date_keys=("start_date", "end_date", "date", "month"))
+    keep = _metric_filter(cfg, "aggregated")
     rows = [
         {"snapshot_date": snapshot_date, "set_id": sid, "metric": m,
          "period": d, "value": v, "raw_json": None}
-        for (d, m, v) in series if in_window(d, start_date, end_date)
+        for (d, m, v) in series
+        if in_window(d, start_date, end_date) and (not keep or m in keep)
     ]
     if not rows:
         rows = [
@@ -191,9 +213,10 @@ def _pull_time_series(client, conn, cfg, snapshot_date, sid, start_date, end_dat
     until we get data.
     """
     path = cfg["endpoints"]["dynamic_set_time_series"].format(set_id=sid)
+    metric_p = _metric_param(cfg, "time_series")
     for start in _start_candidates(start_date, end_date):
         body = _safe(client, path, f"ds_ts:{sid}",
-                     params={"start_date": start, "end_date": end_date})
+                     params={"start_date": start, "end_date": end_date, **metric_p})
         if not body:
             continue
         rows = [
@@ -220,8 +243,9 @@ def _pull_distributions(client, conn, cfg, snapshot_date, sid, months):
     total = 0
     for month in months:
         body = _safe(client, cfg["endpoints"]["dynamic_set_distribution"].format(set_id=sid),
-                     f"ds_dist:{sid}:{month}", params={"month": month})
-        if body is None:
+                     f"ds_dist:{sid}:{month}",
+                     params={"month": month, **_metric_param(cfg, "distribution")})
+        if not body:
             continue
         rows = [
             {"snapshot_date": snapshot_date, "set_id": sid, **row}

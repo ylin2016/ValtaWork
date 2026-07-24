@@ -35,6 +35,26 @@ params:
   # the snapshot's month (first-of-month is what the API expects).
   distribution_months: 3
 
+  # Metrics to keep. Wheelhouse names them differently per endpoint family:
+  #   time_series / distribution  -> the *_w_fees variants
+  #   aggregated_metrics (monthly) -> plain names
+  # time_series/distribution are filtered server-side via repeatable `metric=`;
+  # aggregated_metrics has no metric param so it is filtered after parsing.
+  # Set a list to [] to keep every metric.
+  metrics:
+    time_series:  ["adr_w_fees", "occupancy_adjusted", "revpar_w_fees"]
+    distribution: ["adr_w_fees", "occupancy_adjusted", "revpar_w_fees"]
+    aggregated:   ["adr", "occupancy_adjusted", "revpar"]
+
+  # Market-report segmentation. The API takes ONE performance and ONE bedrooms
+  # value per request, so every combination below is a separate call, stored
+  # tagged with its performance/bedrooms ('' = unsegmented).
+  #   performance: low | average | high      bedrooms: 0 | 1 | 2 | 3 | 4+
+  market_segments:
+    include_overall: true      # also pull the unsegmented market baseline
+    performance: ["high"]
+    bedrooms: ["0", "1", "2", "3", "4+"]
+
 # Endpoint path templates (aligned to the Wheelhouse RM API help docs, Jul 2026).
 # {listing_id} / {market_id} / {set_id} are filled in per call. If a live call
 # 404s, fix the path here only — the code reads every path from this map.

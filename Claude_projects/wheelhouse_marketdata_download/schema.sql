@@ -41,14 +41,18 @@ CREATE TABLE IF NOT EXISTS markets (
   PRIMARY KEY (snapshot_date, market_id)
 );
 
+-- performance ('' | low | average | high) and bedrooms ('' | 0 | 1 | 2 | 3 | 4+)
+-- tag the market segment a row came from; '' means unsegmented (whole market).
 CREATE TABLE IF NOT EXISTS market_time_series (
   snapshot_date TEXT NOT NULL,
   market_id     TEXT NOT NULL,
+  performance   TEXT NOT NULL DEFAULT '',
+  bedrooms      TEXT NOT NULL DEFAULT '',
   date          TEXT NOT NULL,
   metric        TEXT NOT NULL,
   value         REAL,
   raw_json      TEXT,
-  PRIMARY KEY (snapshot_date, market_id, date, metric)
+  PRIMARY KEY (snapshot_date, market_id, performance, bedrooms, date, metric)
 );
 
 -- Distribution rows: value = probability for a [bucket_min, bucket_max) bucket.
@@ -56,6 +60,8 @@ CREATE TABLE IF NOT EXISTS market_time_series (
 CREATE TABLE IF NOT EXISTS market_distributions (
   snapshot_date TEXT NOT NULL,
   market_id     TEXT NOT NULL,
+  performance   TEXT NOT NULL DEFAULT '',
+  bedrooms      TEXT NOT NULL DEFAULT '',
   month         TEXT NOT NULL,
   metric        TEXT NOT NULL,
   bucket        TEXT NOT NULL,
@@ -65,7 +71,7 @@ CREATE TABLE IF NOT EXISTS market_distributions (
   percentile    REAL,
   value         REAL,
   raw_json      TEXT,
-  PRIMARY KEY (snapshot_date, market_id, month, metric, bucket)
+  PRIMARY KEY (snapshot_date, market_id, performance, bedrooms, month, metric, bucket)
 );
 
 -- ---------------------------------------------------------------------------
