@@ -1,23 +1,20 @@
-"""Export one snapshot's tables to dated CSVs plus a single xlsx workbook."""
+"""Export one snapshot's tables to dated per-table CSVs."""
 from pathlib import Path
 
 import pandas as pd
 
 from . import db
 
-# Tables worth exporting (raw_responses is a debug safety-net, skipped by default).
+# Tables exported to CSV. The high-volume daily/detail tables (time_series,
+# distributions, changelog) are intentionally NOT exported — they still live in
+# data/wheelhouse.sqlite; query them there. To re-add one, list it here.
 EXPORT_TABLES = [
     "listings",
     "markets",
-    "market_time_series",
-    "market_distributions",
     "dynamic_sets",
     "dynamic_set_associated_listings",
     "dynamic_set_members",
     "dynamic_set_aggregated_metrics",
-    "dynamic_set_time_series",
-    "dynamic_set_distributions",
-    "dynamic_set_changelog",
 ]
 
 
