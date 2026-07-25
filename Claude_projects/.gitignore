@@ -25,7 +25,9 @@
 *.gif
 *.svg
 *.sqlite
-*.sqlite.bak
+*.sqlite.*
+*.db
+*_tokens.json
 
 # Icon files
 Icon?
