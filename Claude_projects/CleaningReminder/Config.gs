@@ -6,11 +6,18 @@
  */
 
 const CONFIG = {
-  // How many days ahead to scan. 1 = tomorrow (the next-day schedule).
+  // First day the daily reminder covers. 1 = tomorrow.
   DAYS_AHEAD: 1,
 
-  // Date used by previewDate() when you Run it from the editor (the Run button
-  // can't pass an argument). Set this, pick previewDate, and Run. Format YYYY-MM-DD.
+  // DEFAULT number of consecutive days one reminder covers, starting at
+  // DAYS_AHEAD. 2 = tomorrow AND the day after (each day gets its own section in
+  // the same text); 1 = tomorrow only. Per-cleaner override: put `daysCovered: 1`
+  // (or 2) on that cleaner's row in Cleaners.gs — Maria is 1, Angelina is 2.
+  DAYS_COVERED: 2,
+
+  // First date used by previewDate() when you Run it from the editor (the Run
+  // button can't pass an argument); it covers DAYS_COVERED days from there.
+  // Set this, pick previewDate, and Run. Format YYYY-MM-DD.
   PREVIEW_DATE: '2026-07-16',
 
   // SAFETY SWITCH.

@@ -1,9 +1,10 @@
 # CleaningReminder
 
 A Google Apps Script that scans each cleaner's Google Calendar once a day, finds
-their **next-day** cleaning jobs, and texts them (via **Twilio**) the list of
-units, with times and any notes. Each cleaner can have several phone numbers —
-every number gets its own 1:1 SMS copy.
+their upcoming cleaning jobs — **tomorrow, or tomorrow plus the day after, per
+cleaner** — and texts them (via **Twilio**) the list of units, with times and any
+notes. Each cleaner can have several phone numbers — every number gets its own
+1:1 SMS copy.
 
 It runs *as* the vacation@valtarealty.com account, so calendars are read
 natively — no key files or OAuth tokens to manage.
@@ -25,19 +26,91 @@ natively — no key files or OAuth tokens to manage.
   `⚠️ BACK-TO-BACK`. The yellow evening event (4pm–10pm) is not. Shifts are told
   apart by start time (`CONFIG.BACKTOBACK_BEFORE_HOUR`, default 3pm), so the
   `(out->in)` arrows on individual units don't affect this.
-- Each cleaner's titled jobs for the day are combined into **one** text.
+- Each cleaner's titled jobs for **both days** are combined into **one** text.
 
 Each unit is forwarded **as written** (the cleaners' own shorthand). If you'd
 rather expand `Property Unit(out->in)` into words, say so.
+
+## How many days one reminder covers — per cleaner
+
+Each cleaner's reminder starts `CONFIG.DAYS_AHEAD` days out (1 = tomorrow) and
+covers **that cleaner's own `daysCovered`**, set on their row in `Cleaners.gs`:
+
+| Cleaner | `daysCovered` | Gets |
+|---------|---------------|------|
+| Maria | `1` | tomorrow only |
+| Angelina | `2` | tomorrow **and** the day after |
+| Anna, Camilla, Crystal | *(unset)* | falls back to `CONFIG.DAYS_COVERED` (currently `2`) |
+
+To change someone, edit that one number:
+
+```javascript
+{ name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [], daysCovered: 2 },
+```
+
+`CONFIG.DAYS_COVERED` is only the **default** for cleaners with no `daysCovered`
+of their own. `runDaily` scans the widest span anyone needs and gives each
+cleaner their first N days, so mixing 1-day and 2-day cleaners costs nothing
+extra.
+
+A **two-day** message puts each day under its own `▶` heading:
+
+```
+Valta Realty Cleaning Schedule — Fri, Jul 24 & Sat, Jul 25 (5 units):
+
+▶ Fri, Jul 24 (4 units)
+
+⚠️ BACK-TO-BACK · 11:00 AM–4:00 PM (finish before check-in):
+ • Bellevue 2243(6->0)
+ • Elektra 1212(4->0)
+   Notes: Key in lockbox
+
+4:00 PM–11:00 AM (next day):
+ • Seattle 8415(3->0)
+
+Residential:
+ • 14701 SE 42nd ST, Bellevue
+
+▶ Sat, Jul 25 (1 unit)
+
+⚠️ BACK-TO-BACK · 11:00 AM–4:00 PM (finish before check-in):
+ • Kirkland 305(2->2)
+
+Reply here if you cannot make it. Thanks, Maria!
+```
+
+A cleaner is texted if **either** day has work; a day with nothing shows
+`▶ Sat, Jul 25 — nothing scheduled`.
+
+A **one-day** cleaner (Maria) gets the original single-block message — no `▶`
+headings, since the brand line already names the date:
+
+```
+Valta Realty Cleaning Schedule — Fri, Jul 24 (3 units):
+
+⚠️ BACK-TO-BACK · 11:00 AM–4:00 PM (finish before check-in):
+ • Bellevue 2243(6->0)
+
+Residential:
+ • 14701 SE 42nd ST, Bellevue
+
+Reply here if you cannot make it. Thanks, Maria!
+```
+
+Note that with two-day coverage each day is announced twice: once as "tomorrow",
+once as "the day after".
 
 ## Files
 
 | File              | What it is                                                        |
 |-------------------|-------------------------------------------------------------------|
 | `Code.gs`         | Main logic: per-cleaner calendar → titled jobs → compose → send.  |
-| `Cleaners.gs`     | One row per cleaner: name, calendar name, phone.                  |
-| `Config.gs`       | Settings: days-ahead, `DRY_RUN` safety switch, skip-untitled.     |
+| `Cleaners.gs`     | One row per cleaner: name, calendar, phones, `daysCovered`.       |
+| `Config.gs`       | Settings: days-ahead/days-covered, `DRY_RUN` switch, skip-untitled. |
 | `appsscript.json` | Manifest (timezone + OAuth scopes).                              |
+
+> Looking for Maria's daily driving-route plan (geocoded, packed into cars)? That
+> lives in the separate **`Maria Route Plan`** project.
 
 ## One-time setup
 
@@ -91,8 +164,9 @@ properties and the GMT-07 grid in your calendar). This controls what counts as
 `Config.gs` ships with `DRY_RUN: true`. Run **`previewTomorrow`** (first run asks
 you to authorize Calendar + external-request access). Open **Executions / Logs**:
 for each cleaner you'll see the **exact SMS** that would be sent — no texts go
-out. To check a specific day, set `CONFIG.PREVIEW_DATE` and run **`previewDate`**
-(the Run button can't pass an argument, so it reads the date from Config). Share
+out. To check a specific span, set `CONFIG.PREVIEW_DATE` (the **first** day) and
+run **`previewDate`** — it covers `DAYS_COVERED` days from there (the Run button
+can't pass an argument, so it reads the date from Config). Share
 that log with me and we'll tune the parsing to your real events if anything looks off.
 
 ## Go live
@@ -184,7 +258,7 @@ The weekly summary goes to **each cleaner** (no leader CC).
 Currently manual, by design. To automate, Apps Script → **Triggers** (clock icon)
 → **Add Trigger**:
 - **Daily:** function `runDaily`, **Time-driven → Day timer**, pick an hour (e.g.
-  5–6pm so cleaners get tomorrow's list the evening before).
+  5–6pm so cleaners get tomorrow's and the next day's list the evening before).
 - **Weekly:** function `runWeekly`, **Time-driven → Week timer → Every Monday**,
   pick an hour (e.g. Monday morning).
 
