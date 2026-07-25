@@ -160,6 +160,81 @@ python -m src.run_month_close build --period 2026-05
 ```
 Run `import_ltr` AFTER `guesty-import` (its DEFERRED dedup matches existing guesty bookings by code) and BEFORE `build`.
 
+### Yacinde "old bookings" — $0 revenue + supplies-only charge
+`src/import_yacinde_old.py` (standalone) loads owner-direct/pre-management Yacinde
+reservations from `data/Yacinde old bookings.csv`. Valta collects **no rental
+revenue** on them but charges a per-booking **supplies fee = 0.9 × guests ×
+min(nights, 60)** (capped at 60 days for longer stays). Only check-ins on/after
+`--min-checkin` (default `2026-07-15`) are added; each booking is dated by its
+check-in, so it lands in the month it checks in.
+Per booking it inserts: (1) a Net Revenue line — `source='guesty' INCOME`,
+`amount=0`, `base_amount=0`, `source_object='YacindeOld'` (renders in the Net
+Revenue table at $0, so no commission); (2) UNLESS the booking is cancelled, a
+Supplies expense — `source='manual' EXPENSE`, `subcategory='Supplies'`,
+`qbo_account='…1C - Owner Expenses:Supplies - Owner'`, `amount=-(0.9·g·min(n,60))`,
+`source_object='YacindeSupply'`. The supply account matches the `%Owner Expenses%`
+amount_due filter, and the dashboard/Excel expense queries accept
+`source IN ('qbo','manual')`, so dashboard/Excel/amount_due agree.
+**Cancelled bookings** (STATUS column contains "cancel") get the $0 Net Revenue
+line but **no supply charge**; the current CSV has **no STATUS column**, so nothing
+is treated as cancelled. Idempotent (deletes its own `YacindeOld`/`YacindeSupply`
+marker rows across all periods, then re-inserts).
+**Storage rationale:** supplies are `source='manual'` (a formula-computed owner
+charge, not QBO data), so a `qbo-sync` re-sync — which clears only `source='qbo'`
+rows — does **not** wipe them; no re-run needed after qbo-sync. The $0 Net Revenue
+lines are `source='guesty'`, so **only a full guesty-income clear** (the rebuild
+`DELETE … source='guesty' AND category='INCOME'`) removes them — re-run this importer
+after that. Order: after `guesty-import`, before `build`.
+
+### Central supplies — formula supply fee for `Supplies='central'` properties
+The `Supplies` column in `Listing_contacts.csv` is the indicator: `central` (Valta
+provides supplies and charges a per-booking formula fee), `owner` (owner pays; actual
+QBO supplies), or `LTR`. `listing_filter.central_supply_property_ids()` maps the
+`central` rows to property_ids (same label→pid aliasing as `allowed_property_ids`).
+`run_month_close._apply_central_supplies()` (in `build`, before `build_statements`)
+for those properties:
+1. **Suppresses** the QBO per-booking supply lines — description `LIKE 'Supplies Charge
+   | …'` — by setting `include_in_statement=0` (re-includes first each build, so a
+   property leaving `central` gets them back). These come as a double-entry pair (a
+   `Billable Expense Income` side that never counted + an `Owner Expenses:Supplies`
+   side that did); suppressing both removes only the counted cost. **General /
+   non-booking** supply lines (Costco/Amazon/reimbursements — anything NOT matching
+   `Supplies Charge | …`) are left untouched, so they still come from QBO.
+2. **Inserts** one `source='manual'`, `source_object='CentralSupply'` Supplies expense
+   per confirmed central-property Guesty booking = **`0.9 × guests × min(nights, 60)`**
+   (skips cancelled; excludes the Yacinde `YacindeOld` bookings, which carry their own
+   `YacindeSupply` from `import_yacinde_old`). Guests come from the `guests` column the
+   converter now writes to `guesty_converted.csv`; nights = checkout − checkin.
+Idempotent. The shared formula is `run_month_close.supply_charge(guests, nights)` (also
+used by `import_yacinde_old`). Because the manual supplies match the `%Owner Expenses%`
+amount_due filter and the display queries accept `source IN ('qbo','manual')`,
+dashboard/Excel/amount_due agree. QBO's own `Supplies Charge` amounts were already
+~this formula, so owner payouts barely move (change is mainly de-duplication + cancelled
+exclusion + the 60-night cap).
+
+### OSBR-RV — Hipcamp.com credits as commissioned Net Revenue
+OSBR's RV site is booked through Hipcamp, whose payouts land in QBO as plain INCOME
+Deposits (`property_id='osbr'`, `vendor_customer LIKE '%Hipcamp%'`). Left alone they'd
+sit **uncommissioned** in "Other Credits". `run_month_close._apply_osbr_rv()` (in `build`,
+before `_apply_guesty_fees`) moves each into the Net Revenue section as an **`osbr_rv`**
+sub-listing so it earns PM commission at OSBR's rate:
+1. **Ensures** the display property `osbr_rv` (name **"OSBR-RV"**) exists — `INSERT OR
+   IGNORE`, reusing OSBR's `owner_id`/`qbo_class_id`, `is_active=0` so it stays out of the
+   dashboard property dropdown (it's a sub-listing, not a standalone statement).
+2. **Suppresses** each OSBR Hipcamp deposit (`include_in_statement=0`, out of Other
+   Credits) and **inserts** a `source='guesty' INCOME`, `source_object='OsbrRV'` "booking":
+   `property_id='osbr_rv'`, `amount=base_amount=`credit, **gross = net = credit**,
+   `checkin=checkout=`the credit's `posting_date` (**Reservation Date = credit date**;
+   renders as a 0-night same-day entry), `guest_name='Hipcamp'`, code `HIPCAMP-<date>`.
+Because `osbr_rv` is a member of the **`osbr` rollup** (`config.yml`), the row aggregates
+into OSBR's statement, renders as its own Net Revenue sub-section, and commissions at
+OSBR's parent rate (16%) via the standard guesty path — no display-code changes. Excluded
+from `_apply_central_supplies` (like `YacindeOld`). Idempotent: deletes its own prior
+`OsbrRV` rows and re-derives from the Hipcamp deposits each build, so a `qbo-sync` that
+re-includes the deposits is re-corrected next build. Net effect on OSBR: the RV revenue
+stays in gross but now carries MCR (e.g. July $564.40 → −$90.30 fee; amount_due
+$31,581.75 → $31,491.45), matching QBO's own "Hipcamp MCR" bill.
+
 ### View Dashboard
 ```bash
 streamlit run src/dashboard.py  # http://localhost:8501 (Streamlit default)
@@ -180,7 +255,7 @@ print(booking[['total_payout', 'cleaning_fee', 'net_revenue']])
 - **config.yml**: Database path, QBO realm ID, PM fee defaults, `statement_rollups`
 - **Listing_contacts.csv**: Property addresses and owner contact info (source for mapping_classes.yml)
 
-**Statement rollups** (`config.yml` → `statement_rollups`): map a parent `property_id` to a list of member listings. The parent gets ONE statement aggregating its own + members' ledger lines (`property_id IN (...)` in both `statement_engine.build_statements` and `run_month_close.cmd_build`); members are skipped (no separate statement) and PM uses the parent's rate. Current use: `bellevue_14507` consolidates units 1–4. Note: `build` does not delete stale per-member Excel files from earlier runs — remove them manually.
+**Statement rollups** (`config.yml` → `statement_rollups`): map a parent `property_id` to a list of member listings. The parent gets ONE statement aggregating its own + members' ledger lines (`property_id IN (...)` in both `statement_engine.build_statements` and `run_month_close.cmd_build`); members are skipped (no separate statement) and PM uses the parent's rate. Current use: `bellevue_14507` consolidates its 4 units; `beachwood` consolidates `beachwood_1..10`; `osbr` consolidates `osbr_1..12`. Each parent statement's Net Revenue section renders **one sub-table per member listing** (labelled by listing name, each with its own nights + $ subtotal) followed by a **Total Net Revenue** grand-total row; the Expenses section's **Type column shows the listing name** each cost belongs to. This per-listing layout is implemented in all three products — dashboard, `excel_writer.write_statement` (takes a `property_names` map; bookings/expenses carry `property_id` from `cmd_build`), and `dashboard.generate_pdf` (takes the pre-built `booking_records`, so LTR rent is included in the PDF). Single-listing statements render one section with no grand-total row. Note: `build` does not delete stale per-member Excel files from earlier runs — remove them manually (e.g. `rm output/<period>/statements/beachwood_[0-9]*_owner_statement_*.xlsx`).
 
 **PM fee rate — single source of truth (`src/pm_rate.py`), NO silent default**: The authoritative rate is per-property in `owner_contracts` (loaded from `mapping_classes.yml` `pm_fee_rate`), selected by the row **effective for the period**. `resolve_pm_fee_rate(conn, property_id, period_start)` in `pm_rate.py` is the ONE implementation of that lookup; `statement_engine.build_statements` (stored `amount_due`), `dashboard.load_statement_data` (per-booking table + LTR rows), and `dashboard.generate_pdf` all call it, so every product commissions at the same rate and the per-booking commission column foots to the stored Net Income. (It lives in its own dependency-free module because the dashboard runs as a script and can't bare-import `statement_engine`, which uses relative imports.) **There is deliberately no default fallback**: `resolve_pm_fee_rate` returns `None` when a property has no configured rate. If such a property has commissionable revenue, `build_statements` **raises `ValueError`** (naming the property and the revenue) and the dashboard **`st.stop()`s** with an instruction to set the rate — rather than guessing. So a missing rate surfaces loudly instead of quietly commissioning at a wrong number. `config.yml` `default_pm_fee_rate` is no longer consulted by `build`. When onboarding a property or changing fee rates, set `pm_fee_rate` in `mapping_classes.yml` and run `sync-mappings`. Prior bugs: dashboard/PDF used a hardcoded `0.18` fallback with no effective-date filter (drifted from stored `amount_due`), and `build`/dashboard/Excel silently substituted the `0.16` config default for no-contract properties.
 

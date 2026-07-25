@@ -43,6 +43,36 @@ def _alias(n):
     }.get(n, n)
 
 
+def _label_to_pid(conn):
+    """Normalized contacts label -> property_id, for active properties."""
+    by_norm = {}
+    for pid, name in conn.execute(
+        "SELECT property_id, property_name FROM properties WHERE is_active=1"
+    ):
+        by_norm[_norm(name)] = pid
+        by_norm.setdefault(_norm(pid), pid)
+    return by_norm
+
+
+def central_supply_property_ids(conn, base_dir):
+    """property_ids whose Listing_contacts.csv ``Supplies`` column is 'central':
+    these are charged a per-booking formula supply fee (0.9 * guests * nights)
+    instead of the QBO per-booking 'Supplies Charge' lines. Uses the same
+    label->property_id mapping (with aliases) as allowed_property_ids."""
+    by_norm = _label_to_pid(conn)
+    out = set()
+    csv_path = os.path.join(str(base_dir), "data", "Listing_contacts.csv")
+    with open(csv_path, newline="", encoding="utf-8-sig") as f:
+        for row in csv.DictReader(f):
+            if (row.get("Supplies") or "").strip().lower() != "central":
+                continue
+            n = _norm((row.get("Property") or "").strip())
+            pid = by_norm.get(n) or by_norm.get(_alias(n))
+            if pid:
+                out.add(pid)
+    return out
+
+
 def allowed_property_ids(conn, base_dir):
     """Return the set of ``property_id``s that should receive owner statements:
     every active property whose name (or id) matches a row in

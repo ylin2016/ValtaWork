@@ -24,3 +24,28 @@ statement_rollups:
     - bellevue_14507_unit_2
     - bellevue_14507_unit_3
     - bellevue_14507_unit_4
+  beachwood:
+    - beachwood_1
+    - beachwood_2
+    - beachwood_3
+    - beachwood_4
+    - beachwood_5
+    - beachwood_6
+    - beachwood_7
+    - beachwood_8
+    - beachwood_9
+    - beachwood_10
+  osbr:
+    - osbr_1
+    - osbr_2
+    - osbr_3
+    - osbr_4
+    - osbr_5
+    - osbr_6
+    - osbr_7
+    - osbr_8
+    - osbr_9
+    - osbr_10
+    - osbr_11
+    - osbr_12
+    - osbr_rv

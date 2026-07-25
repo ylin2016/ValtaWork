@@ -16,6 +16,7 @@ _SECTION_FILL = PatternFill("solid", fgColor=_DARK_BLUE)
 _COL_HDR_FILL = PatternFill("solid", fgColor=_MED_BLUE)
 _SUMM_FILL    = PatternFill("solid", fgColor=_LIGHT_BLUE)
 _TOTAL_FILL   = PatternFill("solid", fgColor=_GREEN_FILL)
+_GRAND_FILL   = PatternFill("solid", fgColor="CFE0C3")  # darker green for the grand Total Net Revenue
 _ALT          = PatternFill("solid", fgColor=_ALT_FILL)
 
 _THIN   = Side(style="thin", color="CCCCCC")
@@ -83,10 +84,22 @@ def _fmt_dates(checkin_str, checkout_str):
         try:
             co = datetime.strptime(str(checkout_str)[:10], "%Y-%m-%d")
             nights = (co - ci).days
+            # Same-day credit entries (e.g. OSBR-RV Hipcamp bookings) show a single date.
+            if nights == 0:
+                return co.strftime("%d. %b. %Y")
             return f"{ci.strftime('%d. %b.')} - {co.strftime('%d. %b. %Y')} / {nights} nights"
         except Exception:
             pass
     return ci.strftime("%d. %b. %Y")
+
+
+def _nights_between(checkin_str, checkout_str):
+    try:
+        ci = datetime.strptime(str(checkin_str)[:10], "%Y-%m-%d")
+        co = datetime.strptime(str(checkout_str)[:10], "%Y-%m-%d")
+        return max(0, (co - ci).days)
+    except Exception:
+        return 0
 
 # ── legacy template creator (used by init-db) ────────────────────────────────
 def create_template(path: str):
@@ -110,7 +123,9 @@ def write_statement(output_path: str, period: str, property_info: dict,
                     other_income: list, expenses_by_subcat: dict, totals: dict,
                     owner_pays_cleaning: bool = False,
                     owner_pays_supplies: bool = False,
-                    owner_pays_taxes: bool = False):
+                    owner_pays_taxes: bool = False,
+                    property_names: dict = None,
+                    multi_listing: bool = False):
     """
     Generate a single-sheet owner statement matching the PDF format.
 
@@ -188,7 +203,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
 
     row = _spacer(ws, row)
 
-    # ── NET REVENUE SECTION ───────────────────────────────────────────────────
+    # ── NET REVENUE SECTION (one sub-table per listing) ───────────────────────
     if bookings:
         row = _section_row(ws, row, "Net Revenue Section", ncols_revenue)
 
@@ -200,82 +215,86 @@ def write_statement(output_path: str, period: str, property_info: dict,
             headers.append("Tax Paid to Owner")  # after MCR, per owner request
         headers.extend(["Net Owner Revenue", "Commission %"])
 
-        row = _col_header_row(ws, row, headers, ncols_revenue)
+        names = property_names or {}
 
-        total_net_rental = 0.0
-        total_cleaning = total_tax = total_comm = total_owner = 0.0
-
-        for i, b in enumerate(bookings):
-            ws.row_dimensions[row].height = 15
-            bg = _ALT if i % 2 else None
-
-            # Round every displayed figure to cents at source so the Total row equals the
-            # sum of the rounded cells shown (cells display via CURRENCY format, so summing
-            # unrounded floats would drift the total by a penny).
+        def _nr_booking_row(r, b, bg):
+            # Round each figure to cents at source so totals equal the sum of shown cells.
             net_rental = round(float(b.get("net_revenue") or 0), 2)
             cleaning_fee = round(float(b.get("owner_cleaning_cost") or 0), 2) if owner_pays_cleaning else 0.0
             tax_paid = round(float(b.get("owner_tax_cost") or 0), 2) if owner_pays_taxes else 0.0
-
-            # net_rental already has channel/stripe fees deducted (done in cmd_build)
-            net_rental_after_fees = net_rental
-
-            comm = round(-net_rental_after_fees * pm_fee_rate, 2)
-            owner_rev = round(net_rental_after_fees + cleaning_fee + tax_paid + comm, 2)
-
+            comm = round(-net_rental * pm_fee_rate, 2)
+            owner_rev = round(net_rental + cleaning_fee + tax_paid + comm, 2)
             col = 1
-            _cell(ws, row, col, _fmt_dates(b["checkin"], b["checkout"]), bg=bg)
-            col += 1
-            _cell(ws, row, col, b["booking_id"] or "", bg=bg, align="center")
-            col += 1
-            _cell(ws, row, col, b["guest_name"] or "", bg=bg)
-            col += 1
-            _cell(ws, row, col, net_rental_after_fees, fmt=CURRENCY, align="right", bg=bg)
-            col += 1
+            _cell(ws, r, col, _fmt_dates(b["checkin"], b["checkout"]), bg=bg); col += 1
+            _cell(ws, r, col, b["booking_id"] or "", bg=bg, align="center"); col += 1
+            _cell(ws, r, col, b["guest_name"] or "", bg=bg); col += 1
+            _cell(ws, r, col, net_rental, fmt=CURRENCY, align="right", bg=bg); col += 1
             if owner_pays_cleaning:
-                _cell(ws, row, col, cleaning_fee, fmt=CURRENCY, align="right", bg=bg)
-                col += 1
-            _cell(ws, row, col, comm, fmt=CURRENCY, align="right", bg=bg)
-            col += 1
+                _cell(ws, r, col, cleaning_fee, fmt=CURRENCY, align="right", bg=bg); col += 1
+            _cell(ws, r, col, comm, fmt=CURRENCY, align="right", bg=bg); col += 1
             if owner_pays_taxes:
-                _cell(ws, row, col, tax_paid, fmt=CURRENCY, align="right", bg=bg)
-                col += 1
-            _cell(ws, row, col, owner_rev, fmt=CURRENCY, align="right", bg=bg)
-            col += 1
-            _cell(ws, row, col, -pm_fee_rate, fmt="0%", align="center", bg=bg)
+                _cell(ws, r, col, tax_paid, fmt=CURRENCY, align="right", bg=bg); col += 1
+            _cell(ws, r, col, owner_rev, fmt=CURRENCY, align="right", bg=bg); col += 1
+            _cell(ws, r, col, -pm_fee_rate, fmt="0%", align="center", bg=bg)
+            return net_rental, cleaning_fee, tax_paid, comm, owner_rev, _nights_between(b["checkin"], b["checkout"])
 
-            total_net_rental += net_rental_after_fees
-            total_cleaning += cleaning_fee
-            total_tax += tax_paid
-            total_comm += comm
-            total_owner += owner_rev
+        def _nr_total_row(r, nights, net, clean, tax, comm, owner, fill):
+            ws.row_dimensions[r].height = 16
+            for c in range(1, ncols_revenue + 1):
+                ws.cell(row=r, column=c).fill = fill
+            _cell(ws, r, 1, f"{int(nights)} nights", bold=True, bg=fill)
+            col = 4
+            _cell(ws, r, col, net, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
+            if owner_pays_cleaning:
+                _cell(ws, r, col, clean, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
+            _cell(ws, r, col, comm, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
+            if owner_pays_taxes:
+                _cell(ws, r, col, tax, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
+            _cell(ws, r, col, owner, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
+            _cell(ws, r, col, -pm_fee_rate, bold=True, fmt="0%", align="center", bg=fill)
+
+        from collections import OrderedDict
+        groups = OrderedDict()
+        for b in bookings:
+            groups.setdefault(b.get("property_id"), []).append(b)
+        multi = len(groups) > 1
+
+        gt_net = gt_clean = gt_tax = gt_comm = gt_owner = 0.0
+        gt_nights = 0
+
+        for gpid, gb in groups.items():
+            if multi:
+                row = _section_row(ws, row, names.get(gpid, gpid or ""), ncols_revenue)
+            row = _col_header_row(ws, row, headers, ncols_revenue)
+            s_net = s_clean = s_tax = s_comm = s_owner = 0.0
+            s_nights = 0
+            for i, b in enumerate(gb):
+                ws.row_dimensions[row].height = 15
+                bg = _ALT if i % 2 else None
+                n, cl, tx, cm, ow, ni = _nr_booking_row(row, b, bg)
+                s_net += n; s_clean += cl; s_tax += tx; s_comm += cm; s_owner += ow; s_nights += ni
+                row += 1
+            _nr_total_row(row, s_nights, s_net, s_clean, s_tax, s_comm, s_owner, _TOTAL_FILL)
             row += 1
+            gt_net += s_net; gt_clean += s_clean; gt_tax += s_tax
+            gt_comm += s_comm; gt_owner += s_owner; gt_nights += s_nights
+            row = _spacer(ws, row)
 
-        # Total row
-        ws.row_dimensions[row].height = 16
-        for col in range(1, ncols_revenue + 1):
-            ws.cell(row=row, column=col).fill = _TOTAL_FILL
-        _cell(ws, row, 1, "Total", bold=True, bg=_TOTAL_FILL)
-        col = 4
-        _cell(ws, row, col, total_net_rental, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-        col += 1
-        if owner_pays_cleaning:
-            _cell(ws, row, col, total_cleaning, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-            col += 1
-        _cell(ws, row, col, total_comm, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-        col += 1
-        if owner_pays_taxes:
-            _cell(ws, row, col, total_tax, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-            col += 1
-        _cell(ws, row, col, total_owner, bold=True, fmt=CURRENCY, align="right", bg=_TOTAL_FILL)
-        col += 1
-        _cell(ws, row, col, -pm_fee_rate, bold=True, fmt="0%", align="center", bg=_TOTAL_FILL)
-        row += 1
-        row = _spacer(ws, row)
+        # Grand total across all listings (only meaningful for multi-listing/rollups).
+        if multi:
+            row = _section_row(ws, row, "Total Net Revenue", ncols_revenue)
+            _nr_total_row(row, gt_nights, gt_net, gt_clean, gt_tax, gt_comm, gt_owner, _GRAND_FILL)
+            row += 1
+            row = _spacer(ws, row)
 
     # ── OTHER INCOME ──────────────────────────────────────────────────────────
     if other_income:
         row = _section_row(ws, row, "Other Credits", 7)
-        row = _col_header_row(ws, row, ["Date", "Description", "Type", "Amount"], 7)
+        # Rollup statements show which listing each credit belongs to; single omit it.
+        amt_col = 4 if multi_listing else 3
+        oi_headers = (["Date", "Description", "Listing", "Amount"] if multi_listing
+                      else ["Date", "Description", "Amount"])
+        row = _col_header_row(ws, row, oi_headers, 7)
 
         total_oi = 0.0
         for i, oi in enumerate(other_income):
@@ -284,12 +303,13 @@ def write_statement(output_path: str, period: str, property_info: dict,
             amt = round(float(oi["amount"] or 0), 2)
             _cell(ws, row, 1, oi["posting_date"], bg=bg)
             _cell(ws, row, 2, (oi["description"] or "")[:200], bg=bg, wrap=True)
-            _cell(ws, row, 3, oi["subcategory"] or "", bg=bg)
-            _cell(ws, row, 4, amt, fmt=CURRENCY, align="right", bg=bg)
+            if multi_listing:
+                _cell(ws, row, 3, (property_names or {}).get(oi["property_id"], oi["property_id"] or ""), bg=bg)
+            _cell(ws, row, amt_col, amt, fmt=CURRENCY, align="right", bg=bg)
             total_oi += amt
             row += 1
 
-        row = _total_row(ws, row, "Total:", {4: total_oi}, 7)
+        row = _total_row(ws, row, "Total:", {amt_col: total_oi}, 7)
         row = _spacer(ws, row)
 
     # ── EXPENSE SECTIONS ──────────────────────────────────────────────────────
@@ -320,10 +340,15 @@ def write_statement(output_path: str, period: str, property_info: dict,
             c.font = Font(bold=True, color=_WHITE, size=FONT_SIZE)
             c.alignment = Alignment(horizontal="center", vertical="center")
         ws.cell(row=row, column=1).value = "Date"
-        ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
-        ws.cell(row=row, column=2).value = "Description"
-        ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=5)
-        ws.cell(row=row, column=4).value = "Type"
+        if multi_listing:
+            # Rollup statements show which listing each cost belongs to.
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+            ws.cell(row=row, column=2).value = "Description"
+            ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=5)
+            ws.cell(row=row, column=4).value = "Listing"
+        else:
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=6)
+            ws.cell(row=row, column=2).value = "Description"
         ws.cell(row=row, column=7).value = "Amount"
         row += 1
 
@@ -332,11 +357,11 @@ def write_statement(output_path: str, period: str, property_info: dict,
             ws.row_dimensions[row].height = 15
             bg = _ALT if i % 2 else None
             amt = round(float(exp["amount"] or 0), 2)
-            vendor_type = exp["qbo_account"] or exp["vendor_customer"] or ""
 
             _cell(ws, row, 1, exp["posting_date"], bg=bg)
 
-            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=3)
+            desc_end = 3 if multi_listing else 6
+            ws.merge_cells(start_row=row, start_column=2, end_row=row, end_column=desc_end)
             c = ws.cell(row=row, column=2)
             c.value = (exp["description"] or "")[:200]
             c.font = Font(size=FONT_SIZE)
@@ -344,16 +369,18 @@ def write_statement(output_path: str, period: str, property_info: dict,
             if bg:
                 c.fill = bg
 
-            ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=5)
-            c = ws.cell(row=row, column=4)
-            c.value = vendor_type
-            c.font = Font(size=FONT_SIZE)
-            c.alignment = Alignment(vertical="center")
-            if bg:
-                c.fill = bg
-
-            if bg:
-                ws.cell(row=row, column=6).fill = bg
+            if multi_listing:
+                # 'Listing' shows which unit each cost belongs to (per-unit on rollups).
+                vendor_type = (property_names or {}).get(exp["property_id"], exp["property_id"] or "")
+                ws.merge_cells(start_row=row, start_column=4, end_row=row, end_column=5)
+                c = ws.cell(row=row, column=4)
+                c.value = vendor_type
+                c.font = Font(size=FONT_SIZE)
+                c.alignment = Alignment(vertical="center")
+                if bg:
+                    c.fill = bg
+                if bg:
+                    ws.cell(row=row, column=6).fill = bg
 
             _cell(ws, row, 7, amt, fmt=CURRENCY, align="right", bg=bg)
             total_exp += amt

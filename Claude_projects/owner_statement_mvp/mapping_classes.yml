@@ -28,9 +28,10 @@
   property_id: beachwood
   property_name: Beachwood
   owner_id: owner_beachwood
-  owner_name: Beachwood Owner
-  owner_email: ''
+  owner_name: Yang Dai
+  owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.1
+  address: 4027 Beach Dr SW, Seattle, WA 98116, USA
 - qbo_class_id: '2100000000001492202'
   qbo_class_name: Listings:Beachwood 1
   property_id: beachwood_1
@@ -569,7 +570,6 @@
   owner_name: Zhongyan Qiu
   owner_email: ''
   pm_fee_rate: 0.18
-  owner_pays_cleaning: true
   owner_pays_supplies: true
   term: STR
   address: 13070 134th Avenue Northeast, Kirkland, WA 98034, USA
@@ -1344,18 +1344,98 @@
   property_id: yacinde_c1
   property_name: Yacinde C1
   owner_id: owner_yacinde_c1
-  owner_name: Yacinde C1 Owner
+  owner_name: NuGrowth Chelan LLC
   owner_email: ''
-  pm_fee_rate: 0.22
+  pm_fee_rate: 0.18
   term: STR
-  Address: 1 Yacinde Dr C1, Bellevue, WA 98005, USA
+  address: 1 Yacinde Dr C1, Manson, WA, USA
 - qbo_class_id: '1000000017'
   qbo_class_name: Listings:Yacinde E3
   property_id: yacinde_e3
   property_name: Yacinde E3
   owner_id: owner_yacinde_e3
-  owner_name: Yacinde E3 Owner
+  owner_name: NuGrowth Chelan LLC
   owner_email: ''
-  pm_fee_rate: 0.22
+  pm_fee_rate: 0.18
   term: STR
-  Address: 1 Yacinde Dr E3, Bellevue, WA 98005, USA
+  address: 1 Yacinde Dr E3, Manson, WA, USA
+- qbo_class_id: '1000000030'
+  qbo_class_name: Listings:Yacinde B6
+  property_id: yacinde_b6
+  property_name: Yacinde B6
+  owner_id: owner_yacinde_b6
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr B6, Manson, WA, USA
+- qbo_class_id: '1000000023'
+  qbo_class_name: Listings:Yacinde B1
+  property_id: yacinde_b1
+  property_name: Yacinde B1
+  owner_id: owner_yacinde_b1
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr B1, Manson, WA, USA
+- qbo_class_id: '1000000024'
+  qbo_class_name: Listings:Yacinde B2
+  property_id: yacinde_b2
+  property_name: Yacinde B2
+  owner_id: owner_yacinde_b2
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr B2, Manson, WA, USA
+- qbo_class_id: '1000000025'
+  qbo_class_name: Listings:Yacinde B3
+  property_id: yacinde_b3
+  property_name: Yacinde B3
+  owner_id: owner_yacinde_b3
+  owner_name: Brandon Shimizu
+  owner_email: brandon@meadinvestments.com
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr B3, Manson, WA, USA
+- qbo_class_id: '1000000026'
+  qbo_class_name: Listings:Yacinde B4
+  property_id: yacinde_b4
+  property_name: Yacinde B4
+  owner_id: owner_yacinde_b4
+  owner_name: Brandon Shimizu
+  owner_email: brandon@meadinvestments.com
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr B4, Manson, WA, USA
+- qbo_class_id: '1000000031'
+  qbo_class_name: Listings:Yacinde E1
+  property_id: yacinde_e1
+  property_name: Yacinde E1
+  owner_id: owner_yacinde_e1
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr E1, Manson, WA, USA
+- qbo_class_id: '1000000032'
+  qbo_class_name: Listings:Yacinde F1
+  property_id: yacinde_f1
+  property_name: Yacinde F1
+  owner_id: owner_yacinde_f1
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr F1, Manson, WA, USA
+- qbo_class_id: '1000000033'
+  qbo_class_name: Listings:Yacinde F5
+  property_id: yacinde_f5
+  property_name: Yacinde F5
+  owner_id: owner_yacinde_f5
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr F5, Manson, WA, USA

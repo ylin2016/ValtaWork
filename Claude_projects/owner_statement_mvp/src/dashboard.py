@@ -73,7 +73,9 @@ def load_mapping_with_addresses():
             for item in items or []:
                 prop_id = item.get('property_id', '')
                 if prop_id:
-                    address = item.get('address', '')
+                    # Tolerate key-casing variants ('address' vs 'Address') so a
+                    # stray capital never blanks an address to N/A.
+                    address = item.get('address') or item.get('Address') or ''
                     if address:
                         addresses[prop_id] = address
                     owner_flags[prop_id] = {
@@ -102,6 +104,14 @@ def _member_ids(property_id: str) -> list:
     rollups, _ = load_rollups()
     return [property_id] + list(rollups.get(property_id, []))
 
+@st.cache_data
+def load_property_names():
+    """property_id -> property_name, for labelling per-listing sections."""
+    conn = sqlite3.connect(DB_PATH)
+    names = {pid: name for pid, name in conn.execute("SELECT property_id, property_name FROM properties")}
+    conn.close()
+    return names
+
 # LTR/deferred Net-Revenue lines are sourced from the period's LTR CSV via the
 # shared ltr_records module (same logic the Excel build uses).
 def build_ltr_records(property_id: str, period: str, pm_fee_rate: float, owner_pays_cleaning: bool):
@@ -127,9 +137,11 @@ def build_ltr_records(property_id: str, period: str, pm_fee_rate: float, owner_p
         net, gross = round(float(x["net_revenue"]), 2), round(float(x["gross_revenue"]), 2)
         comm = round(-net * pm_fee_rate, 2)
         owner = round(net + comm, 2)
+        ltr_nights = 0
         try:
             ci = datetime.strptime(x["checkin"], "%Y-%m-%d"); co = datetime.strptime(x["checkout"], "%Y-%m-%d")
-            dates = f"{ci.strftime('%d. %b.')} - {co.strftime('%d. %b. %Y')} / {(co - ci).days} nights"
+            ltr_nights = (co - ci).days
+            dates = f"{ci.strftime('%d. %b.')} - {co.strftime('%d. %b. %Y')} / {ltr_nights} nights"
         except Exception:
             dates = ""
         rec = {
@@ -145,7 +157,8 @@ def build_ltr_records(property_id: str, period: str, pm_fee_rate: float, owner_p
         rec["Management Commission"] = f"${comm:,.2f}"
         rec["Net Owner Revenue"] = f"${owner:,.2f}"
         rec["Commission %"] = f"{-pm_fee_rate:.0%}"
-        rec.update(_net=net, _gross=gross, _comm=comm, _owner=owner)
+        rec.update(_net=net, _gross=gross, _comm=comm, _owner=owner, _nights=ltr_nights,
+                   _pid=x.get("property_id"))
         out.append(rec)
     return out, covered
 
@@ -227,12 +240,12 @@ def load_statement_data(property_id: str, period: str):
 
     # Get bookings (guesty income)
     bookings = conn.execute(f"""
-        SELECT source_txn_id as booking_id, vendor_customer as guest_name,
+        SELECT property_id, source_txn_id as booking_id, vendor_customer as guest_name,
                posting_date as checkin, service_date as checkout, amount as net_revenue, status
         FROM ledger_lines
         WHERE property_id IN ({ph}) AND posting_date >= ? AND posting_date < date(?, '+1 month')
           AND source = 'guesty' AND category = 'INCOME' AND include_in_statement = 1
-        ORDER BY posting_date
+        ORDER BY property_id, posting_date
     """, (*members, period_start, period_start)).fetchall()
 
     # Get other income (rent/deferred for properties shown in Net Revenue is filtered
@@ -248,10 +261,10 @@ def load_statement_data(property_id: str, period: str):
 
     # Get expenses by category
     expenses = conn.execute(f"""
-        SELECT posting_date, description, vendor_customer, qbo_account, subcategory, amount
+        SELECT property_id, posting_date, description, vendor_customer, qbo_account, subcategory, amount
         FROM ledger_lines
         WHERE property_id IN ({ph}) AND posting_date >= ? AND posting_date < date(?, '+1 month')
-          AND source = 'qbo' AND category = 'EXPENSE' AND include_in_statement = 1
+          AND source IN ('qbo','manual') AND category = 'EXPENSE' AND include_in_statement = 1
           AND qbo_account LIKE '%Owner Expenses%'
         ORDER BY subcategory, posting_date
     """, (*members, period_start, period_start)).fetchall()
@@ -285,8 +298,14 @@ def load_statement_data(property_id: str, period: str):
         'expenses': [dict(e) for e in expenses],
     }
 
-def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
-    """Generate PDF statement."""
+def generate_pdf(property_id: str, period: str, data: dict, booking_records: list = None) -> bytes:
+    """Generate PDF statement.
+
+    booking_records (optional): the dashboard's per-booking records (Guesty + LTR,
+    each carrying _pid/_net/_comm/_owner/_nights). When provided, the Net Revenue
+    section is rendered one sub-table per listing from these (so LTR rent is
+    included); otherwise it falls back to the Guesty-only data['bookings'].
+    """
     # Use the SAME rate load_statement_data already resolved via resolve_pm_fee_rate
     # (effective-dated contract) so the PDF commission matches the on-screen table and
     # the stored amount_due. No separate query and no silent default: the main view
@@ -295,6 +314,15 @@ def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
     if _pm is None:
         raise ValueError(f"No PM fee rate configured for {property_id}; set pm_fee_rate in mapping_classes.yml.")
     pm_fee_rate = float(_pm)
+
+    # property_id -> name, for per-listing Net Revenue sub-sections + expense 'Listing'.
+    _pconn = sqlite3.connect(DB_PATH)
+    pdf_names = {pid: name for pid, name in _pconn.execute("SELECT property_id, property_name FROM properties")}
+    _pconn.close()
+
+    # Rollup parents show a per-listing column in the Expenses section; single-listing omit it.
+    _rmap, _ = load_rollups()
+    pdf_multi = property_id in _rmap
 
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(buffer, pagesize=letter,
@@ -373,78 +401,118 @@ def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
         story.append(summary_table)
         story.append(Spacer(1, 0.2*inch))
 
-    # Net Revenue Section
-    if data['bookings']:
+    # Net Revenue Section - one table per listing (not combined), + grand total.
+    if booking_records or data['bookings']:
         story.append(Paragraph("Net Revenue Section", heading_style))
 
-        booking_data = [['Reservation Dates', 'Confirmation Code', 'Guest Name', 'Net Rental Revenue', 'Management Commission', 'Net Owner Revenue']]
+        _nr_cols = [1.2*inch, 1.2*inch, 1.2*inch, 1.1*inch, 1.1*inch, 1.1*inch]
+        _nr_header = ['Reservation Dates', 'Confirmation Code', 'Guest Name',
+                      'Net Rental Revenue', 'Management Commission', 'Net Owner Revenue']
 
-        total_net_rental = 0.0
-        total_comm = 0.0
-        total_owner = 0.0
+        def _nr_table(rows, grand=False):
+            t = Table(rows, colWidths=_nr_cols)
+            t.setStyle(TableStyle([
+                ('FONT', (0, 0), (-1, -1), 'Helvetica', 8),
+                ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E74B5')),
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+                ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
+                ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#CFE0C3' if grand else '#E2EFDA')),
+                ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+                ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
+            ]))
+            return t
 
-        for b in data['bookings']:
-            try:
+        # Prefer the pre-built records (Guesty + LTR) so LTR rent is included; else
+        # fall back to the Guesty-only data['bookings'].
+        if booking_records:
+            src = booking_records
+            def _vals(r):
+                return (r.get('Reservation Dates', ''), r.get('Confirmation Code', ''), r.get('Guest Name', ''),
+                        r.get('Net Rental Revenue', ''), r.get('Management Commission', ''), r.get('Net Owner Revenue', ''),
+                        r.get('_net', 0), r.get('_comm', 0), r.get('_owner', 0), int(r.get('_nights', 0)), r.get('_pid'))
+        else:
+            src = data['bookings']
+            def _vals(b):
                 net_rental = round(float(b['net_revenue'] or 0), 2)
                 comm = round(-net_rental * pm_fee_rate, 2)
                 owner_rev = round(net_rental + comm, 2)
+                ci = datetime.strptime(b['checkin'], '%Y-%m-%d'); co = datetime.strptime(b['checkout'], '%Y-%m-%d')
+                nights = (co - ci).days
+                # Same-day credit entries (e.g. OSBR-RV Hipcamp bookings) show a single date.
+                dr = (co.strftime('%d. %b. %Y') if nights == 0
+                      else f"{ci.strftime('%d. %b.')} - {co.strftime('%d. %b. %Y')} / {nights} nights")
+                return (dr, b['booking_id'] or '', b['guest_name'] or '',
+                        f"${net_rental:,.2f}", f"${comm:,.2f}", f"${owner_rev:,.2f}",
+                        net_rental, comm, owner_rev, nights, b.get('property_id'))
 
-                checkin = datetime.strptime(b['checkin'], '%Y-%m-%d')
-                checkout = datetime.strptime(b['checkout'], '%Y-%m-%d')
-                nights = (checkout - checkin).days
-                date_range = f"{checkin.strftime('%d. %b.')} - {checkout.strftime('%d. %b. %Y')} / {nights} nights"
-
-                booking_data.append([
-                    date_range,
-                    b['booking_id'] or '',
-                    b['guest_name'] or '',
-                    f"${net_rental:,.2f}",
-                    f"${comm:,.2f}",
-                    f"${owner_rev:,.2f}",
-                ])
-
-                total_net_rental += net_rental
-                total_comm += comm
-                total_owner += owner_rev
-            except Exception as e:
+        from collections import OrderedDict
+        groups = OrderedDict()
+        for b in src:
+            try:
+                groups.setdefault(_vals(b)[10], []).append(_vals(b))
+            except Exception:
                 continue
+        multi = len(groups) > 1
+        gt_net = gt_comm = gt_owner = 0.0
+        gt_nights = 0
 
-        booking_data.append(['', '', 'Total', f"${total_net_rental:,.2f}", f"${total_comm:,.2f}", f"${total_owner:,.2f}"])
+        for gpid, gv in groups.items():
+            if multi:
+                story.append(Paragraph(f"<b>{pdf_names.get(gpid, gpid or '')}</b>", normal_style))
+            rows = [list(_nr_header)]
+            s_net = s_comm = s_owner = 0.0
+            s_nights = 0
+            for v in gv:
+                rows.append([v[0], v[1], v[2], v[3], v[4], v[5]])
+                s_net += v[6]; s_comm += v[7]; s_owner += v[8]; s_nights += v[9]
+            rows.append([f"{s_nights} nights", '', '', f"${s_net:,.2f}", f"${s_comm:,.2f}", f"${s_owner:,.2f}"])
+            story.append(_nr_table(rows))
+            story.append(Spacer(1, 0.15*inch))
+            gt_net += s_net; gt_comm += s_comm; gt_owner += s_owner; gt_nights += s_nights
 
-        booking_table = Table(booking_data, colWidths=[1.2*inch, 1.2*inch, 1.2*inch, 1.1*inch, 1.1*inch, 1.1*inch])
-        booking_table.setStyle(TableStyle([
-            ('FONT', (0, 0), (-1, -1), 'Helvetica', 8),
-            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
-            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2E74B5')),
-            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
-            ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
-            ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2EFDA')),
-            ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
-            ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ]))
-        story.append(booking_table)
-        story.append(Spacer(1, 0.2*inch))
+        if multi:
+            story.append(Paragraph("<b>Total Net Revenue</b>", normal_style))
+            grand_rows = [list(_nr_header),
+                          [f"{gt_nights} nights", '', '', f"${gt_net:,.2f}", f"${gt_comm:,.2f}", f"${gt_owner:,.2f}"]]
+            story.append(_nr_table(grand_rows, grand=True))
+            story.append(Spacer(1, 0.2*inch))
 
     # Expenses Section
     if data['expenses']:
         story.append(Paragraph("Expenses", heading_style))
 
-        expense_data = [['Date', 'Description', 'Type', 'Amount']]
+        if pdf_multi:
+            expense_data = [['Date', 'Description', 'Listing', 'Amount']]
+        else:
+            expense_data = [['Date', 'Description', 'Amount']]
         total_exp = 0.0
 
         for exp in data['expenses']:
             amt = round(float(exp['amount'] or 0), 2)
-            expense_data.append([
-                exp['posting_date'],
-                exp['description'][:50] if exp['description'] else '',
-                exp['qbo_account'] or '',
-                f"${amt:,.2f}",
-            ])
+            if pdf_multi:
+                expense_data.append([
+                    exp['posting_date'],
+                    exp['description'][:50] if exp['description'] else '',
+                    pdf_names.get(exp['property_id'], exp['property_id'] or ''),
+                    f"${amt:,.2f}",
+                ])
+            else:
+                expense_data.append([
+                    exp['posting_date'],
+                    exp['description'][:70] if exp['description'] else '',
+                    f"${amt:,.2f}",
+                ])
             total_exp += amt
 
-        expense_data.append(['', '', 'Total', f"${total_exp:,.2f}"])
+        if pdf_multi:
+            expense_data.append(['', '', 'Total', f"${total_exp:,.2f}"])
+            expense_colwidths = [1*inch, 2*inch, 1.5*inch, 1*inch]
+        else:
+            expense_data.append(['', 'Total', f"${total_exp:,.2f}"])
+            expense_colwidths = [1*inch, 3.5*inch, 1*inch]
 
-        expense_table = Table(expense_data, colWidths=[1*inch, 2*inch, 1.5*inch, 1*inch])
+        expense_table = Table(expense_data, colWidths=expense_colwidths)
         expense_table.setStyle(TableStyle([
             ('FONT', (0, 0), (-1, -1), 'Helvetica', 8),
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
@@ -452,7 +520,7 @@ def generate_pdf(property_id: str, period: str, data: dict) -> bytes:
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
             ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
             ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#E2EFDA')),
-            ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+            ('ALIGN', (-1, 0), (-1, -1), 'RIGHT'),
             ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ]))
         story.append(expense_table)
@@ -513,6 +581,11 @@ tot = data['totals']
 
 # Load property addresses and flags from mapping
 addresses, owner_flags = load_mapping_with_addresses()
+pid_names = load_property_names()
+# Rollup parents (beachwood, osbr, bellevue_14507, …) show a per-listing column in
+# the Expenses section; single-listing statements omit it.
+_rollups_map, _ = load_rollups()
+is_rollup_parent = property_id in _rollups_map
 prop_address = addresses.get(property_id, 'N/A')
 owner_pays_cleaning = owner_flags.get(property_id, {}).get('owner_pays_cleaning', False)
 owner_pays_taxes = owner_flags.get(property_id, {}).get('owner_pays_taxes', False)
@@ -594,6 +667,9 @@ with col_right:
 
 st.divider()
 
+# Always defined so the Download PDF handler can reference it even with no net revenue.
+booking_records = []
+
 # NET REVENUE SECTION - Calculate totals for summary
 if has_net_revenue:
     # Load Guesty CSV to get total_payout (gross revenue before fees) and cleaning fees
@@ -615,6 +691,7 @@ if has_net_revenue:
     total_comm = 0.0
     total_owner = 0.0
     total_expenses = 0.0
+    total_nights = 0
 
     for b in data['bookings']:
         # Round every displayed dollar figure to cents at source so each column's
@@ -658,10 +735,16 @@ if has_net_revenue:
         else:
             nights = (checkout - checkin).days
 
+        # Same-day credit entries (e.g. OSBR-RV Hipcamp bookings) show a single date.
+        if checkin == checkout:
+            reservation_dates = checkout.strftime('%d. %b. %Y')
+        else:
+            reservation_dates = f"{checkin.strftime('%d. %b.')} - {checkout.strftime('%d. %b. %Y')} / {nights} nights"
+
         record = {
             'Guest Name': b['guest_name'],
             'Confirmation Code': b['booking_id'],
-            'Reservation Dates': f"{checkin.strftime('%d. %b.')} - {checkout.strftime('%d. %b. %Y')} / {nights} nights",
+            'Reservation Dates': reservation_dates,
             'Gross Revenue': f"${gross_revenue:,.2f}",
             'Net Rental Revenue': f"${net_rental:,.2f}",
         }
@@ -677,6 +760,8 @@ if has_net_revenue:
             record['tax_paid_value'] = tax_paid  # numeric, for TOTAL row
         record['Net Owner Revenue'] = f"${owner_rev:,.2f}"
         record['Commission %'] = f"{-pm_fee_rate:.0%}"
+        record.update(_pid=b.get('property_id'), _gross=gross_revenue, _net=net_rental,
+                      _comm=comm, _owner=owner_rev, _nights=nights)
 
         booking_records.append(record)
 
@@ -684,6 +769,7 @@ if has_net_revenue:
         total_net_rental += net_rental
         total_comm += comm
         total_owner += owner_rev
+        total_nights += nights
 
     # Append LTR rents + deferred bookings (from the LTR CSV) as Net Revenue lines
     for rec in ltr_records:
@@ -692,6 +778,7 @@ if has_net_revenue:
         total_net_rental += rec['_net']
         total_comm += rec['_comm']
         total_owner += rec['_owner']
+        total_nights += rec.get('_nights', 0)
 
     # Sum all expenses (already negative values)
     for exp in data['expenses']:
@@ -752,7 +839,7 @@ if has_net_revenue:
 
         st.markdown("")
         if st.button("📥 Download PDF", use_container_width=True, key="pdf_btn"):
-            pdf_bytes = generate_pdf(property_id, period, data)
+            pdf_bytes = generate_pdf(property_id, period, data, booking_records=booking_records)
             st.download_button(
                 label="PDF Statement",
                 data=pdf_bytes,
@@ -782,45 +869,70 @@ elif tot:
 
 st.divider()
 
-# Net Revenue Section - Display the calculated data
+# Net Revenue Section - one table PER LISTING (not combined), each with its own subtotal.
 if has_net_revenue:
     st.header("Net Revenue Section")
 
-    total_record = {
-        'Guest Name': '',
-        'Confirmation Code': '',
-        'Reservation Dates': 'TOTAL',
-        'Gross Revenue': f"${total_gross_revenue:,.2f}",
-        'Net Rental Revenue': f"${total_net_rental:,.2f}",
-    }
+    from collections import OrderedDict
+    groups = OrderedDict()
+    for r in booking_records:
+        groups.setdefault(r.get('_pid'), []).append(r)
+    multi_listing = len(groups) > 1
+    _helper_cols = ('cleaning_fee_value', 'tax_paid_value')
 
-    if owner_pays_cleaning:
-        # total_cleaning_fee already summed above (folded into Net Income)
-        total_record['Owner Cleaning Fee'] = f"${total_cleaning_fee:,.2f}"
+    for _gpid, _recs in groups.items():
+        if multi_listing:
+            st.markdown(f"**{pid_names.get(_gpid, _gpid or '')}**")
 
-    total_record['Management Commission'] = f"${total_comm:,.2f}"
-    if owner_pays_taxes:
-        total_tax_paid = sum(float(r.get('tax_paid_value', 0)) for r in booking_records if 'tax_paid_value' in r)
-        total_record['Tax Paid to Owner'] = f"${total_tax_paid:,.2f}"
-    total_record['Net Owner Revenue'] = f"${total_owner:,.2f}"
-    total_record['Commission %'] = f"{-pm_fee_rate:.0%}"
+        g_nights = sum(int(r.get('_nights', 0)) for r in _recs)
+        total_record = {
+            'Guest Name': '',
+            'Confirmation Code': '',
+            'Reservation Dates': f"{g_nights} nights",
+            'Gross Revenue': f"${sum(r.get('_gross', 0) for r in _recs):,.2f}",
+            'Net Rental Revenue': f"${sum(r.get('_net', 0) for r in _recs):,.2f}",
+        }
+        if owner_pays_cleaning:
+            total_record['Owner Cleaning Fee'] = f"${sum(float(r.get('cleaning_fee_value', 0)) for r in _recs):,.2f}"
+        total_record['Management Commission'] = f"${sum(r.get('_comm', 0) for r in _recs):,.2f}"
+        if owner_pays_taxes:
+            total_record['Tax Paid to Owner'] = f"${sum(float(r.get('tax_paid_value', 0)) for r in _recs):,.2f}"
+        total_record['Net Owner Revenue'] = f"${sum(r.get('_owner', 0) for r in _recs):,.2f}"
+        total_record['Commission %'] = f"{-pm_fee_rate:.0%}"
 
-    booking_records.append(total_record)
+        df_bookings = pd.DataFrame(_recs + [total_record])
+        drop = [c for c in df_bookings.columns if c.startswith('_') or c in _helper_cols]
+        df_bookings = df_bookings.drop(columns=drop, errors='ignore')
 
-    df_bookings = pd.DataFrame(booking_records)
-    # Remove temporary numeric/helper columns used only for totalling
-    helper_cols = [c for c in df_bookings.columns if c.startswith('_') or c in ('cleaning_fee_value', 'tax_paid_value')]
-    if helper_cols:
-        df_bookings = df_bookings.drop(columns=helper_cols)
+        _last_idx = df_bookings.index[-1]
+        def _highlight_total(row, _last=_last_idx):
+            if row.name == _last:
+                return ['background-color: #e2efda; font-weight: bold'] * len(row)
+            return [''] * len(row)
 
-    # Style the dataframe to bold the last row
-    def highlight_total(row):
-        if row['Reservation Dates'] == 'TOTAL':
-            return ['background-color: #e2efda; font-weight: bold'] * len(row)
-        return [''] * len(row)
+        st.dataframe(df_bookings.style.apply(_highlight_total, axis=1),
+                     use_container_width=True, hide_index=True)
 
-    styled_df = df_bookings.style.apply(highlight_total, axis=1)
-    st.dataframe(styled_df, use_container_width=True, hide_index=True)
+    # Grand total across all listings (only meaningful when there is more than one).
+    if multi_listing:
+        st.markdown("**Total Net Revenue**")
+        grand = {
+            'Guest Name': '',
+            'Confirmation Code': '',
+            'Reservation Dates': f"{total_nights} nights",
+            'Gross Revenue': f"${total_gross_revenue:,.2f}",
+            'Net Rental Revenue': f"${total_net_rental:,.2f}",
+        }
+        if owner_pays_cleaning:
+            grand['Owner Cleaning Fee'] = f"${total_cleaning_fee:,.2f}"
+        grand['Management Commission'] = f"${total_comm:,.2f}"
+        if owner_pays_taxes:
+            grand['Tax Paid to Owner'] = f"${sum(float(r.get('tax_paid_value', 0)) for r in booking_records):,.2f}"
+        grand['Net Owner Revenue'] = f"${total_owner:,.2f}"
+        grand['Commission %'] = f"{-pm_fee_rate:.0%}"
+        df_grand = pd.DataFrame([grand])
+        st.dataframe(df_grand.style.apply(lambda row: ['background-color: #cfe0c3; font-weight: bold'] * len(row), axis=1),
+                     use_container_width=True, hide_index=True)
 
 st.divider()
 
@@ -833,36 +945,41 @@ if data['other_income']:
 
     for inc in data['other_income']:
         amt = round(float(inc['amount'] or 0), 2)
-        income_records.append({
+        rec = {
             'Date': inc['posting_date'],
             'Description': inc['description'][:100] if inc['description'] else '',
-            'Type': inc['subcategory'] or '',
-            'Amount': f"${amt:,.2f}",
-        })
+        }
+        # 'Listing' (rollup parents only) shows which unit each credit belongs to.
+        if is_rollup_parent:
+            rec['Listing'] = pid_names.get(inc['property_id'], inc['property_id'] or '')
+        rec['Amount'] = f"${amt:,.2f}"
+        income_records.append(rec)
         total_oi += amt
 
-    income_records.append({
-        'Date': '',
-        'Description': '',
-        'Type': 'Total',
-        'Amount': f"${total_oi:,.2f}",
-    })
+    total_rec = {'Date': '', 'Description': '' if is_rollup_parent else 'Total'}
+    if is_rollup_parent:
+        total_rec['Listing'] = 'Total'
+    total_rec['Amount'] = f"${total_oi:,.2f}"
+    income_records.append(total_rec)
 
     df_income = pd.DataFrame(income_records)
 
-    # Style the dataframe to bold the last row
-    def highlight_income_total(row):
-        if row['Type'] == 'Total':
-            return ['background-color: #e2efda; font-weight: bold'] * len(row)
-        return [''] * len(row)
+    # Style the dataframe to bold the last (Total) row.
+    def highlight_last_income_row(col):
+        return ['background-color: #e2efda; font-weight: bold'
+                if i == len(col) - 1 else '' for i in range(len(col))]
 
-    styled_income = df_income.style.apply(highlight_income_total, axis=1)
-    st.dataframe(styled_income, column_config={
+    income_col_config = {
         'Date': st.column_config.Column(width=80),
         'Description': st.column_config.Column(width='large'),
-        'Type': st.column_config.Column(width='medium'),
         'Amount': st.column_config.Column(width=80),
-    }, use_container_width=True, hide_index=True)
+    }
+    if is_rollup_parent:
+        income_col_config['Listing'] = st.column_config.Column(width='medium')
+
+    styled_income = df_income.style.apply(highlight_last_income_row)
+    st.dataframe(styled_income, column_config=income_col_config,
+                 use_container_width=True, hide_index=True)
 
 st.divider()
 
@@ -901,39 +1018,38 @@ for category in all_categories:
             exps = expense_categories.get(category, [])
             for exp in exps:
                 amt = round(float(exp['amount'] or 0), 2)
-                # Extract just the last part of the account path (after the last dash)
-                account = exp['qbo_account'] or ''
-                if ' - ' in account:
-                    type_display = account.split(' - ')[-1]
-                else:
-                    type_display = account
-                records.append({
+                rec = {
                     'Date': exp['posting_date'],
                     'Description': exp['description'][:100] if exp['description'] else '',
-                    'Type': type_display,
-                    'Amount': f"${amt:,.2f}",
-                })
+                }
+                # 'Listing' (rollup parents only) shows which unit each cost belongs to.
+                if is_rollup_parent:
+                    rec['Listing'] = pid_names.get(exp['property_id'], exp['property_id'] or '')
+                rec['Amount'] = f"${amt:,.2f}"
+                records.append(rec)
                 total_cat += amt
 
-            records.append({
-                'Date': '',
-                'Description': '',
-                'Type': 'Total',
-                'Amount': f"${total_cat:,.2f}",
-            })
+            total_rec = {'Date': '', 'Description': '' if is_rollup_parent else 'Total'}
+            if is_rollup_parent:
+                total_rec['Listing'] = 'Total'
+            total_rec['Amount'] = f"${total_cat:,.2f}"
+            records.append(total_rec)
 
             df_exp = pd.DataFrame(records)
 
-            # Style the dataframe to bold the last row
-            def highlight_exp_total(row):
-                if row['Type'] == 'Total':
-                    return ['background-color: #e2efda; font-weight: bold'] * len(row)
-                return [''] * len(row)
+            # Style the dataframe to bold the last (Total) row.
+            def highlight_last_row(col):
+                return ['background-color: #e2efda; font-weight: bold'
+                        if i == len(col) - 1 else '' for i in range(len(col))]
 
-            styled_exp = df_exp.style.apply(highlight_exp_total, axis=1)
-            st.dataframe(styled_exp, column_config={
+            col_config = {
                 'Date': st.column_config.Column(width=80),
                 'Description': st.column_config.Column(width='large'),
-                'Type': st.column_config.Column(width='medium'),
                 'Amount': st.column_config.Column(width=80),
-            }, use_container_width=True, hide_index=True)
+            }
+            if is_rollup_parent:
+                col_config['Listing'] = st.column_config.Column(width='medium')
+
+            styled_exp = df_exp.style.apply(highlight_last_row)
+            st.dataframe(styled_exp, column_config=col_config,
+                         use_container_width=True, hide_index=True)

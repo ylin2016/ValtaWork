@@ -21,6 +21,9 @@ _NICKNAME_ALIASES = {
     # Bare building nicknames from Guesty → default unit
     "seattle 906":     "seattle_906_lower",
     "seattle 7434":    "seattle_7434_whole",
+    # Whole-house listing shares the parent property_id (QBO class 1000000011
+    # "Bellevue 2323 Whole" is already mapped to bellevue_2323).
+    "bellevue 2323 whole": "bellevue_2323",
 }
 
 def to_property_id(name: str) -> str:
@@ -62,6 +65,8 @@ def convert(input_file, output_file):
     out["guest_name"] = df["GUEST"]
     out["checkin"] = pd.to_datetime(df["CHECK-IN"]).dt.strftime("%Y-%m-%d")
     out["checkout"] = pd.to_datetime(df["CHECK-OUT"]).dt.strftime("%Y-%m-%d")
+    out["guests"] = pd.to_numeric(df["NUMBER OF GUESTS"], errors="coerce").fillna(0).astype(int)
+    out["nights"] = pd.to_numeric(df["NUMBER OF NIGHTS"], errors="coerce").fillna(0).astype(int)
 
     out["accommodation_fee"] = df["ACCOMMODATION FARE"].apply(to_float)
     out["pet_fee"] = df["PET FEE"].apply(to_float)
