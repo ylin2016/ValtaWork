@@ -253,6 +253,62 @@ def _exclude_duplicate_guesty_deposits(conn, period_start: str, period_end: str)
     return n
 
 
+def _offset_refunded_deposits(conn, period_start: str, period_end: str) -> int:
+    """Fully-refunded non-Guesty channel bookings: a QBO Deposit (shown in 'Other
+    Credits') that was later refunded via a `…1A - Net Earnings:Resolutions` purchase.
+
+    The deposit is counted as owner income but the refund posts to a Resolutions
+    account that no statement section pulls (expenses only include `1C - Owner
+    Expenses`), so the credit stands unoffset and overstates the payout. This pairs
+    each such refund with its Other-Credits deposit (same property, equal magnitude,
+    shared confirmation-code token) and **suppresses both** so the pair nets to $0.
+
+    Scope is deliberately narrow (per owner decision): ONLY refunds matching a
+    non-Guesty Other-Credits deposit. Refunds tied to Guesty bookings are left alone
+    (Guesty net is the revenue basis; deducting them could double-count). Both rows
+    must fall in the period so each build stays self-contained. Idempotent and
+    re-applied each build, so a later `qbo-sync` (which re-includes them) is
+    re-corrected. Returns the number of deposit/refund pairs offset.
+    """
+    import re
+
+    def _code_tokens(s):
+        return set(t for t in re.findall(r'[A-Za-z0-9\-]{6,}', str(s or ''))
+                   if any(ch.isdigit() for ch in t))
+
+    refunds = conn.execute(
+        """SELECT ledger_id, property_id, description, amount FROM ledger_lines
+           WHERE qbo_account LIKE '%Resolutions%' AND category='EXPENSE' AND amount < 0
+             AND posting_date>=? AND posting_date<=?""",
+        (period_start, period_end)).fetchall()
+    deposits = conn.execute(
+        """SELECT ledger_id, property_id, description, amount FROM ledger_lines
+           WHERE source='qbo' AND category='INCOME' AND source_object='Deposit'
+             AND posting_date>=? AND posting_date<=?""",
+        (period_start, period_end)).fetchall()
+
+    n = 0
+    used_deposits = set()
+    for r in refunds:
+        rtoks = _code_tokens(r["description"])
+        if not rtoks:
+            continue
+        for d in deposits:
+            if d["ledger_id"] in used_deposits or d["property_id"] != r["property_id"]:
+                continue
+            if round(abs(d["amount"]), 2) != round(abs(r["amount"]), 2):
+                continue
+            if rtoks & _code_tokens(d["description"]):
+                conn.execute("UPDATE ledger_lines SET include_in_statement=0 WHERE ledger_id IN (?,?)",
+                             (d["ledger_id"], r["ledger_id"]))
+                used_deposits.add(d["ledger_id"])
+                n += 1
+                print(f"  offset refunded deposit: {r['property_id']} ${abs(r['amount']):,.2f} (deposit + refund netted to $0)")
+                break
+    conn.commit()
+    return n
+
+
 def _apply_osbr_rv(conn, period_start: str, period_end: str) -> int:
     """OSBR 'RV' income: Hipcamp.com credits posted to OSBR are RV-site bookings.
 
@@ -514,6 +570,13 @@ def cmd_build(args):
     n_dup = _exclude_duplicate_guesty_deposits(conn, period_start, period_end)
     if n_dup:
         print(f"Excluded {n_dup} duplicate channel-booking deposit(s) (Guesty kept).")
+
+    # Fully-refunded non-Guesty channel bookings: suppress the Other-Credits deposit and
+    # its matching Resolutions refund so the pair nets to $0 (owner decision: offset only
+    # Other-Credits matches; Guesty-linked refunds are left untouched to avoid double-count).
+    n_ref = _offset_refunded_deposits(conn, period_start, period_end)
+    if n_ref:
+        print(f"Offset {n_ref} refunded deposit/refund pair(s) to $0.")
 
     # 'central' Supplies properties: charge a per-booking formula supply fee
     # (0.9*guests*min(nights,60)) and suppress the QBO per-booking supply charges.
