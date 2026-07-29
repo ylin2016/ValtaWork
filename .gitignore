@@ -3,6 +3,9 @@
 **/*_tokens.json
 **/.streamlit/secrets.toml
 
+# --- Databases (owner PII; rebuilt locally, don't version) ---
+**/owner_statement.sqlite
+
 # --- macOS ---
 .DS_Store
 .AppleDouble
