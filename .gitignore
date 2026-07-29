@@ -77,6 +77,11 @@ htmlcov/
 *.orig
 *.backup
 
+# --- Secrets & credentials (never commit) ---
+**/qbo_tokens.json
+**/*_tokens.json
+**/.streamlit/secrets.toml
+
 # --- Project specific ---
 # Ignore model files if they are large or don’t belong in repo
 *.pkl
