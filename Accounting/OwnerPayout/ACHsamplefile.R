@@ -46,7 +46,7 @@ owners = read.xlsx("/Users/ylin/Google Drive/My Drive/Data and Reporting/04-Acco
 
 ## Owner Payout Checking....
 payout= read.xlsx("/Users/ylin/Google Drive/My Drive/Accounting/01-OwnerPayout Records.xlsx",
-                   sheet="2026.06") 
+                   sheet="2026.07") 
 colnames(payout)[c(3,10)] =c("Listing","PayoutName_old")
 payout= payout %>% filter(!is.na(Date) & !is.na(Payout)) 
 
@@ -56,7 +56,7 @@ payout = merge(cohost %>% select(Listing, Property,Type),payout,
 payout = merge(payout,owners %>% select(Property,PayoutName),
                by="Property",all.x=T) %>% mutate(Payout= as.numeric(Payout))
 payout$Type[payout$Listing %in% "Beachwood"] = "LTR"
-payout$Type[payout$Listing %in% "OSBR"] = "STR"
+payout$Type[payout$Listing %in% c("OSBR","Seattle 10057")] = "STR"
 
 ## check owner info
 both = merge(owners %>% select(Property,Name),
@@ -65,9 +65,9 @@ both = merge(owners %>% select(Property,Name),
 
 ## ======================================================
 ### create ACH file
-paydate ="20260714"
-paymonth = "2607"
-creation.date = "260709"
+paydate ="20260817"
+paymonth = "2608"
+creation.date = "260809"
 
 seatac = data.frame(Listing='Seatac 12834',Property = "Seatac 12834",Type="LTR",
                     Owner = "Jing Zhou",Payout=as.numeric(5000),
@@ -88,17 +88,21 @@ payouts = payouts %>% #rbind(payouts,add) %>%
 #        c("PayoutName","Rounting","account.number","filename")] = c("Valta Homes LLC",rep(NA,3))
 
 
-sum(payouts$Payout) #2026.04:145665.9
+sum(payouts$Payout) 
+#2026.04:145665.9
 #Mar: 124675.21 #118217.3=855.37+117361.97 Feb #118247/61 #154556.68/58
 #2026.05: 173780.46
 #2026.06: 67/58/9/313552.02
+#2026.07: 337942.16+5000 = 342942.16
 
 sum(payouts$Payout[payouts$Type %in% "STR"]) 
 #2026.05: 155201.43
 #2026.06: 282632.9
+#2026.07:316276.19
 sum(payouts$Payout[payouts$Type %in% "LTR"]) 
 #2026.05: 18579.03
 #2026.06: 35919.09
+#2026.06: 23227.83 + 5000 correction: 26665.97
 
 #sum(payouts$Payout[payouts$Owner %in% 'Valta Homes']) #417.8 Feb #328.36
 #sum(payouts$Payout[!payouts$Owner %in% 'Valta Homes']) 
@@ -152,7 +156,7 @@ STR = payouts %>% filter(Type %in% "STR")
 #        "Bellevue 14507","Bellevue 16237"))) # check 11641,701  
 #Feb: onhold Lake stevens
 
-BatchId = paste0(paymonth,10)
+BatchId = as.numeric(paste0(paymonth,10))
 output = createACH(STR,samplefile,BatchId,creation.date,paydate)
 #2026.1.11: 58 , sophia and ValtaHome is not $1126.02 
 View(output) 
@@ -163,7 +167,7 @@ View(output)
 write.table(output,paste0("./ACHfile_filled/ACHfile_filled_STR_20",paymonth,".csv"),
             row=F,col = F,na="",sep=",",quo=F)
 
-BatchId = paste0(paymonth,20)
+BatchId = as.numeric(paste0(paymonth,20))
 LTR = payouts %>% filter(Type %in% "LTR")
 output.LTR = createACH(LTR,samplefile.LTR,BatchId,creation.date,paydate)
 View(output.LTR) 
