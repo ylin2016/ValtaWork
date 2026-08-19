@@ -49,12 +49,19 @@ except Exception:
     _APP_PW = None
 if _APP_PW:
     if not st.session_state.get("_authed"):
-        _pw = st.text_input("Password", type="password")
-        if _pw != _APP_PW:
-            if _pw:
+        _gate = st.empty()
+        with _gate.container():
+            _pw = st.text_input("Password", type="password")
+            if not _pw:
+                st.stop()
+            if _pw != _APP_PW:
                 st.error("Incorrect password")
-            st.stop()
+                st.stop()
+        # Correct password: clear the prompt and rerun so the rest of the
+        # page renders on a clean pass without the login field lingering.
         st.session_state["_authed"] = True
+        _gate.empty()
+        st.rerun()
 
 st.markdown("""
 <style>

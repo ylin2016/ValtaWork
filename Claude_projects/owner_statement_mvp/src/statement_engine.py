@@ -2,6 +2,19 @@ import uuid
 from .utils import now_iso
 from .pm_rate import resolve_pm_fee_rate
 
+# Commissionable rent: import_ltr LTR/DEFERRED rows OR plain QBO rent Deposits
+# ("July Rent" etc.), but NOT garage/parking rent (excluded by name). Utilities/misc
+# credits lack 'rent' in the description so they're excluded automatically. This is the
+# ONE definition of commissionable rent — used for both the commission base and the
+# per-listing PM-fee sum so they can't diverge.
+_RENT_PRED = (
+    "source='qbo' AND category='INCOME' AND ("
+    "source_object IN ('LTR','DEFERRED') "
+    "OR (lower(description) LIKE '%rent%' "
+    "AND lower(description) NOT LIKE '%garage%' "
+    "AND lower(description) NOT LIKE '%parking%'))"
+)
+
 def create_run(conn, period_start: str, period_end: str, basis: str) -> str:
     run_id = str(uuid.uuid4())
     conn.execute(
@@ -52,13 +65,15 @@ def build_statements(conn, run_id: str, period_start: str, period_end: str, defa
                               WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
                                 AND include_in_statement=1 AND source='qbo' AND category='INCOME'""", (*member_ids, period_start, period_end))
 
-        # Of that other income, only LTR rents and deferred bookings (tagged
-        # source_object LTR/DEFERRED by import_ltr) are commissionable. Plain QBO
-        # "Other Credits" (Deposit/Invoice/etc.) get NO PM commission.
+        # Of that other income, RENT is commissionable — whether it arrived as an
+        # import_ltr LTR/DEFERRED row OR as a plain QBO rent Deposit ("July Rent" etc.).
+        # (Owner decision 2026-07: commission ALL rent, LTR or STR.) Non-rent credits —
+        # utilities, garage/parking rent, misc/insurance/payroll deposits — are NOT
+        # commissioned. `_RENT_PRED` is the single definition of commissionable rent,
+        # reused for the per-line PM-fee sum below so the two can't drift.
         commissionable_other = _sum(conn, f"""SELECT SUM(amount) FROM ledger_lines
                               WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
-                                AND include_in_statement=1 AND source='qbo' AND category='INCOME'
-                                AND source_object IN ('LTR','DEFERRED')""", (*member_ids, period_start, period_end))
+                                AND include_in_statement=1 AND {_RENT_PRED}""", (*member_ids, period_start, period_end))
 
         gross_rev = guesty_rev + other_income
 
@@ -103,14 +118,17 @@ def build_statements(conn, run_id: str, period_start: str, period_end: str, defa
         ).fetchone()
         reserve_target = float(c["reserve_target"]) if c and c["reserve_target"] is not None else float(default_reserve_target)
 
-        # PM fee applies to STR (guesty) + LTR/deferred revenue only — NOT to plain
-        # QBO "Other Credits" (deposits such as garage/parking rent, misc credits).
+        # PM fee applies to STR (guesty) booking revenue + ALL rent (LTR/deferred rows
+        # AND plain QBO rent deposits). It is NOT charged on non-rent QBO credits
+        # (utilities, garage/parking rent, misc/insurance/payroll deposits).
         commission_base = guesty_rev + commissionable_other
         # PM fee must equal the SUM of the per-line commissions shown on the statement —
-        # the dashboard and Excel round each booking's commission (round(-net_i*rate)) and
-        # sum those. Applying the rate to the aggregate and rounding once drifts a penny
-        # from that sum (e.g. Σround = -517.10 vs round(Σ) = -517.11), which then makes the
-        # stored Net Income disagree with (Net Owner Revenue − Expenses) by $0.01.
+        # the dashboard and Excel round each row's commission (round(-net_i*rate)) and sum
+        # those. Applying the rate to the aggregate and rounding once drifts a penny from
+        # that sum, which then makes stored Net Income disagree with (Net Owner Revenue −
+        # Expenses) by $0.01. STR bookings commission PER BOOKING; rent commissions PER
+        # LISTING (the statement shows one full-rent row per listing), so the granularity
+        # of the rounded sum matches what each product displays.
         pm_fee = 0.0
         if commission_base > 0:
             if pm_fee_rate is None:
@@ -119,14 +137,19 @@ def build_statements(conn, run_id: str, period_start: str, period_end: str, defa
                     f"but it has ${commission_base:,.2f} of commissionable revenue. "
                     f"Set pm_fee_rate for it in mapping_classes.yml (then sync-mappings) / owner_contracts."
                 )
-            comm_lines = conn.execute(f"""SELECT amount FROM ledger_lines
+            guesty_lines = conn.execute(f"""SELECT amount FROM ledger_lines
                               WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
-                                AND include_in_statement=1
-                                AND ( (source='guesty' AND category='INCOME')
-                                      OR (source='qbo' AND category='INCOME'
-                                          AND source_object IN ('LTR','DEFERRED')) )""",
+                                AND include_in_statement=1 AND source='guesty' AND category='INCOME'""",
                               (*member_ids, period_start, period_end)).fetchall()
-            pm_fee = round(sum(round(-float(a or 0) * pm_fee_rate, 2) for (a,) in comm_lines), 2)
+            rent_by_listing = conn.execute(f"""SELECT SUM(amount) amt FROM ledger_lines
+                              WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
+                                AND include_in_statement=1 AND {_RENT_PRED}
+                              GROUP BY property_id""",
+                              (*member_ids, period_start, period_end)).fetchall()
+            pm_fee = round(
+                sum(round(-float(a or 0) * pm_fee_rate, 2) for (a,) in guesty_lines)
+                + sum(round(-float(r["amt"] or 0) * pm_fee_rate, 2) for r in rent_by_listing),
+                2)
 
         if abs(pm_fee) > 0.0001:
             conn.execute(

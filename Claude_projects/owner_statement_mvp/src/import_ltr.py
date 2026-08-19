@@ -90,21 +90,45 @@ def import_ltr_csv(conn, csv_path: str, period: str):
         (period_start, period_end),
     )
 
-    def _existing_rent(prop) -> float:
-        """Sum of rent already booked in QBO for this property/period.
+    # Reset any prior LTR rent-deposit suppression for this period so re-runs (and
+    # properties dropped from the CSV) start from a clean, fully-included state.
+    cur.execute(
+        """UPDATE ledger_lines SET include_in_statement=1
+           WHERE source='qbo' AND category='INCOME'
+             AND source_object NOT IN ('LTR','DEFERRED')
+             AND posting_date>=? AND posting_date<=?
+             AND LOWER(description) LIKE '%rent%' AND include_in_statement=0""",
+        (period_start, period_end),
+    )
 
-        Rent deposits are identified by 'rent' in the description (e.g.
-        "May Rent", "May rent 400/2100"); non-rent income (utilities, credits)
-        is excluded so it stays additive on top of the recognized rent. Our own
-        LTR/DEFERRED rows were just deleted, so they never count here.
+    def _suppress_rent_deposits(prop):
+        """Hide the QBO 'rent' deposits for this property/period from the statement
+        (include_in_statement=0) and return (count, summed_amount).
+
+        The CSV's LTR row carries the FULL monthly rent and is recognized as one
+        commissioned line, so the raw QBO rent deposits that represent that same
+        rent must be suppressed to avoid double-counting gross. Rent is identified
+        by 'rent' in the description (e.g. "July Rent", "July Rent $1200/$2100");
+        utilities and other credits are excluded so they stay in Other Credits.
+        Our own LTR/DEFERRED rows are excluded by source_object.
         """
         row = cur.execute(
-            """SELECT COALESCE(SUM(amount),0) FROM ledger_lines
-               WHERE category='INCOME' AND source_object NOT IN ('LTR','DEFERRED')
+            """SELECT COUNT(*), COALESCE(SUM(amount),0) FROM ledger_lines
+               WHERE source='qbo' AND category='INCOME'
+                 AND source_object NOT IN ('LTR','DEFERRED')
                  AND property_id=? AND posting_date>=? AND posting_date<=?
                  AND LOWER(description) LIKE '%rent%'""",
             (prop, period_start, period_end)).fetchone()
-        return float(row[0] or 0.0)
+        n, total = int(row[0] or 0), float(row[1] or 0.0)
+        if n:
+            cur.execute(
+                """UPDATE ledger_lines SET include_in_statement=0
+                   WHERE source='qbo' AND category='INCOME'
+                     AND source_object NOT IN ('LTR','DEFERRED')
+                     AND property_id=? AND posting_date>=? AND posting_date<=?
+                     AND LOWER(description) LIKE '%rent%'""",
+                (prop, period_start, period_end))
+        return n, total
 
     def _replace_colliding(code):
         """LTR wins: delete any non-LTR/DEFERRED ledger row (e.g. a guesty
@@ -119,6 +143,7 @@ def import_ltr_csv(conn, csv_path: str, period: str):
     ltr_n = deferred_n = 0
     replaced = []
     skipped = []
+    suppressed = []
     ltr_total = def_total = 0.0
     for x in rows:
         add_amount = round(x["amount"], 2)  # store at cent precision
@@ -128,12 +153,17 @@ def import_ltr_csv(conn, csv_path: str, period: str):
             n_del = _replace_colliding(x["code"])
             if n_del:
                 replaced.append((x, n_del))
-        else:  # LTR: recognize full monthly rent once — add only the shortfall.
-            already = _existing_rent(x["prop"])
-            add_amount = round(x["amount"] - already, 2)
-            if add_amount <= 0.005:
-                skipped.append((x, f"rent already in QBO (${already:,.2f})"))
-                continue
+        else:  # LTR: recognize the FULL monthly rent as one commissioned line and
+               # suppress the QBO rent deposits representing that same rent, so it is
+               # counted + commissioned exactly once. (Was: add only the shortfall,
+               # which left QBO-deposited rent sitting UNCOMMISSIONED in Other Credits.)
+            add_amount = round(x["amount"], 2)
+            n_sup, sup_total = _suppress_rent_deposits(x["prop"])
+            if n_sup:
+                suppressed.append((x, n_sup, sup_total))
+                if sup_total - add_amount > 0.005:
+                    print(f"  ! WARNING: {x['prop']} suppressed rent deposits "
+                          f"${sup_total:,.2f} exceed CSV rent ${add_amount:,.2f}")
 
         cur.execute(
             """INSERT INTO ledger_lines
@@ -154,11 +184,17 @@ def import_ltr_csv(conn, csv_path: str, period: str):
 
     conn.commit()
 
+    sup_total_all = sum(t for _, _, t in suppressed)
     print(f"LTR import: {ltr_n} LTR rows added (${ltr_total:,.2f}), "
           f"{deferred_n} deferred rows added (${def_total:,.2f}) into {period}; "
-          f"{len(replaced)} guesty rows replaced by LTR; {len(skipped)} skipped.")
+          f"{len(replaced)} guesty rows replaced by LTR; "
+          f"{len(suppressed)} properties had QBO rent deposits suppressed "
+          f"(${sup_total_all:,.2f}); {len(skipped)} skipped.")
     for x, n_del in replaced:
         print(f"  - replaced {n_del} guesty row(s) with DEFERRED: {x['prop']} {x['code']} ${x['amount']:,.2f}")
+    for x, n_sup, sup_total in suppressed:
+        print(f"  - suppressed {n_sup} QBO rent deposit(s) ${sup_total:,.2f} for {x['prop']}; "
+              f"recognized full rent ${x['amount']:,.2f} (commissioned)")
     for x, why in skipped:
         print(f"  - skipped {x['source_object']}: {x['prop']} {x['code']} ${x['amount']:,.2f} ({why})")
     if unknown:
