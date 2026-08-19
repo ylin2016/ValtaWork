@@ -134,9 +134,9 @@ Standalone scripts (not subcommands):
 
 ### Re-syncing QBO for a period (pulls newly-added QBO transactions)
 `qbo-sync` **appends** (plain INSERT with random UUIDs, no period-clear), so re-running it
-without clearing first **duplicates every QBO row**. Safe procedure:
+without clearing first **duplicates every QBO row**. Procedure (owner preference: no DB
+backups — overwrite in place, do NOT create `*.sqlite.bak-*` copies):
 ```bash
-cp data/owner_statement.sqlite data/owner_statement.sqlite.bak-$(date +%Y%m%d-%H%M%S)  # backup first
 sqlite3 data/owner_statement.sqlite "DELETE FROM ledger_lines WHERE source='qbo' AND posting_date>='2026-05-01' AND posting_date<='2026-05-31';"
 python -m src.run_month_close qbo-sync --start 2026-05-01 --end 2026-05-31   # refreshes ALL May QBO data
 python -m src.import_ltr --csv data/LTR_2026-05.csv --period 2026-05         # the DELETE also removed LTR/DEFERRED rows
@@ -160,31 +160,36 @@ python -m src.run_month_close build --period 2026-05
 ```
 Run `import_ltr` AFTER `guesty-import` (its DEFERRED dedup matches existing guesty bookings by code) and BEFORE `build`.
 
-### Yacinde "old bookings" — $0 revenue + supplies-only charge
-`src/import_yacinde_old.py` (standalone) loads owner-direct/pre-management Yacinde
-reservations from `data/Yacinde old bookings.csv`. Valta collects **no rental
-revenue** on them but charges a per-booking **supplies fee = 0.9 × guests ×
-min(nights, 60)** (capped at 60 days for longer stays). Only check-ins on/after
-`--min-checkin` (default `2026-07-15`) are added; each booking is dated by its
-check-in, so it lands in the month it checks in.
-Per booking it inserts: (1) a Net Revenue line — `source='guesty' INCOME`,
-`amount=0`, `base_amount=0`, `source_object='YacindeOld'` (renders in the Net
-Revenue table at $0, so no commission); (2) UNLESS the booking is cancelled, a
-Supplies expense — `source='manual' EXPENSE`, `subcategory='Supplies'`,
-`qbo_account='…1C - Owner Expenses:Supplies - Owner'`, `amount=-(0.9·g·min(n,60))`,
-`source_object='YacindeSupply'`. The supply account matches the `%Owner Expenses%`
-amount_due filter, and the dashboard/Excel expense queries accept
-`source IN ('qbo','manual')`, so dashboard/Excel/amount_due agree.
-**Cancelled bookings** (STATUS column contains "cancel") get the $0 Net Revenue
-line but **no supply charge**; the current CSV has **no STATUS column**, so nothing
-is treated as cancelled. Idempotent (deletes its own `YacindeOld`/`YacindeSupply`
-marker rows across all periods, then re-inserts).
-**Storage rationale:** supplies are `source='manual'` (a formula-computed owner
-charge, not QBO data), so a `qbo-sync` re-sync — which clears only `source='qbo'`
-rows — does **not** wipe them; no re-run needed after qbo-sync. The $0 Net Revenue
-lines are `source='guesty'`, so **only a full guesty-income clear** (the rebuild
-`DELETE … source='guesty' AND category='INCOME'`) removes them — re-run this importer
-after that. Order: after `guesty-import`, before `build`.
+### Yacinde bookings — RETIRED `import_yacinde_old.py` (now in the Guesty CSV)
+**As of 2026-07-30, Yacinde reservations arrive in the normal Guesty export
+(`Guesty_booking_YYYY-MM.csv`) and flow through the standard pipeline — do NOT run
+`src/import_yacinde_old.py` or read `data/Yacinde old bookings.csv` any more.** The
+Guesty export now carries both the owner-direct reservations (SOURCE `owner`/
+`owner-guest`/`manual`, mostly `TOTAL PAYOUT=0`) and the real channel bookings
+(airbnb2/VRBO/BE-API, real payout). The standard converter + `guesty-import` handle
+both: $0 owner bookings → $0 net revenue (no commission); channel bookings → real
+net revenue, commissioned at the property's MCR (18%). All `Yacinde B1…F5` listings
+are `Supplies='central'` in `Listing_contacts.csv`, so `_apply_central_supplies()`
+(in `build`) charges the same **`0.9 × guests × min(nights, 60)`** per confirmed
+booking (a `CentralSupply` line) — the supply fee is now data-driven off the real
+Guesty bookings instead of the hand-maintained old CSV. Channel bookings that also
+appear as QBO deposits are de-duplicated by `_exclude_duplicate_guesty_deposits`
+(Guesty kept), so no double-count.
+
+**Migration when rebuilding a period the old way was used for**: `import_yacinde_old`
+left `source_object='YacindeOld'` ($0 `source='guesty'` INCOME) and
+`source_object='YacindeSupply'` (`source='manual'` EXPENSE) rows. The guesty-income
+clear (`DELETE … source='guesty' AND category='INCOME'`) removes the `YacindeOld`
+rows, but `YacindeSupply` is `source='manual'` and survives BOTH a `qbo-sync` clear
+and a guesty-income clear — so it must be deleted explicitly or it double-charges
+against the new `CentralSupply` lines:
+```bash
+sqlite3 data/owner_statement.sqlite "DELETE FROM ledger_lines WHERE source_object IN ('YacindeOld','YacindeSupply') AND posting_date>='YYYY-MM-01' AND posting_date<='YYYY-MM-31';"
+```
+July 2026 has been migrated. Other months (Aug–Dec 2026) still hold old
+`YacindeOld`/`YacindeSupply` rows from the retired importer — clear them (above) when
+rebuilding those periods with their own Guesty exports. `src/import_yacinde_old.py`
+and `data/Yacinde old bookings.csv` are kept only for historical reference.
 
 ### Central supplies — formula supply fee for `Supplies='central'` properties
 The `Supplies` column in `Listing_contacts.csv` is the indicator: `central` (Valta
@@ -202,11 +207,13 @@ for those properties:
    `Supplies Charge | …`) are left untouched, so they still come from QBO.
 2. **Inserts** one `source='manual'`, `source_object='CentralSupply'` Supplies expense
    per confirmed central-property Guesty booking = **`0.9 × guests × min(nights, 60)`**
-   (skips cancelled; excludes the Yacinde `YacindeOld` bookings, which carry their own
-   `YacindeSupply` from `import_yacinde_old`). Guests come from the `guests` column the
-   converter now writes to `guesty_converted.csv`; nights = checkout − checkin.
-Idempotent. The shared formula is `run_month_close.supply_charge(guests, nights)` (also
-used by `import_yacinde_old`). Because the manual supplies match the `%Owner Expenses%`
+   (skips cancelled). Guests come from the `guests` column the converter writes to
+   `guesty_converted.csv`; nights = checkout − checkin. Yacinde is now a normal
+   `central` property here — its bookings arrive in the Guesty CSV (the retired
+   `import_yacinde_old`/`YacindeOld` special-case no longer applies; see the Yacinde
+   section above).
+Idempotent. The shared formula is `run_month_close.supply_charge(guests, nights)`.
+Because the manual supplies match the `%Owner Expenses%`
 amount_due filter and the display queries accept `source IN ('qbo','manual')`,
 dashboard/Excel/amount_due agree. QBO's own `Supplies Charge` amounts were already
 ~this formula, so owner payouts barely move (change is mainly de-duplication + cancelled
@@ -259,9 +266,15 @@ print(booking[['total_payout', 'cleaning_fee', 'net_revenue']])
 
 **PM fee rate — single source of truth (`src/pm_rate.py`), NO silent default**: The authoritative rate is per-property in `owner_contracts` (loaded from `mapping_classes.yml` `pm_fee_rate`), selected by the row **effective for the period**. `resolve_pm_fee_rate(conn, property_id, period_start)` in `pm_rate.py` is the ONE implementation of that lookup; `statement_engine.build_statements` (stored `amount_due`), `dashboard.load_statement_data` (per-booking table + LTR rows), and `dashboard.generate_pdf` all call it, so every product commissions at the same rate and the per-booking commission column foots to the stored Net Income. (It lives in its own dependency-free module because the dashboard runs as a script and can't bare-import `statement_engine`, which uses relative imports.) **There is deliberately no default fallback**: `resolve_pm_fee_rate` returns `None` when a property has no configured rate. If such a property has commissionable revenue, `build_statements` **raises `ValueError`** (naming the property and the revenue) and the dashboard **`st.stop()`s** with an instruction to set the rate — rather than guessing. So a missing rate surfaces loudly instead of quietly commissioning at a wrong number. `config.yml` `default_pm_fee_rate` is no longer consulted by `build`. When onboarding a property or changing fee rates, set `pm_fee_rate` in `mapping_classes.yml` and run `sync-mappings`. Prior bugs: dashboard/PDF used a hardcoded `0.18` fallback with no effective-date filter (drifted from stored `amount_due`), and `build`/dashboard/Excel silently substituted the `0.16` config default for no-contract properties.
 
-**PM commission base (what gets commissioned)**: PM fee is charged on STR booking revenue (`source='guesty'`) **plus** LTR/deferred rent (`source='qbo'` with `source_object IN ('LTR','DEFERRED')`). It is **NOT** charged on plain QBO "Other Credits" — deposits like garage/parking rent and misc credits (`source='qbo'` INCOME with other `source_object`s such as `Deposit`/`Invoice`). See `statement_engine.build_statements` `commission_base = guesty_rev + commissionable_other`. Those credits still appear in gross revenue and on the statement's "Other Credits" section at full value; they just aren't commissioned.
+**PM commission base (what gets commissioned)**: PM fee is charged on STR booking revenue (`source='guesty'`) **plus ALL rent** — whether the rent arrived as an `import_ltr` `source_object IN ('LTR','DEFERRED')` row OR as a **plain QBO rent Deposit** ("July Rent" etc.). This is the single `statement_engine._RENT_PRED` definition of commissionable rent: `source='qbo' INCOME` where `source_object IN ('LTR','DEFERRED')` OR `description LIKE '%rent%'` (excluding `garage`/`parking` rent). It is **NOT** charged on non-rent QBO "Other Credits" — utilities, garage/parking rent, and misc/insurance/payroll deposits (these lack `rent` in the description, so they're excluded automatically). See `statement_engine.build_statements` `commission_base = guesty_rev + commissionable_other`. Non-rent credits still appear in gross revenue and on the statement's "Other Credits" section at full value; they just aren't commissioned.
+
+- **Owner decision (2026-07): commission ALL rent, LTR or STR.** This reversed the prior rule (commission only Guesty + LTR/DEFERRED). It also **fixed a real under-commission bug**: when a property's full rent arrived as a QBO deposit, `import_ltr`'s shortfall was $0 → no LTR/DEFERRED row → the rent escaped commission in `amount_due`, even though the dashboard/Excel (which build rent Net-Revenue rows from `data/LTR_<period>.csv`) already showed commission on it. E.g. Beachwood July: only $2,000 of $19,250 rent was commissioned; now all $19,250 is (amount_due $20,433 → **$18,707.76**, ~$1,725 more PM fee).
+- **Penny reconciliation**: STR bookings commission **per booking**; rent commissions **per listing** (`GROUP BY property_id` in the PM-fee sum), because each product shows **one full-rent row per listing** (from the CSV). By `import_ltr` construction, DB commissionable rent per listing (deposits + LTR/DEFERRED) **equals** the CSV `Net Revenue` per listing, so `Σ round(rate·rent_listing)` in `statement_engine` matches the dashboard/Excel per-listing commission exactly. Verified all 19 July rent listings match DB↔CSV.
+- **Demo note**: the demo dashboard needs `data/LTR_<period>.csv` shipped in `deploy/data/` to render rent under Net Revenue (commissioned); without it, rent falls back to "Other Credits" and won't foot to the (now rent-commissioned) `amount_due`. July's CSV is shipped; May/June are not (July-only scope).
 
 **Expense refunds (QBO `Credit` purchases)**: A QBO Purchase with `Credit: true` is a vendor refund/return (e.g. a returned supply). `qbo_sync.sync_qbo_expenses` stores it **positive** (`abs(amount)`) so it REDUCES the expense subtotal; normal purchases stay negative. Don't revert to a blanket `-abs(amount)`.
+
+**Refunded non-Guesty channel bookings (`…1A - Net Earnings:Resolutions`)**: A Booking.com/channel booking that came in as a QBO **Deposit** (shown in "Other Credits", counted as owner income) and was later **refunded** posts the refund to `Trust Liabilities:Owner Payables:1A - Net Earnings:Resolutions`. No statement section pulls that account — the expense section (display AND `amount_due`) filters `%Owner Expenses%` (i.e. `1C - Owner Expenses`) — so the refund is invisible and the unoffset deposit **overstates the payout**. `run_month_close._offset_refunded_deposits()` (in `build`, after `_exclude_duplicate_guesty_deposits`) pairs each such refund with its Other-Credits deposit (**same property, equal magnitude, shared confirmation-code token**) and **suppresses BOTH** (`include_in_statement=0`) so the pair nets to $0. **Deliberately narrow (owner decision):** ONLY refunds matching a non-Guesty Other-Credits deposit are offset; the ~55 Resolutions lines/month tied to **Guesty bookings are left untouched** (Guesty net is the STR revenue basis — deducting them could double-count). Both rows must fall in the period (each build self-contained). Idempotent; re-applied each build so a later `qbo-sync` re-inclusion is re-corrected. E.g. OSBR July: the Jessica Smith deposit+refund ($1,083.26) is removed, dropping amount_due $31,491.45 → $30,408.19.
 
 **Tax paid to owner (transient occupancy tax pass-through)**: Lodging tax collected from guests and passed to the owner posts to QBO account `…Owner Income:Taxes Paid to Owners` (stored positive). It is owner income, shown as the per-booking **"Tax Paid to Owner"** column (after Management Commission), added to Net Owner Revenue, and **NOT** commissioned. `statement_engine` folds it into `taxes`/`amount_due` (so totals reconcile) **only for `owner_pays_taxes` properties** — `cmd_build` passes `tax_props` (the set of flagged property_ids) to `build_statements`, which gates the fold `if tax_props is None or pid in tax_props`. This must match the display, which also only shows the per-booking "Tax Paid to Owner" column when the flag is set; without the gate a non-flagged property that ever accrues a "Taxes Paid to Owners" line would inflate `amount_due` with no offsetting row and break reconciliation. Per-booking display is matched by the stay's date range (`get_owner_costs(..., checkin, checkout)`, dashboard `owner_tax`). These lines are NOT in the `'%Owner Expenses%'` expense section, so there's no double-count. **Known limitation**: the per-booking date-range match (`description LIKE '%<checkin> to <checkout>%'`) can attribute one tax line to multiple bookings that share identical checkin/checkout (e.g. rollup members), double-counting in the displayed Tax total while `amount_due` counts each line once.
 
