@@ -346,7 +346,7 @@ update_summarysheet = function(sum_cohost,sum_property){
     relocate(Bimonthly,TrashMonthly,.before = Earnings)
   
   sum_cohost= sum_cohost %>% 
-    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia"),NA,
+    mutate(Paid.amount = ifelse(Cohost %in% c("Bri","Feifei","Paul","VA","Sophia",'Andrea'),NA,
         ifelse(Cohost %in% "Crystal",
                length(unique(sum_property$Property[sum_property$Cohost %in% "Crystal"]))*150 +
                  sum_cohost$Bimonthly[sum_cohost$Cohost %in% "Crystal"]*80,
@@ -378,7 +378,7 @@ cleaning_sheets_summary = function(reservations,enddate){
   file_loc="/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Property_Cohost.xlsx"
   cleaner = read.xlsx(file_loc,sheet='Cleaning')
   cleansheet = merge(confirmed[,c("Listing","Confirmation.Code",'CheckIn','CheckOut','Guests','Nights',"GuestName","Earnings")],
-                     cleaner[,c("Listing","Cleaner.lead",'Cleaning.fee',"Maria.pay")],
+                     cleaner[,c("Listing","Cleaner.lead",'Cleaning.fee',"Cleaner.pay")],
                      by="Listing",all.x=T) 
   cleansheet = cleansheet %>% 
     mutate(Month =substr(enddate,1,7)) %>% # 2025.10 changed
@@ -415,7 +415,7 @@ cleaner_sheets = function(cleansheet,newcleaner=NULL){
   cleaning_loc = "./Cohost's reservation sheets/CleaningSheet_"
   output.val = c('Month','Listing','Confirmation.Code','GuestName',
                  'Guests','CheckIn','CheckOut','Nights','Earnings',
-                 'Cleaner.lead','Cleaning.fee','Maria.pay')
+                 'Cleaner.lead','Cleaning.fee','Cleaner.pay')
   for(k in unique(cleansheet$Cleaner.lead))
   {
     print(k)

@@ -137,7 +137,7 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
     mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-both %>% filter(yearmonth %in% '2026-06' & diff!=0)
+both %>% filter(yearmonth %in% '2026-07' & diff!=0)
 ## 2026.06
 ## 6/11 Sammamish 20916 not Issaquah 20916
 
