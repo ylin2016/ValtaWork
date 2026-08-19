@@ -1,0 +1,71 @@
+app:
+  # NOTE: the single shared ledger DB actually lives at db/owner_statement.sqlite
+  # and is resolved by src/paths.py (DB_PATH). This entry is kept for the few
+  # helper scripts that still read cfg["app"]["db_path"]; run them from the
+  # project root so the relative path resolves.
+  db_path: "./db/owner_statement.sqlite"
+  timezone: "America/Los_Angeles"
+
+qbo:
+  base_url: "https://quickbooks.api.intuit.com"
+  minorversion: 75
+  realm_id: "9130356236278636"
+
+statement_policy:
+  default_basis: "cash"
+  default_pm_fee_type: "percent"
+  default_pm_fee_rate: 0.16
+  default_pm_fee_base: "net_booking_revenue"
+  default_reserve_target: 0
+  taxes_included_in_revenue: false
+
+# Consolidate multiple listings into a single owner statement. The parent
+# property_id gets one statement aggregating its own + all member ledger lines;
+# member listings are skipped (no separate statement). PM fee uses the parent's rate.
+statement_rollups:
+  bellevue_14507:
+    - bellevue_14507_unit_1
+    - bellevue_14507_unit_2
+    - bellevue_14507_unit_3
+    - bellevue_14507_unit_4
+  beachwood:
+    - beachwood_1
+    - beachwood_2
+    - beachwood_3
+    - beachwood_4
+    - beachwood_5
+    - beachwood_6
+    - beachwood_7
+    - beachwood_8
+    - beachwood_9
+    - beachwood_10
+  osbr:
+    - osbr_1
+    - osbr_2
+    - osbr_3
+    - osbr_4
+    - osbr_5
+    - osbr_6
+    - osbr_7
+    - osbr_8
+    - osbr_9
+    - osbr_10
+    - osbr_11
+    - osbr_12
+    - osbr_rv
+  # Multi-unit buildings — one owner per building, all units share the PM rate, so
+  # each rolls up to a single owner statement (parent = the whole-house listing).
+  bellevue_2323:
+    - bellevue_2323_adu
+    - bellevue_2323_main
+  seattle_10057_whole:
+    - seattle_10057_lower
+    - seattle_10057_upper
+  seattle_7434_whole:
+    - seattle_7434_lower
+    - seattle_7434_upper
+  seattle_710:
+    - seattle_710_adu
+  burien_14407:
+    - burien_14407_top
+    - burien_14407_middle
