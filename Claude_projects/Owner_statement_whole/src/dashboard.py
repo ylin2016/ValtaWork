@@ -21,7 +21,7 @@ import paths
 from ltr.records import (build_records as ltr_build_records,
                          is_rent_income as ltr_is_rent_income,
                          ltr_claimed_codes)
-from reporting.booking_breakdown import (build_by_unit as _bd_build,
+from reporting.booking_breakdown import (build_by_unit as _bd_build, natural_key as _natural_key,
                                          DISP as _pb_disp, NUM as _pb_num, FEE_PARTS as _fee_parts)
 from scope.listing_filter import allowed_property_ids
 from scope.pm_rate import resolve_pm_fee_rate
@@ -519,6 +519,9 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
                 groups.setdefault(_vals(b)[10], []).append(_vals(b))
             except Exception:
                 continue
+        # Natural listing order (osbr_2 before osbr_10, osbr_rv last) — matches the
+        # Booking-Breakdown section above and the Excel/PDF outputs.
+        groups = OrderedDict(sorted(groups.items(), key=lambda kv: _natural_key(kv[0])))
         multi = len(groups) > 1
         gt_net = gt_comm = gt_owner = 0.0
         gt_nights = 0
@@ -1046,6 +1049,9 @@ if has_net_revenue:
     groups = OrderedDict()
     for r in booking_records:
         groups.setdefault(r.get('_pid'), []).append(r)
+    # Natural listing order (osbr_2 before osbr_10, osbr_rv last) — matches the
+    # Booking-Breakdown section and the Excel/PDF outputs.
+    groups = OrderedDict(sorted(groups.items(), key=lambda kv: _natural_key(kv[0])))
     multi_listing = len(groups) > 1
     _helper_cols = ('cleaning_fee_value', 'tax_paid_value')
 

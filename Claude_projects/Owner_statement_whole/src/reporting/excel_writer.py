@@ -4,7 +4,7 @@ from openpyxl import Workbook
 from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.utils import get_column_letter
 
-from .booking_breakdown import DISP as _BD_DISP, NUM as _BD_NUM
+from .booking_breakdown import DISP as _BD_DISP, NUM as _BD_NUM, natural_key
 
 # ── palette ──────────────────────────────────────────────────────────────────
 _DARK_BLUE  = "1F4E79"
@@ -303,6 +303,9 @@ def write_statement(output_path: str, period: str, property_info: dict,
         groups = OrderedDict()
         for b in bookings:
             groups.setdefault(b.get("property_id"), []).append(b)
+        # Render units in natural listing order (osbr_2 before osbr_10, osbr_rv last),
+        # matching the Booking-Breakdown section above so the two never drift.
+        groups = OrderedDict(sorted(groups.items(), key=lambda kv: natural_key(kv[0])))
         multi = len(groups) > 1
 
         gt_net = gt_clean = gt_tax = gt_comm = gt_owner = 0.0

@@ -12,10 +12,26 @@ Row schema (one dict per booking, plus a TOTAL row per unit):
   hover), Cleaning Fee, Tax, Net Rental Revenue, and a hidden _total flag.
 """
 
+import re
+
 # Displayed columns in owner-set order; NUM = the right-aligned dollar columns.
 DISP = ["Conf Code", "Bookings", "Guest Pay", "Fees", "Cleaning Fee", "Tax", "Net Rental Revenue"]
 NUM = ["Guest Pay", "Fees", "Cleaning Fee", "Tax", "Net Rental Revenue"]
 FEE_PARTS = ["_ch", "_gu", "_st"]
+
+
+def natural_key(pid):
+    """Sort key so rollup members render in natural listing order rather than
+    lexicographically: 'osbr_2' before 'osbr_10', and a non-numeric suffix
+    ('osbr_rv', 'seattle_10057_lower') sorts after the numbered units of the same
+    prefix. Shared by the booking-breakdown and Net-Revenue (excel_writer) sections
+    so the two stay in sync. Splits a trailing integer: 'osbr_10' -> ('osbr_', 0, 10);
+    'osbr_rv' -> ('osbr_rv', 1, 0)."""
+    s = str(pid)
+    m = re.match(r"^(.*?)(\d+)$", s)
+    if m:
+        return (m.group(1), 0, int(m.group(2)))
+    return (s, 1, 0)
 
 
 def guesty_row(b) -> dict:
@@ -93,7 +109,7 @@ def build_by_unit(pb_df, ltr_records, member_pids, claimed_codes=None):
         seg = pb_df[pb_df["property_id"].isin(members)].copy()
         if claimed:
             seg = seg[~seg["confirmationCode"].astype(str).isin(claimed)]
-        for pid in sorted(seg["property_id"].unique()):
+        for pid in sorted(seg["property_id"].unique(), key=natural_key):
             u = seg[seg["property_id"] == pid].sort_values(["checkIn", "confirmationCode"])
             unit_rows.setdefault(pid, []).extend(guesty_row(b) for _, b in u.iterrows())
     for rec in ltr_records:
@@ -102,7 +118,7 @@ def build_by_unit(pb_df, ltr_records, member_pids, claimed_codes=None):
             unit_rows.setdefault(pid, []).append(ltr_row(rec))
 
     by_unit, g_acc, g_n = {}, {c: 0.0 for c in NUM + FEE_PARTS}, 0
-    for pid in sorted(unit_rows):
+    for pid in sorted(unit_rows, key=natural_key):
         rows = unit_rows[pid]
         by_unit[pid] = rows + [_total_row(rows)]
         for c in NUM + FEE_PARTS:
