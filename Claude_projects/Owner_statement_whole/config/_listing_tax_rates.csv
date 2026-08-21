@@ -1,24 +1,24 @@
 nickname,listingId,tax_rate_pct,useAccountTaxes,n_taxes
-Cottage 10,65780dafad4b3c00225257cf,10.1,False,2
-Cottage 11 (tiny),668422ad453990001256d911,10.1,False,2
-Cottage 12,679ecef6edca8d0012b60939,10.1,False,2
-Cottage 2,65780db15fc87a0013b38424,10.1,False,2
-Cottage 3,65780db3a50cef001c2f2b40,10.1,False,2
-Cottage 4,65780db55fc87a0013b38716,10.1,False,2
-Cottage 5,65780db75fc87a0013b38a08,10.1,False,2
-Cottage 6,65780db902e9970010fbad85,10.1,False,2
-Cottage 7,65780dbbad4b3c0022525ada,10.1,False,2
-Cottage 8,65780dbd02e9970010fbb077,10.1,False,2
-Cottage 9,65780dbfad4b3c0022525dcc,10.1,False,2
+Cottage 10,65780dafad4b3c00225257cf,11.9,False,2
+Cottage 11 (tiny),668422ad453990001256d911,11.9,False,2
+Cottage 12,679ecef6edca8d0012b60939,11.9,False,2
+Cottage 2,65780db15fc87a0013b38424,11.9,False,2
+Cottage 3,65780db3a50cef001c2f2b40,11.9,False,2
+Cottage 4,65780db55fc87a0013b38716,11.9,False,2
+Cottage 5,65780db75fc87a0013b38a08,11.9,False,2
+Cottage 6,65780db902e9970010fbad85,11.9,False,2
+Cottage 7,65780dbbad4b3c0022525ada,11.9,False,2
+Cottage 8,65780dbd02e9970010fbb077,11.9,False,2
+Cottage 9,65780dbfad4b3c0022525dcc,11.9,False,2
 Kirkland 13070,69ec98b6807210001597814b,12.5,False,4
 Sammamish 5124-2,6905a6c2c401e2001227f844,0,True,0
 Elektra 1212,69e5c1d9e648350013657b92,15.7,False,4
 Auburn 29123,66a2e2a578840f00120ea93c,0,True,0
-Seattle 7434,69bd2e7acc280b001423546d,15.85,False,4
+Seattle 7434,69bd2e7acc280b001423546d,15.7,False,4
 Redmond 14707,68acbdb417d830001192e8a2,12.5,False,4
-Cottage 1,65737ab386ea7d0013b2c3d7,10.1,False,2
-Seattle 1117,65a043ed5c74340013fc5ffd,15.85,False,4
-Seattle 1512,63fcef0d1afdba00352c53ae,15.85,False,4
+Cottage 1,65737ab386ea7d0013b2c3d7,11.9,False,2
+Seattle 1117,65a043ed5c74340013fc5ffd,15.7,False,4
+Seattle 1512,63fcef0d1afdba00352c53ae,15.7,False,4
 Bellevue 2323 Whole,6a182562e5b3df0015ea834f,14.5,False,4
 Bellevue 321,68655d4b83d9cd00350c81de,14.5,False,4
 Bellevue 10409,664d34674fe18b0012268a97,14.5,False,4
@@ -28,105 +28,105 @@ Bellevue 4551,63fceb731afdba00352ba86c,14.5,False,4
 Bellevue 514,63fce903956100004124e4d5,14.5,False,4
 Burien 14407 middle,65e8d48ae0d2100012585beb,12.5,False,4
 Burien 14407 top,65e8d48c9ce9fa0012b5509a,12.5,False,4
-Beachwood 9,66a13eb943e33a0030cae6b4,15.85,False,4
+Beachwood 9,66a13eb943e33a0030cae6b4,15.7,False,4
 Elektra 703,63fceb4995610000412523c5,15.7,False,4
 Microsoft 14620-E205,63fcebaae683b4003d2824aa,14.5,False,4
 Elektra 1203,69323858b30f850011887f9e,15.7,False,4
-Yacinde F1,6a5431ac3cc0fa00112d37d4,12.3,False,3
+Yacinde F1,6a5431ac3cc0fa00112d37d4,10.5,False,3
 Sammamish 2009,65ed2d219ce9fa0012c850c5,12.5,False,4
-Beachwood 3,652db25cd6130500348802ab,15.85,False,4
-Seattle 10057 Upper,68e41a88bfc43a002ada1f4c,15.85,False,4
+Beachwood 3,652db25cd6130500348802ab,15.7,False,4
+Seattle 10057 Upper,68e41a88bfc43a002ada1f4c,15.7,False,4
 Hoquiam 21,66a2e293972ece00110dd9c5,0,True,0
-Seattle 906,680c01322ebb390011a804c3,15.85,False,4
-Seattle 1623,648de9f07b64cc005e921b33,15.85,False,4
-Yacinde E3,6a373ba1dcac1a00138bf739,12.3,False,3
+Seattle 906,680c01322ebb390011a804c3,15.7,False,4
+Seattle 1623,648de9f07b64cc005e921b33,15.7,False,4
+Yacinde E3,6a373ba1dcac1a00138bf739,10.5,False,3
 Elektra 1413,6a156bf0ff3c1b0013711602,15.7,False,4
 Elektra 1204,6941959b8a60c800159efc84,0,True,0
 Elektra 1305,6636a3284efc8c0013b98b23,15.7,False,4
 Elektra 1108,63fce9d1956100004124fc25,15.7,False,4
-Yacinde B1,6a506e416b8f0a00142dfbd5,12.3,False,3
-Poulsbo 13976,6489f39cc29689002ef276a3,11.2,False,2
-Poulsbo 3956,63fcee81e683b4003d28a232,11.2,False,2
-Seattle 115,65b4171dbcda3a0028084d4e,15.85,False,4
-Seattle 3617,63fce923e600670037722c30,15.85,False,4
+Yacinde B1,6a506e416b8f0a00142dfbd5,10.5,False,3
+Poulsbo 13976,6489f39cc29689002ef276a3,11.3,False,2
+Poulsbo 3956,63fcee81e683b4003d28a232,11.3,False,2
+Seattle 115,65b4171dbcda3a0028084d4e,15.7,False,4
+Seattle 3617,63fce923e600670037722c30,15.7,False,4
 Seattle 3617 Origin,643f816b0fab320038f50462,0,True,0
-Seattle 710 ADU,6431ea10388b6a0038eecf74,15.85,False,4
-Seattle 7434 Upper,69c1bbacf2b34d001490fd66,15.85,False,4
-Seattle 7434 Lower,69c3ff229a41dc0014cbf942,15.85,False,4
-Yacinde B6,6a50ebd924d7930010e216e9,12.3,False,3
+Seattle 710 ADU,6431ea10388b6a0038eecf74,15.7,False,4
+Seattle 7434 Upper,69c1bbacf2b34d001490fd66,15.7,False,4
+Seattle 7434 Lower,69c3ff229a41dc0014cbf942,15.7,False,4
+Yacinde B6,6a50ebd924d7930010e216e9,10.5,False,3
 Bothell 21833,63fcece91afdba00352bf4f2,12.5,False,4
 Issaquah 2642,63fced106f8608003810837c,12.5,False,4
 Kirkland 10219,63fceb27e683b4003d280e87,12.5,False,4
 Kirkland 11321,65cc6735ba3d3300310893d3,12.5,False,4
-Yacinde E1,6a52743e07ad6a0013e6954c,12.3,False,3
-Yacinde C1,6a3670d80c06220015163d61,12.3,False,3
-Seattle 9750,65d7f2f7e2af4e000e9f3ad1,15.85,False,4
+Yacinde E1,6a52743e07ad6a0013e6954c,10.5,False,3
+Yacinde C1,6a3670d80c06220015163d61,10.5,False,3
+Seattle 9750,65d7f2f7e2af4e000e9f3ad1,15.7,False,4
 Redmond 15357,63fcef039561000041258f95,12.5,False,4
 Microsoft 14615-D303,63fced63e600670037729d57,14.5,False,4
 Elektra 1115,63fcea0b6f86080038100d1c,15.7,False,4
 Bellevue 16237,6964c7e3d4149b001212c3bc,0,True,0
-Yacinde B4,6a50dcbbeabda4000f6c9da7,12.3,False,3
+Yacinde B4,6a50dcbbeabda4000f6c9da7,10.5,False,3
 Microsoft 14645-C19,63fcebc64e0a2a0035f8ca93,14.5,False,4
-Shelton 250,63fcecde4e0a2a0035f903f9,10.5,False,2
-Seattle 710,63fcfef85a9c87003eecb014,15.85,False,4
-Seattle 1430B,63fcea3ee600670037724ada,15.85,False,4
-Cottages All OSBR,65780daca50cef001c2f2848,10.1,False,2
-Longbranc 6821 Lower,63fcec9f1afdba00352be494,10.0,False,2
+Shelton 250,63fcecde4e0a2a0035f903f9,10.6,False,2
+Seattle 710,63fcfef85a9c87003eecb014,15.7,False,4
+Seattle 1430B,63fcea3ee600670037724ada,15.7,False,4
+Cottages All OSBR,65780daca50cef001c2f2848,11.9,False,2
+Longbranc 6821 Lower,63fcec9f1afdba00352be494,10.2,False,2
 Bellevue 242,6704423cbb659000135267e6,14.5,False,4
 Shoreline 15510,6a280b10529d4b001113fc3e,12.5,False,4
 Bellevue 701,68f6b99d06dca30012184ffe,14.5,False,4
-Seattle 10057 Whole,68ed86f800cb450013498ee0,15.85,False,4
+Seattle 10057 Whole,68ed86f800cb450013498ee0,15.7,False,4
 Seattle 9750 Monthly,65de29c22e572d00136dd21d,0,False,0
 Tacoma 7811,657a5dd28f3b5b0011703f7f,12.5,False,4
-Seattle 206,68f54ff3ee57b200129482cb,15.85,False,4
-Poulsbo 563,63fced21e683b4003d28611e,11.2,False,2
-Poulsbo 3866,68e412908f296e00296462cf,11.2,False,2
-Yacinde B2,6a507a3a76749a0013d757f8,12.3,False,3
+Seattle 206,68f54ff3ee57b200129482cb,15.7,False,4
+Poulsbo 563,63fced21e683b4003d28611e,11.3,False,2
+Poulsbo 3866,68e412908f296e00296462cf,11.3,False,2
+Yacinde B2,6a507a3a76749a0013d757f8,10.5,False,3
 Sammamish 5124-1,6905a6bd37228600138b3d17,12.5,False,4
 Redmond 10761,6484f2b97e2b83005355451f,0,True,0
 Redmond 11641,692694affd89720012e25c12,12.5,False,4
 Mercer 2449,63fceed0e683b4003d28b152,12.5,False,4
-Bainbridge 11143,68e31736ca8b490011e13066,10.5,False,2
+Bainbridge 11143,68e31736ca8b490011e13066,11.2,False,2
 Ashford 137,66a2e284bcb1ba0013299980,0,True,0
-Beachwood 10,64ec493c84c699004cf301dd,15.85,False,4
-Beachwood 8,65663a27a55360001fadb228,15.85,False,4
+Beachwood 10,64ec493c84c699004cf301dd,15.7,False,4
+Beachwood 8,65663a27a55360001fadb228,15.7,False,4
 Seatac 12834 Upper,63fced0e9c49e300360bc3b4,12.5,False,4
 Seatac 12834 Lower,63fcebe96f86080038104e2f,12.5,False,4
-Seattle 1424C,63fceb8a4e0a2a0035f8bdf4,15.85,False,4
-Seattle 1502,63fcee92956100004125807b,15.85,False,4
-Seattle 4201,687accd0b75e24001345ad61,15.85,False,4
+Seattle 1424C,63fceb8a4e0a2a0035f8bdf4,15.7,False,4
+Seattle 1502,63fcee92956100004125807b,15.7,False,4
+Seattle 4201,687accd0b75e24001345ad61,15.7,False,4
 Bellevue 13020,63fcec351afdba00352bd291,14.5,False,4
 Mercer 3925,6912d8c1ad1a5a00121ad03a,12.5,False,4
 Mercer 3627 Lower,63fced966f86080038109f5b,12.5,False,4
-Bellevue 1420,6830a428a17d3f00132d6a2c,13.8,False,4
-Shelton 310 Upper,63fceefb5a9c87003eeb1706,10.5,False,2
-Shelton 310,63fcecdb4e0a2a0035f8ffd8,10.5,False,2
-Seattle 10057 Lower,68ed6d6c50a5460018bbc6ee,15.85,False,4
-Yacinde B3,6a50a18a6b8f0a00142ff590,12.3,False,3
+Bellevue 1420,6830a428a17d3f00132d6a2c,14.5,False,4
+Shelton 310 Upper,63fceefb5a9c87003eeb1706,10.6,False,2
+Shelton 310,63fcecdb4e0a2a0035f8ffd8,10.6,False,2
+Seattle 10057 Lower,68ed6d6c50a5460018bbc6ee,15.7,False,4
+Yacinde B3,6a50a18a6b8f0a00142ff590,10.5,False,3
 Kirkland 8017,67bcd4a661c9a400115539fe,12.5,False,4
 Redmond 7579,643edda93acdfd0062a42303,12.5,False,4
 Seatac 12834,63fcedda5a9c87003eeaee19,12.5,False,4
 Bothell 11131,679d2819625049001282c5dc,12.5,False,4
-Seattle 9021,67f6a7165ce9d1001307604b,15.85,False,4
-Lynnwood 17506,6a3e93e01f0dbb00118baae9,12.7,False,3
+Seattle 9021,67f6a7165ce9d1001307604b,15.7,False,4
+Lynnwood 17506,6a3e93e01f0dbb00118baae9,12.5,False,3
 Bellevue 2243,667c998b981c710011d40c7e,14.5,False,4
-Yacinde F5,6a543fc682d8130013cd8faf,12.3,False,3
+Yacinde F5,6a543fc682d8130013cd8faf,10.5,False,3
 Beachwood 2 Airbnb,6931e424da6132003af95a3f,0,True,0
-Seattle 8415,660c37f65681f000723940e0,15.85,False,4
+Seattle 8415,660c37f65681f000723940e0,15.7,False,4
 Bellevue 1621,63fce8ef6f860800380fdf9a,14.5,False,4
 Redmond 16012,6768b46a61dfbb0013d3f58c,12.5,False,4
 Elektra 809,63d91e30614847002a70363e,15.7,False,4
 Bellevue 1326,65e682d6f5417d0013c5c4c9,14.5,False,4
-Keaau 15-1542,65e4beb402131300125184d2,18.5,False,1
+Keaau 15-1542,65e4beb402131300125184d2,18.712,False,1
 Elektra 1004,63fcea066f860800381009f0,15.7,False,4
-Beachwood 1,64990e17f8c98f00439dfea4,15.85,False,4
-Beachwood 2,65fbd721ad4e7400138ef363,15.85,False,4
-Beachwood 7,66295de3066c3e006bd3ae49,15.85,False,4
-Longbranc 6821 Upper,63fceca74e0a2a0035f8f56d,10.0,False,2
-Longbranch 6821,63fcec6ae600670037727ffe,10.0,False,2
-Hoodsport 26060,63fceeaf5a9c87003eeb0ccb,10.5,False,2
-Lilliwaup 28610,63fcec256f86080038105b32,10.5,False,2
-Woodinville 19319,63fcec021afdba00352bc71c,11.2,False,2
+Beachwood 1,64990e17f8c98f00439dfea4,15.7,False,4
+Beachwood 2,65fbd721ad4e7400138ef363,15.7,False,4
+Beachwood 7,66295de3066c3e006bd3ae49,15.7,False,4
+Longbranc 6821 Upper,63fceca74e0a2a0035f8f56d,10.2,False,2
+Longbranch 6821,63fcec6ae600670037727ffe,10.2,False,2
+Hoodsport 26060,63fceeaf5a9c87003eeb0ccb,10.6,False,2
+Lilliwaup 28610,63fcec256f86080038105b32,10.6,False,2
+Woodinville 19319,63fcec021afdba00352bc71c,12.5,False,2
 Mercer 3627 ADU,63fcee3c1afdba00352c3088,12.5,False,4
 Mercer 3627 Main,63fcee795a9c87003eeb0321,12.5,False,4
 Kirkland 8252-D201,63fceefd6f8608003810e020,12.5,False,4
