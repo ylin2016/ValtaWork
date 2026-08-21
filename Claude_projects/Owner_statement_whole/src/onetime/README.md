@@ -14,6 +14,7 @@ clean. Nothing in the workflow imports anything here.
 | `import_yacinde_old.py` | One-time backfill of old Yacinde timeshare bookings into the ledger | one-time (done) |
 | `update_mapping_from_contacts.py` | First-gen `mapping_classes.yml` sync from `Listing_contacts.csv` | superseded |
 | `update_mapping_from_contacts_v2.py` | Second-gen version of the above | superseded |
+| `build_channel_calculator.py` | Pull the Guesty account channel **markups** and build `output/channel_pricing_calculator.xlsx` — a live-formula what-if: one accommodation fare -> markup / fees / tax / net revenue on every channel | tool — run ad hoc |
 | `update_mapping_term.py` | Backfill the `term` (STR/LTR) field on mapping entries | one-time (done) |
 
 Run them (from the project root) as modules, e.g.:

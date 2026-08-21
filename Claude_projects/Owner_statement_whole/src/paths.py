@@ -33,7 +33,11 @@ MAPPING_ACCOUNTS  = CONFIG_DIR / "mapping_accounts.yml"
 LISTING_CONTACTS  = CONFIG_DIR / "Listing_contacts.csv"
 PAYMENT_STRUCTURE = CONFIG_DIR / "payment_structure.xlsx"
 LISTING_TAX_RATES = CONFIG_DIR / "_listing_tax_rates.csv"
+CHANNEL_MARKUPS   = CONFIG_DIR / "_channel_markups.json"   # Guesty account-level markups (cached API pull)
 SCHEMA_SQL        = PROJECT_ROOT / "schema.sql"
+
+# --- standalone tools (not per-month) ---
+CHANNEL_CALCULATOR = OUTPUT_DIR / "channel_pricing_calculator.xlsx"
 
 # --- secrets ---
 ENV_FILE     = SECRETS_DIR / ".env"

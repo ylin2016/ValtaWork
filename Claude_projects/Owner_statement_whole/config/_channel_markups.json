@@ -1,0 +1,67 @@
+{
+  "_source": "Guesty Open API GET /accounts/me -> markups (account level)",
+  "accountId": "63c8437baf657e004a999f00",
+  "accountName": "Valta Realty Group",
+  "currency": "USD",
+  "markups": {
+    "manual": {
+      "amount": 3,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    },
+    "airbnb2": {
+      "amount": 25,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE",
+      "applyOn": []
+    },
+    "bookingCom": {
+      "amount": 18,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE",
+      "applyOn": []
+    },
+    "homeaway2": {
+      "amount": 8,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE",
+      "applyOn": []
+    },
+    "expedia": {
+      "amount": 21,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE",
+      "applyOn": []
+    },
+    "homesVillasByMarriott": {
+      "amount": 28,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    },
+    "tripCom": {
+      "amount": 18,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    },
+    "bluegroundNestpick": {
+      "amount": 10,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    },
+    "hopper": {
+      "amount": 14,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    },
+    "whimstay": {
+      "amount": 5,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    },
+    "bnbFinder": {
+      "amount": 4,
+      "status": "MANUALLY_ALTERED",
+      "units": "PERCENTAGE"
+    }
+  }
+}
