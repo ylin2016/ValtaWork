@@ -1,7 +1,7 @@
 Month = "2026-06"
 drv.loc = "/Users/ylin/Google Drive/My Drive/"
 
-setwd(paste0(drv.loc,"Accounting/Company Transactions/2026/",Month))
+setwd(paste0(drv.loc, "Accounting/Company Transactions/2026/",Month))
 source("/Users/ylin/ValtaWork/Accounting/MonthlyInvoiceMigration/Functions.R")
 ##============================================================================
 newloc = '/Users/ylin/Google Drive/My Drive/Accounting/* Monthly/'
