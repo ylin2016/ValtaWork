@@ -1,3 +1,11 @@
+# --- Secrets & credentials (never commit) ---
+**/qbo_tokens.json
+**/*_tokens.json
+**/.streamlit/secrets.toml
+
+# --- Databases (owner PII; rebuilt locally, don't version) ---
+**/owner_statement.sqlite
+
 # --- macOS ---
 .DS_Store
 .AppleDouble
