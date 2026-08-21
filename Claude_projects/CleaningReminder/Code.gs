@@ -2,14 +2,15 @@
  * CleaningReminder — main script
  *
  * For each cleaner (each has their own Google Calendar, plus optional extra
- * calendars like Residential / Move-in-out), scans the target day, composes one
- * message listing their units by type, and sends it as a 1:1 SMS to each of the
- * cleaner's numbers via Twilio. A weekly summary tallies the coming week by type.
+ * calendars like Residential / Move-in-out), scans the days covered, composes one
+ * message listing their units by day and type, and sends it as a 1:1 SMS to each
+ * of the cleaner's numbers via Twilio. A weekly summary tallies a week by type.
  *
  * ENTRY POINTS (run from the editor's ▶ Run menu, or a time trigger):
- *   runDaily()              — daily next-day reminder. Honors CONFIG.DRY_RUN.
+ *   runDaily()              — daily reminder covering tomorrow + the day after
+ *                             (CONFIG.DAYS_AHEAD / DAYS_COVERED). Honors DRY_RUN.
  *   runWeekly()             — weekly summary (CONFIG.WEEKLY_TARGET; trigger Mondays).
- *   previewTomorrow()       — dry run for tomorrow + verbose log, never sends.
+ *   previewTomorrow()       — dry run of the same days + verbose log, never sends.
  *   previewWeekly()         — dry run of what runWeekly would send, never sends.
  *   previewThisWeek()       — dry run of THIS week's summary, never sends.
  *   previewNextWeek()       — dry run of NEXT week's summary, never sends.
@@ -21,21 +22,21 @@
 
 /** Main entry point. Safe to attach to a daily time-driven trigger. */
 function runDaily() {
-  return runForDay_(targetDate_(CONFIG.DAYS_AHEAD), CONFIG.DRY_RUN);
+  return runForDays_(targetDays_(CONFIG.DAYS_AHEAD, maxDaysCovered_()), CONFIG.DRY_RUN);
 }
 
-/** Non-sending preview of tomorrow — never texts anyone. */
+/** Non-sending preview of the days runDaily covers — never texts anyone. */
 function previewTomorrow() {
-  return runForDay_(targetDate_(CONFIG.DAYS_AHEAD), true);
+  return runForDays_(targetDays_(CONFIG.DAYS_AHEAD, maxDaysCovered_()), true);
 }
 
 /**
- * Non-sending preview of a specific calendar date.
+ * Non-sending preview starting at a specific calendar date (same spans as runDaily).
  * Run from the editor (no argument) → uses CONFIG.PREVIEW_DATE.
  * Call in code → previewDate('2026-07-16').
  */
 function previewDate(dateStr) {
-  return runForDay_(dayFromString_(dateStr || CONFIG.PREVIEW_DATE), true);
+  return runForDays_(daySpan_(dateFromString_(dateStr || CONFIG.PREVIEW_DATE), maxDaysCovered_()), true);
 }
 
 /**
@@ -65,25 +66,34 @@ function previewNextWeek() {
 /* Daily reminder                                                     */
 /* ------------------------------------------------------------------ */
 
-/** Build + (optionally) send each cleaner's message for one day. */
-function runForDay_(day, dryRun) {
-  const label = formatDay_(day);
-  Logger.log('CleaningReminder — schedule for %s%s', label, dryRun ? '  (DRY RUN — no texts)' : '');
+/**
+ * Build + (optionally) send each cleaner's daily message. `days` is the WIDEST
+ * span any cleaner covers; each cleaner gets the first `daysCovered` of them, so
+ * Maria can be tomorrow-only while Angelina sees two days.
+ */
+function runForDays_(days, dryRun) {
+  const span = days.map(formatDay_).join(' & ');
+  Logger.log('CleaningReminder — schedule for %s%s', span, dryRun ? '  (DRY RUN — no texts)' : '');
 
   const results = [];
 
   CLEANERS.forEach(function (cleaner) {
-    const jobs = collectJobs_(cleaner, day);
-    if (!jobs.length) {
+    const blocks = days.slice(0, daysCovered_(cleaner)).map(function (day) {
+      return { label: formatDay_(day), jobs: collectJobs_(cleaner, day) };
+    });
+    const anyJobs = blocks.some(function (b) { return b.jobs.length; });
+    if (!anyJobs) {
       Logger.log('%s: no cleaning jobs.', cleaner.name);
       return;
     }
 
-    const message = composeMessage_(cleaner.name, label, jobs);
+    const message = composeMessage_(cleaner.name, blocks);
     if (dryRun) {
-      Logger.log('   [debug] jobs: %s', jobs.map(function (j) {
-        return (TYPES[j.type] ? TYPES[j.type].short : j.type) + '@' + formatTime_(j.event.getStartTime());
-      }).join(', '));
+      blocks.forEach(function (b) {
+        Logger.log('   [debug] %s jobs: %s', b.label, b.jobs.map(function (j) {
+          return (TYPES[j.type] ? TYPES[j.type].short : j.type) + '@' + formatTime_(j.event.getStartTime());
+        }).join(', ') || '(none)');
+      });
     }
     Array.prototype.push.apply(results, deliverMessage_(cleaner, message, dryRun, /*ccLeader=*/ true));
   });
@@ -184,19 +194,43 @@ function resolveCalendarSpec_(spec) {
   return byName && byName.length ? byName[0] : null;
 }
 
-/** Midnight-to-midnight window for the day `daysAhead` from now. */
-function targetDate_(daysAhead) {
-  const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead, 0, 0, 0);
-  const end = new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead + 1, 0, 0, 0);
-  return { start: start, end: end };
+/** `count` consecutive midnight-to-midnight day windows, the first being `first`. */
+function daySpan_(first, count) {
+  const days = [];
+  const n = Math.max(1, count || 1);
+  for (var i = 0; i < n; i++) {
+    days.push({
+      start: new Date(first.getFullYear(), first.getMonth(), first.getDate() + i, 0, 0, 0),
+      end: new Date(first.getFullYear(), first.getMonth(), first.getDate() + i + 1, 0, 0, 0),
+    });
+  }
+  return days;
 }
 
-/** Midnight-to-midnight window for a specific date string 'YYYY-MM-DD'. */
-function dayFromString_(dateStr) {
+/**
+ * How many days ONE cleaner's daily reminder covers: their own `daysCovered`
+ * (Cleaners.gs) when set, else CONFIG.DAYS_COVERED. Always at least 1.
+ */
+function daysCovered_(cleaner) {
+  const n = Math.floor(cleaner.daysCovered > 0 ? cleaner.daysCovered : CONFIG.DAYS_COVERED);
+  return n > 0 ? n : 1;
+}
+
+/** The widest span any cleaner covers — how many days runDaily has to scan. */
+function maxDaysCovered_() {
+  return CLEANERS.reduce(function (m, c) { return Math.max(m, daysCovered_(c)); }, 1);
+}
+
+/** `count` day windows starting `daysAhead` from today (daysAhead 1 = tomorrow). */
+function targetDays_(daysAhead, count) {
+  const now = new Date();
+  return daySpan_(new Date(now.getFullYear(), now.getMonth(), now.getDate() + daysAhead), count);
+}
+
+/** Parse 'YYYY-MM-DD' as a local midnight Date. */
+function dateFromString_(dateStr) {
   const p = String(dateStr).split('-');
-  const y = +p[0], m = +p[1] - 1, d = +p[2];
-  return { start: new Date(y, m, d, 0, 0, 0), end: new Date(y, m, d + 1, 0, 0, 0) };
+  return new Date(+p[0], +p[1] - 1, +p[2], 0, 0, 0);
 }
 
 /** Titled events on `cal` for the day (empty "(No title)" shift blocks skipped). */
@@ -251,17 +285,41 @@ function isBackToBackEvent_(event) {
 /* Daily message composition                                          */
 /* ------------------------------------------------------------------ */
 
-/** Build the daily SMS body for one cleaner from their typed jobs. */
-function composeMessage_(name, dayLabel, jobs) {
+/**
+ * Build the daily SMS body for one cleaner: one section per day covered
+ * (`blocks` = [{ label, jobs }]). With a single day the per-day heading is
+ * dropped — the brand line already names the date.
+ */
+function composeMessage_(name, blocks) {
+  const perDay = blocks.map(function (b) {
+    return b.jobs.reduce(function (n, j) { return n + unitCount_(j); }, 0);
+  });
+  const total = perDay.reduce(function (a, b) { return a + b; }, 0);
+
+  const lines = [];
+  lines.push(CONFIG.BRAND + ' — ' +
+    blocks.map(function (b) { return b.label; }).join(' & ') +
+    ' (' + units_(total) + '):');
+
+  blocks.forEach(function (block, i) {
+    if (blocks.length > 1) {
+      lines.push('');
+      lines.push('▶ ' + block.label +
+        (block.jobs.length ? ' (' + units_(perDay[i]) + ')' : ' — nothing scheduled'));
+    }
+    appendJobSections_(lines, block.jobs);
+  });
+
+  lines.push('');
+  lines.push('Reply here if you cannot make it. Thanks, ' + name + '!');
+  return lines.join('\n');
+}
+
+/** Append one day's job sections — timed shifts first, then residential. */
+function appendJobSections_(lines, jobs) {
   const residential = [];
   const timed = [];
   jobs.forEach(function (j) { (j.type === 'residential' ? residential : timed).push(j); });
-
-  const totalUnits = jobs.reduce(function (n, j) { return n + unitCount_(j); }, 0);
-
-  const lines = [];
-  lines.push(CONFIG.BRAND + ' — ' + dayLabel +
-    ' (' + totalUnits + ' unit' + (totalUnits === 1 ? '' : 's') + '):');
 
   // Timed shift jobs (back-to-back, next-day, move-in/out): section per event.
   timed.forEach(function (job) {
@@ -279,16 +337,17 @@ function composeMessage_(name, dayLabel, jobs) {
     if (notes) lines.push('   Notes: ' + notes);
   });
 
-  // Residential: one row per cleaning, contact + address only.
+  // Residential: one row per cleaning, address only.
   if (residential.length) {
     lines.push('');
     lines.push('Residential:');
     residential.forEach(function (job) { lines.push(' • ' + residentialRow_(job)); });
   }
+}
 
-  lines.push('');
-  lines.push('Reply here if you cannot make it. Thanks, ' + name + '!');
-  return lines.join('\n');
+/** "1 unit" / "5 units". */
+function units_(n) {
+  return n + ' unit' + (n === 1 ? '' : 's');
 }
 
 /**
@@ -460,7 +519,7 @@ function tallyWeek_(cleaner, week) {
 function composeWeeklyMessage_(name, weekLabel, tally, types) {
   const lines = [];
   lines.push(CONFIG.BRAND + ' — Weekly Summary');
-  lines.push(weekLabel + ' (' + tally.total + ' unit' + (tally.total === 1 ? '' : 's') + ')');
+  lines.push(weekLabel + ' (' + units_(tally.total) + ')');
 
   lines.push('');
   lines.push('Totals:');

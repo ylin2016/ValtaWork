@@ -79,7 +79,7 @@ const LISTINGS = [
   ['Seattle 7434 Lower', '7434 Keen Way N, Seattle, WA, 98103', 2, 1],
   ['Seattle 8415', '8415 Linden Ave N, Seattle, WA 98103, USA', 3, 3.5],
   ['Seattle 9021', '9021 8th Ave S, Seattle, WA 98108, USA', 2, 1],
-  ['Seattle 906 Lower', '906 North 101st Street, Seattle, Washington 98133', 2, 1],
+  ['Seattle 906', '906 North 101st Street, Seattle, Washington 98133', 2, 1],
   ['Seattle 906 Upper', '906 North 101st Street, Seattle, Washington 98133', 3, 2],
   ['Shoreline 15510', '15510 Meridian Avenue North, Shoreline, Washington 98133', 3, 2],
 ];

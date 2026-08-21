@@ -20,7 +20,7 @@ def import_guesty_bookings_csv(conn, csv_path: str):
         booking_id = str(r["booking_id"])
         posting_date = str(r["checkin"])[:10]
         service_date = str(r["checkout"])[:10] if pd.notna(r.get("checkout")) else None
-        amount = float(r["net_revenue"])
+        amount = round(float(r["net_revenue"]), 2)  # store at cent precision
         guest_name = str(r.get("guest_name") or "").strip()
         channel = str(r.get("channel") or "").strip()
         status = str(r.get("status") or "confirmed").strip().lower()  # "confirmed" or "canceled"
@@ -38,11 +38,11 @@ def import_guesty_bookings_csv(conn, csv_path: str):
             """INSERT INTO ledger_lines
                (ledger_id, source, source_object, source_txn_id, source_line_id, property_id,
                 booking_id, posting_date, service_date, category, subcategory, description,
-                vendor_customer, qbo_account, amount, include_in_statement, status, last_updated_at)
+                vendor_customer, qbo_account, amount, base_amount, include_in_statement, status, last_updated_at)
                VALUES (?, 'guesty', 'Reservation', ?, NULL, ?, ?, ?, ?, 'INCOME', ?,
-                       'Booking', ?, NULL, ?, 1, ?, ?)""",
+                       'Booking', ?, NULL, ?, ?, 1, ?, ?)""",
             (str(uuid.uuid4()), booking_id, prop, booking_id, posting_date, service_date,
-             channel, guest_name, float(amount), status, now_iso()),
+             channel, guest_name, float(amount), float(amount), status, now_iso()),
         )
         imported += 1
 

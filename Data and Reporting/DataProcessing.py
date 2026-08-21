@@ -170,6 +170,7 @@ def import_data():
     curr_date = f"{today.year:04d}{today.month:02d}{today.day:02d}"
     guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-"+curr_date+".csv", na_values=["", " "])
     guesty_2026 = guesty_2026[~guesty_2026["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
+    guesty_2026=guesty_2026.drop(["PLATFORM"], axis=1)
     guesty_2026.columns=np.delete(guesty_bf25.columns,[-7,-1])
 
     confirmed_guesty = pd.concat([guesty_2025, guesty_bf25,guesty_2026], ignore_index=True, sort=False)

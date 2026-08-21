@@ -14,6 +14,9 @@
  *                cleaner's daily message and weekly summary. Types:
  *                'residential', 'moveinout'. (Main-calendar events are typed
  *                automatically as 'backtoback'/'nextday' by shift time.)
+ *   daysCovered — (optional) how many days THIS cleaner's daily reminder covers,
+ *                starting at CONFIG.DAYS_AHEAD. 1 = tomorrow only, 2 = tomorrow
+ *                plus the day after. Omit to use CONFIG.DAYS_COVERED.
  *
  * If two calendars happen to share a name, use `calendarId` instead of
  * `calendar` (Calendar settings → "Integrate calendar" → Calendar ID).
@@ -21,12 +24,13 @@
  */
 
 const CLEANERS = [
-  { name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [] },
+  { name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [], daysCovered: 2 },
   { name: 'Anna',     calendar: 'ValtaAuto_Anna',     phones: [] },
   { name: 'Camilla',  calendar: 'ValtaAuto_Camilla',  phones: [] },
   { name: 'Crystal',  calendar: 'ValtaAuto_Crystal',  phones: [] },
   {
     name: 'Maria', calendar: 'ValtaAuto_Maria', phones: ['+18283311782'],
+    daysCovered: 1,
     extraCalendars: [
       { calendar: 'Residential Cleaning',  type: 'residential' },
       { calendar: 'move in/out cleaning',  type: 'moveinout' },

@@ -1,12 +1,4 @@
 ### Check guest reviews for bonus to Jackson and Brittany
-library(plyr)
-library(dplyr)
-library(tidyr)
-library(openxlsx)
-library(lubridate)
-library(ggplot2)
-library(scales)
-
 setwd("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/Working/")
 source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
 
@@ -53,13 +45,18 @@ ggplot(res,aes(data_collect,n,group = month,color=month)) +
   scale_x_datetime(date_break="15 days",labels = date_format("%m-%d")) +
   labs(x="date_collected",y="# of 5 star reviews",color="Created Month")
   
-k="20260616 guesty_reviews.xlsx"
+k="20260816 guesty_reviews.xlsx"
 
 ## Jackson's
-ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2026-05",month)) %>% 
+ratings[[k]] %>% filter(Overall %in% c(5,10) & grepl("2026-07",month)) %>% 
   filter(!grepl("Cottage",nickname)) %>%
   group_by(month) %>% reframe(n=n())
 
+ratings[[k]] %>% 
+  group_by(month,nickname) %>% 
+  filter(grepl("2025-|2026-",month)) %>% 
+  reframe(nReview=n(),star5=sum(Overall %in% c(5,10)),) %>%
+  write.xlsx("GuestReviews_summary_20260616.xlsx")
 
 ## Brittany:
 
@@ -67,3 +64,4 @@ ratings[[k]] %>%
   filter(createdAt >="2026-03-01") %>% 
   filter(Overall %in% c(5,10) & grepl("Cottage",nickname)& grepl("2025|2026",month)) %>% 
   group_by(month) %>% reframe(n=n())
+

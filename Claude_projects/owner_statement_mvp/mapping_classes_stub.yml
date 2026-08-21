@@ -201,12 +201,26 @@
   owner_id: owner_bellevue_2243
   owner_name: Bellevue 2243 Owner
   owner_email: ''
+- qbo_class_id: '1000000014'
+  qbo_class_name: Listings:Bellevue 2323 ADU
+  property_id: bellevue_2323_adu
+  property_name: Bellevue 2323 ADU
+  owner_id: owner_bellevue_2323_adu
+  owner_name: Bellevue 2323 ADU Owner
+  owner_email: ''
+- qbo_class_id: '1000000013'
+  qbo_class_name: Listings:Bellevue 2323 Main
+  property_id: bellevue_2323_main
+  property_name: Bellevue 2323 Main
+  owner_id: owner_bellevue_2323_main
+  owner_name: Bellevue 2323 Main Owner
+  owner_email: ''
 - qbo_class_id: '1000000011'
-  qbo_class_name: Listings:Bellevue 2323
-  property_id: bellevue_2323
-  property_name: Bellevue 2323
-  owner_id: owner_bellevue_2323
-  owner_name: Bellevue 2323 Owner
+  qbo_class_name: Listings:Bellevue 2323 Whole
+  property_id: bellevue_2323_whole
+  property_name: Bellevue 2323 Whole
+  owner_id: owner_bellevue_2323_whole
+  owner_name: Bellevue 2323 Whole Owner
   owner_email: ''
 - qbo_class_id: '544835'
   qbo_class_name: Listings:Bellevue 242
@@ -459,6 +473,13 @@
   property_name: Longbranch 6821 Upper
   owner_id: owner_longbranch_6821_upper
   owner_name: Longbranch 6821 Upper Owner
+  owner_email: ''
+- qbo_class_id: '1000000016'
+  qbo_class_name: Listings:Lynnwood 17506
+  property_id: lynnwood_17506
+  property_name: Lynnwood 17506
+  owner_id: owner_lynnwood_17506
+  owner_name: Lynnwood 17506 Owner
   owner_email: ''
 - qbo_class_id: '2100000000001491551'
   qbo_class_name: Listings:Mercer 2449
@@ -922,6 +943,13 @@
   owner_id: owner_shelton_310_upper
   owner_name: Shelton 310 Upper Owner
   owner_email: ''
+- qbo_class_id: '1000000015'
+  qbo_class_name: Listings:Shoreline 15510
+  property_id: shoreline_15510
+  property_name: Shoreline 15510
+  owner_id: owner_shoreline_15510
+  owner_name: Shoreline 15510 Owner
+  owner_email: ''
 - qbo_class_id: '2100000000001547053'
   qbo_class_name: Listings:Tacoma 7811
   property_id: tacoma_7811
@@ -949,4 +977,18 @@
   property_name: Woodinville 19319
   owner_id: owner_woodinville_19319
   owner_name: Woodinville 19319 Owner
+  owner_email: ''
+- qbo_class_id: '1000000018'
+  qbo_class_name: Listings:Yacinde C1
+  property_id: yacinde_c1
+  property_name: Yacinde C1
+  owner_id: owner_yacinde_c1
+  owner_name: Yacinde C1 Owner
+  owner_email: ''
+- qbo_class_id: '1000000017'
+  qbo_class_name: Listings:Yacinde E3
+  property_id: yacinde_e3
+  property_name: Yacinde E3
+  owner_id: owner_yacinde_e3
+  owner_name: Yacinde E3 Owner
   owner_email: ''

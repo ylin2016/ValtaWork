@@ -1,5 +1,6 @@
 import argparse
 from pathlib import Path
+from datetime import date
 import secrets
 import calendar
 import json
@@ -13,9 +14,22 @@ from .qbo_client import QBOClient
 from .qbo_sync import sync_qbo_expenses
 from .guesty_adapter import import_guesty_bookings_csv
 from .statement_engine import create_run, build_statements
+from .pm_rate import resolve_pm_fee_rate
 from .excel_writer import create_template, write_statement
 from .booking_fees import get_qbo_fees, get_owner_costs
-from .utils import sha256_file
+from .ltr_records import build_records as build_ltr_records, is_rent_income
+from .listing_filter import allowed_property_ids, central_supply_property_ids
+from .utils import sha256_file, now_iso
+
+# Central-supplies formula: $0.90 per guest per night, capped at 60 nights. Charged to
+# 'central' Supplies properties per booking in place of QBO per-booking supply charges.
+SUPPLY_RATE = 0.9
+SUPPLY_MAX_NIGHTS = 60
+SUPPLY_ACCOUNT = "Trust Liabilities:Owner Payables:1C - Owner Expenses:Supplies - Owner"
+
+
+def supply_charge(guests, nights) -> float:
+    return round(SUPPLY_RATE * int(guests or 0) * min(int(nights or 0), SUPPLY_MAX_NIGHTS), 2)
 
 def _calculate_implied_channel_fee(booking_id: str, guesty_csv_path: str) -> float:
     """
@@ -49,6 +63,364 @@ def _calculate_implied_channel_fee(booking_id: str, guesty_csv_path: str) -> flo
         return implied_fee if implied_fee < 0 else 0.0
     except Exception as e:
         return 0.0
+
+def _apply_guesty_fees(conn, period_start: str, period_end: str, guesty_csv_path: str):
+    """Recompute every guesty INCOME line as base_amount - QBO fees, IDEMPOTENTLY.
+
+    Net is always derived from the immutable Guesty base (`base_amount`), never from
+    the live `amount` (which a prior build may have already fee-adjusted) — so a
+    re-run can never double-subtract fees. Channel rule (see CLAUDE.md):
+      Cancelled        -> net = base (= total_payout, set in convert_guesty_export)
+      Booking.com      -> net = base - channel_fee - stripe_fee - tax
+      Other channels   -> net = base - channel_fee - stripe_fee
+    QBO fees from get_qbo_fees are already negative; abs() to subtract.
+
+    MUST run before build_statements so the stored totals reflect fee-adjusted net
+    in the same build (the Excel loop later reads those totals back).
+    """
+    rows = conn.execute(
+        """SELECT property_id, source_txn_id AS booking_id, posting_date AS checkin,
+                  service_date AS checkout, subcategory AS channel, status AS booking_status,
+                  COALESCE(base_amount, amount) AS base_net
+           FROM ledger_lines
+           WHERE posting_date>=? AND posting_date<=?
+             AND source='guesty' AND category='INCOME' AND include_in_statement=1""",
+        (period_start, period_end),
+    ).fetchall()
+
+    for r in rows:
+        d = dict(r)
+        base_net = round(float(d["base_net"] or 0), 2)
+        net = base_net
+
+        if (d["booking_status"] or "").lower() == "confirmed":
+            fees = get_qbo_fees(conn, d["property_id"], d["booking_id"],
+                                d["checkin"], d["checkout"], period_start, period_end)
+            channel_fee = fees["channel_fee"]
+            stripe_fee = fees["stripe_fee"]
+            tax_fee = fees["tax"]
+
+            # No channel fee in QBO -> fall back to implied fee from the converted CSV
+            if channel_fee == 0.0:
+                implied = _calculate_implied_channel_fee(d["booking_id"], guesty_csv_path)
+                if implied != 0.0:
+                    channel_fee = implied
+
+            if "BOOKING.COM" in (d["channel"] or "").upper():
+                net = base_net - abs(channel_fee) - abs(stripe_fee) - abs(tax_fee)
+            else:
+                net = base_net - abs(channel_fee) - abs(stripe_fee)
+
+        # Store amounts at cent precision so downstream totals are penny-clean.
+        net = round(net, 2)
+
+        # Persist net and (re)assert the immutable base, backfilling legacy rows.
+        conn.execute(
+            """UPDATE ledger_lines SET amount=?, base_amount=?
+               WHERE source='guesty' AND source_txn_id=? AND category='INCOME'""",
+            (net, base_net, d["booking_id"]),
+        )
+    conn.commit()
+
+def _read_guesty_cleaning_by_code(guesty_csv_path: str) -> dict[str, float]:
+    """booking_id -> guest-paid cleaning fee, from the converted Guesty CSV.
+
+    Single reader shared by the OWNER_ADJ cleaning credit (folded into amount_due)
+    and the Excel 'Owner Cleaning Fee' display column, so the two can't drift.
+    Returns {} if the CSV is missing.
+    """
+    try:
+        gdf = pd.read_csv(guesty_csv_path)
+    except FileNotFoundError:
+        return {}
+    return {str(r["booking_id"]): float(r.get("cleaning_fee") or 0)
+            for _, r in gdf.iterrows() if pd.notna(r.get("booking_id"))}
+
+
+def _apply_central_supplies(conn, period_start, period_end, central_pids, guests_by_code):
+    """'central' Supplies properties are charged a per-booking FORMULA supply fee
+    (0.9 * guests * min(nights, 60)) instead of QBO per-booking supply charges.
+
+    Steps (idempotent, re-run each build):
+      1. Re-include, then SUPPRESS, the booking-related QBO 'Supplies Charge | …'
+         lines for central properties. (These come as a double-entry pair — a
+         Billable-Expense-Income side that never counted, and an Owner-Expenses side
+         that did; suppressing both removes only the counted cost.) General /
+         non-booking supply lines — anything not matching 'Supplies Charge | …' —
+         are left untouched, so they still come from QBO.
+      2. Insert one manual Supplies expense per CONFIRMED central-property Guesty
+         booking, EXCLUDING the Yacinde 'old bookings' (source_object='YacindeOld'),
+         which already carry their own supply from import_yacinde_old.
+
+    Non-central properties are not touched. Returns (n_suppressed, n_added).
+    """
+    if not central_pids:
+        return (0, 0)
+    ph = ",".join("?" * len(central_pids))
+
+    conn.execute("""DELETE FROM ledger_lines WHERE source_object='CentralSupply'
+                    AND posting_date>=? AND posting_date<=?""", (period_start, period_end))
+
+    # Re-include all booking supply lines in the period (so a property that leaves
+    # 'central' gets its QBO supplies back), then suppress them for central properties.
+    conn.execute("""UPDATE ledger_lines SET include_in_statement=1
+                    WHERE source='qbo' AND category='EXPENSE' AND subcategory='Supplies'
+                      AND description LIKE 'Supplies Charge |%'
+                      AND posting_date>=? AND posting_date<=?""", (period_start, period_end))
+    n_suppressed = conn.execute(f"""UPDATE ledger_lines SET include_in_statement=0
+                    WHERE property_id IN ({ph})
+                      AND source='qbo' AND category='EXPENSE' AND subcategory='Supplies'
+                      AND description LIKE 'Supplies Charge |%'
+                      AND posting_date>=? AND posting_date<=?""",
+                 (*central_pids, period_start, period_end)).rowcount
+
+    rows = conn.execute(f"""SELECT source_txn_id, vendor_customer, property_id,
+                                   posting_date, service_date, status
+                            FROM ledger_lines
+                            WHERE property_id IN ({ph})
+                              AND source='guesty' AND category='INCOME'
+                              AND (source_object IS NULL OR source_object NOT IN ('YacindeOld','OsbrRV'))
+                              AND posting_date>=? AND posting_date<=?""",
+                        (*central_pids, period_start, period_end)).fetchall()
+    n_added = missing = 0
+    ts = now_iso()
+    for code, guest, pid, checkin, checkout, status in rows:
+        if str(status or "").lower() == "canceled":
+            continue
+        guests = guests_by_code.get(str(code))
+        if not guests:
+            missing += 1
+            continue
+        try:
+            nights = (date.fromisoformat(str(checkout)[:10]) - date.fromisoformat(str(checkin)[:10])).days
+        except (ValueError, TypeError):
+            nights = 0
+        if nights <= 0:
+            continue
+        amt = supply_charge(guests, nights)
+        capped = " (capped at 60)" if nights > SUPPLY_MAX_NIGHTS else ""
+        conn.execute(
+            """INSERT INTO ledger_lines
+               (ledger_id, source, source_object, source_txn_id, source_line_id, property_id,
+                booking_id, posting_date, service_date, category, subcategory, description,
+                vendor_customer, qbo_account, amount, currency, include_in_statement, status,
+                last_updated_at, created_at)
+               VALUES (?, 'manual', 'CentralSupply', ?, NULL, ?, ?, ?, ?, 'EXPENSE', 'Supplies', ?, ?, ?, ?, 'USD', 1, 'posted', ?, ?)""",
+            (str(uuid.uuid4()), f"{code}_csupply", pid, code, checkin, checkout,
+             f"Supplies ({guests} guests x {min(int(nights), SUPPLY_MAX_NIGHTS)} nights x $0.90{capped}) - {guest} {code}",
+             guest, SUPPLY_ACCOUNT, -amt, ts, ts),
+        )
+        n_added += 1
+    conn.commit()
+    if missing:
+        print(f"  central supplies: {missing} bookings had no guest count in the converted CSV (skipped)")
+    return (n_suppressed, n_added)
+
+
+def _exclude_duplicate_guesty_deposits(conn, period_start: str, period_end: str) -> int:
+    """A channel booking (Airbnb/Booking.com/VRBO) sometimes lands in QBO as a
+    Deposit AND as a Guesty booking, double-counting the revenue. Guesty is the
+    canonical STR revenue source (channel-specific net, properly commissioned), so
+    any QBO INCOME Deposit whose description carries a confirmation code matching a
+    Guesty booking in the period is marked include_in_statement=0 — Guesty wins.
+
+    Idempotent and re-applied each build, so a later `qbo-sync` (which re-inserts
+    the deposit as include_in_statement=1) is re-corrected on the next build. Only
+    flips matches to 0; never re-includes, so it can't clobber other exclusions.
+    """
+    codes = [r[0] for r in conn.execute(
+        """SELECT DISTINCT source_txn_id FROM ledger_lines
+           WHERE source='guesty' AND category='INCOME'
+             AND posting_date>=? AND posting_date<=? AND source_txn_id IS NOT NULL""",
+        (period_start, period_end)).fetchall()]
+    if not codes:
+        return 0
+    deposits = conn.execute(
+        """SELECT ledger_id, property_id, amount, description FROM ledger_lines
+           WHERE source='qbo' AND category='INCOME' AND source_object='Deposit'
+             AND include_in_statement=1
+             AND posting_date>=? AND posting_date<=?""",
+        (period_start, period_end)).fetchall()
+    n = 0
+    for lid, pid, amount, desc in deposits:
+        d = str(desc or "")
+        hit = next((c for c in codes if c in d), None)
+        if hit:
+            conn.execute("UPDATE ledger_lines SET include_in_statement=0 WHERE ledger_id=?", (lid,))
+            n += 1
+            print(f"  excluded duplicate deposit: {pid} ${float(amount or 0):,.2f} (matches Guesty {hit})")
+    conn.commit()
+    return n
+
+
+def _offset_refunded_deposits(conn, period_start: str, period_end: str) -> int:
+    """Fully-refunded non-Guesty channel bookings: a QBO Deposit (shown in 'Other
+    Credits') that was later refunded via a `…1A - Net Earnings:Resolutions` purchase.
+
+    The deposit is counted as owner income but the refund posts to a Resolutions
+    account that no statement section pulls (expenses only include `1C - Owner
+    Expenses`), so the credit stands unoffset and overstates the payout. This pairs
+    each such refund with its Other-Credits deposit (same property, equal magnitude,
+    shared confirmation-code token) and **suppresses both** so the pair nets to $0.
+
+    Scope is deliberately narrow (per owner decision): ONLY refunds matching a
+    non-Guesty Other-Credits deposit. Refunds tied to Guesty bookings are left alone
+    (Guesty net is the revenue basis; deducting them could double-count). Both rows
+    must fall in the period so each build stays self-contained. Idempotent and
+    re-applied each build, so a later `qbo-sync` (which re-includes them) is
+    re-corrected. Returns the number of deposit/refund pairs offset.
+    """
+    import re
+
+    def _code_tokens(s):
+        return set(t for t in re.findall(r'[A-Za-z0-9\-]{6,}', str(s or ''))
+                   if any(ch.isdigit() for ch in t))
+
+    refunds = conn.execute(
+        """SELECT ledger_id, property_id, description, amount FROM ledger_lines
+           WHERE qbo_account LIKE '%Resolutions%' AND category='EXPENSE' AND amount < 0
+             AND posting_date>=? AND posting_date<=?""",
+        (period_start, period_end)).fetchall()
+    deposits = conn.execute(
+        """SELECT ledger_id, property_id, description, amount FROM ledger_lines
+           WHERE source='qbo' AND category='INCOME' AND source_object='Deposit'
+             AND posting_date>=? AND posting_date<=?""",
+        (period_start, period_end)).fetchall()
+
+    n = 0
+    used_deposits = set()
+    for r in refunds:
+        rtoks = _code_tokens(r["description"])
+        if not rtoks:
+            continue
+        for d in deposits:
+            if d["ledger_id"] in used_deposits or d["property_id"] != r["property_id"]:
+                continue
+            if round(abs(d["amount"]), 2) != round(abs(r["amount"]), 2):
+                continue
+            if rtoks & _code_tokens(d["description"]):
+                conn.execute("UPDATE ledger_lines SET include_in_statement=0 WHERE ledger_id IN (?,?)",
+                             (d["ledger_id"], r["ledger_id"]))
+                used_deposits.add(d["ledger_id"])
+                n += 1
+                print(f"  offset refunded deposit: {r['property_id']} ${abs(r['amount']):,.2f} (deposit + refund netted to $0)")
+                break
+    conn.commit()
+    return n
+
+
+def _apply_osbr_rv(conn, period_start: str, period_end: str) -> int:
+    """OSBR 'RV' income: Hipcamp.com credits posted to OSBR are RV-site bookings.
+
+    They arrive as plain QBO INCOME Deposits (property_id='osbr') and would otherwise
+    sit uncommissioned in 'Other Credits'. This moves each into the Net Revenue section
+    as an 'osbr_rv' sub-listing so it is commissioned at OSBR's PM rate:
+      1. Ensure the 'osbr_rv' display property exists (labelled 'OSBR-RV').
+      2. Delete prior OsbrRV net-revenue lines (idempotent).
+      3. For each OSBR Hipcamp.com QBO INCOME deposit: suppress it (drop from Other
+         Credits) and insert a source='guesty' INCOME 'booking' — gross = net = the
+         credit amount, reservation date = the credit's posting_date.
+    'osbr_rv' is a member of the 'osbr' rollup (config.yml), so it renders as a
+    sub-section of the OSBR statement and commissions at OSBR's parent rate. Idempotent
+    and re-applied each build, so a later `qbo-sync` (which re-inserts the deposit as
+    include_in_statement=1) is re-corrected on the next build. Returns bookings created.
+    """
+    # 1. Display property (reuse OSBR's owner + class; is_active=0 keeps it out of the
+    #    dashboard property dropdown — it's a sub-listing, not a standalone statement).
+    conn.execute("""INSERT OR IGNORE INTO properties
+                    (property_id, property_name, owner_id, qbo_class_id, qbo_class_name, is_active)
+                    SELECT 'osbr_rv', 'OSBR-RV', owner_id, qbo_class_id, qbo_class_name, 0
+                    FROM properties WHERE property_id='osbr'""")
+
+    # 2. Idempotent: clear prior RV net-revenue lines for the period.
+    conn.execute("""DELETE FROM ledger_lines WHERE source_object='OsbrRV'
+                    AND posting_date>=? AND posting_date<=?""", (period_start, period_end))
+
+    # 3. Convert each OSBR Hipcamp.com credit into an RV booking.
+    deposits = conn.execute(
+        """SELECT ledger_id, posting_date, amount FROM ledger_lines
+           WHERE property_id='osbr' AND source='qbo' AND category='INCOME'
+             AND vendor_customer LIKE '%Hipcamp%'
+             AND posting_date>=? AND posting_date<=?
+           ORDER BY posting_date""",
+        (period_start, period_end)).fetchall()
+    ts = now_iso()
+    n = 0
+    for lid, pdate, amount in deposits:
+        conn.execute("UPDATE ledger_lines SET include_in_statement=0 WHERE ledger_id=?", (lid,))
+        amt = round(float(amount or 0), 2)
+        code = f"HIPCAMP-{pdate}" if n == 0 else f"HIPCAMP-{pdate}-{n}"
+        conn.execute(
+            """INSERT INTO ledger_lines
+               (ledger_id, source, source_object, source_txn_id, source_line_id, property_id,
+                booking_id, posting_date, service_date, category, subcategory, description,
+                vendor_customer, qbo_account, amount, base_amount, currency,
+                include_in_statement, status, last_updated_at, created_at)
+               VALUES (?, 'guesty', 'OsbrRV', ?, NULL, 'osbr_rv',
+                       ?, ?, ?, 'INCOME', 'Hipcamp', 'RV Booking',
+                       'Hipcamp', NULL, ?, ?, 'USD', 1, 'confirmed', ?, ?)""",
+            (str(uuid.uuid4()), code, code, pdate, pdate, amt, amt, ts, ts))
+        n += 1
+    conn.commit()
+    return n
+
+def _apply_owner_cleaning_credit(conn, period_start: str, period_end: str,
+                                 guesty_csv_path: str, mapping_items: list[dict]):
+    """Credit owner_pays_cleaning properties the Guesty cleaning fee.
+
+    For these properties the owner is responsible for cleaning, so the cleaning fee the
+    guest paid (which the Guesty net-revenue formula subtracts out) belongs to the owner.
+    We add it back as a NON-commissioned OWNER_ADJ line so the stored amount_due (Excel
+    summary + end balances) includes it, matching the dashboard's Net Revenue table.
+    OWNER_ADJ has no display section of its own, so it does not double-print the cleaning
+    fee already shown per-booking. Idempotent: clears its own prior lines for the period.
+    """
+    conn.execute("""DELETE FROM ledger_lines
+                    WHERE posting_date>=? AND posting_date<=?
+                      AND source='manual' AND category='OWNER_ADJ'
+                      AND source_object='OwnerCleaningCredit'""",
+                 (period_start, period_end))
+
+    cleaning_props = {m["property_id"] for m in mapping_items if m.get("owner_pays_cleaning")}
+    if not cleaning_props:
+        conn.commit()
+        return
+
+    # booking_id -> cleaning fee (guest-paid) from the converted Guesty CSV
+    fee_by_code = _read_guesty_cleaning_by_code(guesty_csv_path)
+    if not fee_by_code:
+        conn.commit()
+        return
+
+    # Sum per property over this period's guesty INCOME bookings (canceled stays -> 0,
+    # mirroring the dashboard which zeroes cleaning for canceled bookings).
+    rows = conn.execute(
+        """SELECT property_id, booking_id, status FROM ledger_lines
+           WHERE posting_date>=? AND posting_date<=?
+             AND source='guesty' AND category='INCOME' AND include_in_statement=1""",
+        (period_start, period_end)).fetchall()
+    total_by_pid: dict[str, float] = {}
+    for r in rows:
+        pid = r["property_id"]
+        if pid not in cleaning_props:
+            continue
+        if str(r["status"] or "").lower() == "canceled":
+            continue
+        fee = fee_by_code.get(str(r["booking_id"]), 0.0)
+        total_by_pid[pid] = round(total_by_pid.get(pid, 0.0) + fee, 2)
+
+    for pid, amt in total_by_pid.items():
+        if abs(amt) < 0.005:
+            continue
+        conn.execute(
+            """INSERT INTO ledger_lines
+               (ledger_id, source, source_object, source_txn_id, source_line_id, property_id,
+                posting_date, category, subcategory, description, amount, include_in_statement, status, last_updated_at)
+               VALUES (?, 'manual', 'OwnerCleaningCredit', ?, NULL, ?, ?, 'OWNER_ADJ', 'Owner Cleaning Fee', ?, ?, 1, 'posted', ?)""",
+            (str(uuid.uuid4()), f"cleancredit_{pid}_{period_start}", pid, period_end,
+             "Owner Cleaning Fee (guest-paid, owner keeps)", amt, now_iso()),
+        )
+    conn.commit()
 
 def upsert_from_mapping(conn, mapping_items: list[dict]):
     cur = conn.cursor()
@@ -156,20 +528,84 @@ def cmd_guesty_import(args):
 def cmd_build(args):
     cfg = load_config(args.config)
     conn = connect(cfg["app"]["db_path"])
+    base_dir = Path(__file__).parent.parent
     period = args.period
     y, m = map(int, period.split("-"))
     period_start = f"{y:04d}-{m:02d}-01"
     last_day = calendar.monthrange(y, m)[1]
     period_end = f"{y:04d}-{m:02d}-{last_day:02d}"
-    default_rate = float(cfg["statement_policy"]["default_pm_fee_rate"])
 
     # Load mappings for owner flags
     items = load_class_mapping(args.mapping_classes)
 
+    # Rollups: parent property_id -> member listings consolidated into one statement
+    rollups = cfg.get("statement_rollups") or {}
+    rollup_children = {child for kids in rollups.values() for child in kids}
+
+    # Only generate statements for listings present in Listing_contacts.csv.
+    allowed = allowed_property_ids(conn, base_dir)
+
+    # property_id -> name, for per-listing Net Revenue sub-sections + expense 'Type' labels.
+    property_names = {r["property_id"]: r["property_name"]
+                      for r in conn.execute("SELECT property_id, property_name FROM properties")}
+
+    # OSBR Hipcamp.com credits → 'osbr_rv' Net Revenue bookings (commissioned at OSBR's
+    # rate), out of Other Credits. Runs before _apply_guesty_fees so the RV rows are
+    # fee-adjusted (a no-op: no QBO fees) from their base like any guesty booking.
+    n_rv = _apply_osbr_rv(conn, period_start, period_end)
+    if n_rv:
+        print(f"OSBR-RV: {n_rv} Hipcamp booking(s) moved to Net Revenue (commissioned).")
+
+    # Fee-adjust guesty INCOME in the ledger FIRST (idempotent), so build_statements
+    # computes totals from the same fee-adjusted net the Excel statements will show.
+    guesty_csv = str(Path(args.csv)) if getattr(args, "csv", None) else str(base_dir / "data/guesty_converted.csv")
+    _apply_guesty_fees(conn, period_start, period_end, guesty_csv)
+
+    # Credit owner_pays_cleaning properties the guest-paid cleaning fee (non-commissioned),
+    # so amount_due matches the dashboard. Must run before build_statements.
+    _apply_owner_cleaning_credit(conn, period_start, period_end, guesty_csv, items)
+
+    # Drop QBO Deposits that duplicate a Guesty booking (channel payout recorded in
+    # both) — Guesty is the canonical STR revenue source. Runs before build_statements.
+    n_dup = _exclude_duplicate_guesty_deposits(conn, period_start, period_end)
+    if n_dup:
+        print(f"Excluded {n_dup} duplicate channel-booking deposit(s) (Guesty kept).")
+
+    # Fully-refunded non-Guesty channel bookings: suppress the Other-Credits deposit and
+    # its matching Resolutions refund so the pair nets to $0 (owner decision: offset only
+    # Other-Credits matches; Guesty-linked refunds are left untouched to avoid double-count).
+    n_ref = _offset_refunded_deposits(conn, period_start, period_end)
+    if n_ref:
+        print(f"Offset {n_ref} refunded deposit/refund pair(s) to $0.")
+
+    # 'central' Supplies properties: charge a per-booking formula supply fee
+    # (0.9*guests*min(nights,60)) and suppress the QBO per-booking supply charges.
+    central_pids = central_supply_property_ids(conn, base_dir)
+    guests_by_code = {}
+    try:
+        _gdf = pd.read_csv(guesty_csv)
+        guests_by_code = {str(r["booking_id"]): int(r["guests"]) for _, r in _gdf.iterrows()
+                          if pd.notna(r.get("booking_id")) and pd.notna(r.get("guests"))}
+    except (FileNotFoundError, KeyError):
+        pass
+    n_supp, n_csup = _apply_central_supplies(conn, period_start, period_end, central_pids, guests_by_code)
+    if n_csup or n_supp:
+        print(f"Central supplies: {n_csup} formula charges added, {n_supp} QBO booking-supply lines suppressed.")
+
+    # For owner_pays_cleaning statements, the Excel 'Owner Cleaning Fee' column shows the
+    # guest-paid Guesty cleaning fee (owner income) — same figure the dashboard shows and
+    # the OWNER_ADJ credit folds into amount_due — rather than the QBO cleaning cost.
+    cleaning_props = {m["property_id"] for m in items if m.get("owner_pays_cleaning")}
+    guesty_clean_by_code = _read_guesty_cleaning_by_code(guesty_csv)
+
+    # owner_pays_taxes properties: the engine folds the "Taxes Paid to Owners" pass-through
+    # into amount_due ONLY for these, matching the dashboard/Excel per-booking Tax column.
+    tax_props = {m["property_id"] for m in items if m.get("owner_pays_taxes")}
+
     run_id = create_run(conn, period_start, period_end, cfg["statement_policy"]["default_basis"])
     build_statements(conn, run_id, period_start, period_end,
-                     default_pm_fee_rate=default_rate,
-                     default_reserve_target=float(cfg["statement_policy"]["default_reserve_target"]))
+                     default_reserve_target=float(cfg["statement_policy"]["default_reserve_target"]),
+                     rollups=rollups, allowed=allowed, tax_props=tax_props)
 
     out_dir = Path(args.output_dir)/period/"statements"
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -181,30 +617,42 @@ def cmd_build(args):
     for p in props:
         pid = p["property_id"]
 
-        # PM fee rate: contract > config default
-        c = conn.execute("""SELECT pm_fee_rate FROM owner_contracts
-                            WHERE property_id=? AND effective_start<=?
-                              AND (effective_end IS NULL OR effective_end>=?)
-                            ORDER BY effective_start DESC LIMIT 1""",
-                         (pid, period_start, period_start)).fetchone()
-        pm_fee_rate = float(c["pm_fee_rate"]) if c and c["pm_fee_rate"] is not None else default_rate
+        # Only build listings present in Listing_contacts.csv (see listing_filter).
+        if pid not in allowed:
+            continue
+
+        # Member listings of a rollup are folded into their parent's statement.
+        if pid in rollup_children:
+            continue
+        member_ids = [pid] + list(rollups.get(pid, []))
+        ph = ",".join("?" * len(member_ids))
+
+        # PM fee rate — one shared resolver, no silent default. build_statements
+        # (already run above) raises for any property with commissionable revenue but
+        # no rate, so a None here can only be a zero-revenue property; 0.0 just renders
+        # its (empty) commission column at 0%.
+        pm_fee_rate = resolve_pm_fee_rate(conn, pid, period_start)
+        if pm_fee_rate is None:
+            pm_fee_rate = 0.0
 
         # Guesty bookings with fees and owner costs
-        guesty_rows = conn.execute("""
-            SELECT source_txn_id as booking_id, vendor_customer as guest_name,
+        guesty_rows = conn.execute(f"""
+            SELECT property_id as prop_id, source_txn_id as booking_id, vendor_customer as guest_name,
                    posting_date as checkin, service_date as checkout, amount as net_revenue,
                    subcategory as channel, status as booking_status
             FROM ledger_lines
-            WHERE property_id=? AND posting_date>=? AND posting_date<=?
+            WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
               AND source='guesty' AND category='INCOME' AND include_in_statement=1
-            ORDER BY posting_date""", (pid, period_start, period_end)).fetchall()
+            ORDER BY posting_date""", (*member_ids, period_start, period_end)).fetchall()
 
         bookings = []
         for row in guesty_rows:
             booking_dict = dict(row)
+            booking_pid = booking_dict.pop('prop_id')
+            booking_dict['property_id'] = booking_pid  # kept for per-listing grouping
 
             # Get QBO fees (channel + stripe + tax + deductions)
-            qbo_fees = get_qbo_fees(conn, pid, booking_dict['booking_id'], booking_dict['checkin'], booking_dict['checkout'], period_start, period_end)
+            qbo_fees = get_qbo_fees(conn, booking_pid, booking_dict['booking_id'], booking_dict['checkin'], booking_dict['checkout'], period_start, period_end)
             channel_fee = qbo_fees['channel_fee']
             stripe_fee = qbo_fees['stripe_fee']
             tax_fee = qbo_fees['tax']
@@ -218,62 +666,72 @@ def cmd_build(args):
                 if implied_channel != 0.0:
                     channel_fee = implied_channel
 
-            # Get owner costs (cleaning, tax)
-            owner_costs = get_owner_costs(conn, pid, booking_dict['booking_id'], period_start, period_end)
+            # Get owner costs (cleaning, tax). Pass dates so transient-occupancy tax
+            # paid to the owner (matched by the stay's date range) is captured.
+            owner_costs = get_owner_costs(conn, booking_pid, booking_dict['booking_id'], period_start, period_end,
+                                          checkin=booking_dict['checkin'], checkout=booking_dict['checkout'])
 
-            # NET REVENUE calculation
-            # For cancelled bookings: net_revenue = total_payout (already set in convert_guesty_export)
-            # For confirmed bookings: apply QBO channel, stripe fees, and deductions
-            net_revenue = booking_dict['net_revenue']
-            channel = booking_dict.get('channel', '').upper()
-            booking_status = booking_dict.get('booking_status', 'posted').lower()
-
-            if booking_status == 'confirmed':
-                # For Booking.com: apply channel_fee + stripe_fee - tax from QBO (no deductions)
-                # For other channels: apply channel_fee + stripe_fee from QBO (no deductions)
-                # Note: QBO fees are already negative (costs), so we add them
-                if 'BOOKING.COM' in channel:
-                    if channel_fee != 0.0 or tax_fee != 0.0 or stripe_fee != 0.0:
-                        # Tax from QBO is already negative, so add it (subtracts from net_revenue)
-                        net_revenue = net_revenue - abs(channel_fee) - abs(stripe_fee) - abs(tax_fee)
-
-                        conn.execute("""UPDATE ledger_lines SET amount=?
-                                       WHERE source='guesty' AND source_txn_id=? AND category='INCOME'""",
-                                    (net_revenue, booking_dict['booking_id']))
-                        conn.commit()
-                else:
-                    if channel_fee != 0.0 or stripe_fee != 0.0:
-                        # QBO fees are already negative, so add them
-                        net_revenue = net_revenue - abs(channel_fee) - abs(stripe_fee)
-
-                        conn.execute("""UPDATE ledger_lines SET amount=?
-                                       WHERE source='guesty' AND source_txn_id=? AND category='INCOME'""",
-                                    (net_revenue, booking_dict['booking_id']))
-                        conn.commit()
-
-            booking_dict['net_revenue'] = net_revenue
+            # net_revenue (from the SELECT) is already fee-adjusted in the ledger by
+            # _apply_guesty_fees(), run before build_statements — so use it directly.
+            # Do NOT re-subtract fees here, or a single build would double-deduct.
+            # get_qbo_fees above is only needed for the channel/card-fee display column.
             booking_dict['total_channel_and_card_fees'] = abs(channel_fee) + abs(stripe_fee)
-            booking_dict['owner_cleaning_cost'] = owner_costs['owner_cleaning_cost']
+            if booking_pid in cleaning_props:
+                # Show the guest-paid cleaning fee as owner income (0 for canceled stays).
+                booking_dict['owner_cleaning_cost'] = (
+                    0.0 if str(booking_dict.get('booking_status') or '').lower() == 'canceled'
+                    else round(guesty_clean_by_code.get(str(booking_dict['booking_id']), 0.0), 2))
+            else:
+                booking_dict['owner_cleaning_cost'] = owner_costs['owner_cleaning_cost']
             booking_dict['owner_tax_cost'] = owner_costs['owner_tax_cost']
 
             bookings.append(booking_dict)
 
-        # QBO deposit income (lease rent, credits, etc.)
-        other_income = conn.execute("""
-            SELECT posting_date, description, vendor_customer, subcategory, amount
+        # LTR rents + deferred bookings (from the LTR CSV) as Net Revenue lines —
+        # one line per property (full monthly rent). PM commission is computed by
+        # excel_writer from net_revenue * pm_fee_rate, like Guesty bookings.
+        ltr_recs, ltr_covered = build_ltr_records(
+            base_dir, period, member_ids,
+            lambda code: conn.execute(
+                "SELECT 1 FROM ledger_lines WHERE source='guesty' AND source_txn_id=? LIMIT 1",
+                (code,)).fetchone() is not None)
+        for rec in ltr_recs:
+            bookings.append({
+                "property_id": rec["property_id"],
+                "booking_id": rec["booking_id"],
+                "guest_name": rec["guest_name"],
+                "checkin": rec["checkin"],
+                "checkout": rec["checkout"],
+                "net_revenue": rec["net_revenue"],
+                "total_channel_and_card_fees": 0.0,
+                "owner_cleaning_cost": 0.0,
+                "owner_tax_cost": 0.0,
+            })
+
+        # QBO deposit income (lease rent, credits, etc.). Rent for properties now
+        # shown in the Net Revenue section is excluded so it isn't double-listed;
+        # rent for properties WITHOUT a Net Revenue line stays here.
+        other_income_rows = conn.execute(f"""
+            SELECT posting_date, description, vendor_customer, subcategory, amount,
+                   property_id, source_object
             FROM ledger_lines
-            WHERE property_id=? AND posting_date>=? AND posting_date<=?
+            WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
               AND source='qbo' AND category='INCOME' AND include_in_statement=1
-            ORDER BY posting_date""", (pid, period_start, period_end)).fetchall()
+            ORDER BY posting_date""", (*member_ids, period_start, period_end)).fetchall()
+        other_income = [
+            oi for oi in other_income_rows
+            if not (oi["property_id"] in ltr_covered
+                    and is_rent_income(oi["source_object"], oi["description"]))
+        ]
 
         # Owner-responsibility QBO expenses only (account contains 'Owner')
-        expense_rows = conn.execute("""
-            SELECT posting_date, description, vendor_customer, qbo_account, subcategory, amount
+        expense_rows = conn.execute(f"""
+            SELECT property_id, posting_date, description, vendor_customer, qbo_account, subcategory, amount
             FROM ledger_lines
-            WHERE property_id=? AND posting_date>=? AND posting_date<=?
-              AND source='qbo' AND category='EXPENSE' AND include_in_statement=1
+            WHERE property_id IN ({ph}) AND posting_date>=? AND posting_date<=?
+              AND source IN ('qbo','manual') AND category='EXPENSE' AND include_in_statement=1
               AND qbo_account LIKE '%Owner Expenses%'
-            ORDER BY subcategory, posting_date""", (pid, period_start, period_end)).fetchall()
+            ORDER BY subcategory, posting_date""", (*member_ids, period_start, period_end)).fetchall()
 
         expenses_by_subcat = {}
         for exp in expense_rows:
@@ -309,6 +767,8 @@ def cmd_build(args):
             owner_pays_cleaning=owner_pays_cleaning,
             owner_pays_supplies=owner_pays_supplies,
             owner_pays_taxes=owner_pays_taxes,
+            property_names=property_names,
+            multi_listing=len(member_ids) > 1,
         )
 
         sha = sha256_file(str(out_path))

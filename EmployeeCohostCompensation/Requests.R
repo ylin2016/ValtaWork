@@ -7,8 +7,7 @@ library(reshape2)
 library(scales)
 library(ggplot2)
 
-
-setwd("/Users/ylin/Google Drive/My Drive/Cohost/Cohost Cleaner Compensation/")
+setwd("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/")
 cohost = read.xlsx('./Working/Data/Property_Cohost.xlsx')
 employee = read.xlsx('./Working/Data/Property_Cohost.xlsx',sheet='Employee')
 employee.rates = read.xlsx('./Working/Data/Property_Cohost.xlsx',sheet='Rates')
@@ -410,4 +409,77 @@ data = data %>% select(Listing,Confirmation.Code,booking_platform,yearmonth,
                        nights,guests,children,infants,cleaning_fee,total_revenue,PET.FEE,
                        DailyListingPrice,AvgDailyRate)
 write.xlsx(data,"/Users/ylin/Google Drive/My Drive/Cohost/Data and Reporting/03-Revenue & Pricing/Analytics/OSBR_booking_records-20251008.xlsx")
+
+#2026.6.19:  run of how many days between check in and cancellation dates for cancelled bookings?
+
+setwd("/Users/ylin/Google Drive/My Drive/01- Compensation Calculation/")
+source("/Users/ylin/ValtaWork/EmployeeCohostCompensation/Functions.R")
+confirmed = read.csv("/Users/ylin/Google Drive/My Drive/Data and Reporting/Data/Revenue/Guesty_bookings_2026-20260616.csv")
+cancelled = read.csv(paste0(fileloc,'Guesty_booking_cancelled_2026.csv'))
+
+cancelled = cancelled %>% 
+          mutate( month = substr(CHECK.IN,1,7),
+                   CheckIn = as.Date(CHECK.IN),
+                   CheckOut = as.Date(CHECK.OUT),
+                   cancelled_date = as.Date(CANCELLATION.DATE)) %>%
+          mutate(days = CheckIn-cancelled_date) %>%
+          mutate(dayscateg = cut(as.numeric(days),
+                                 breaks = c(min(days),0,7,14,21,30,max(days))))
+confirmed = confirmed %>% 
+  mutate( month = substr(CHECK.IN,1,7),
+          CheckIn = as.Date(CHECK.IN),
+          CheckOut = as.Date(CHECK.OUT))
+          
+tabs = cancelled %>% group_by(month,dayscateg) %>% reframe(count=n())
+
+ggplot(tabs,aes(month,count,fill=dayscateg)) + 
+  geom_bar(stat="identity") +
+  labs(fill="checkin-cancelled")
+
+ggplot(tabs, aes(x = month, y = count, fill = dayscateg)) +
+  geom_col(position = "fill") +
+  scale_y_continuous(labels = scales::percent) +
+  labs(fill = "checkin-cancelled")
+
+tapply(cancelled$days,cancelled$month,summary)
+
+
+sums = merge(confirmed %>% group_by(LISTING.S.NICKNAME,month,SOURCE) %>%
+  reframe(confirmed = n()),
+cancelled %>% group_by(LISTING.S.NICKNAME,month,SOURCE) %>%
+  reframe(cancelled = n()),
+by=c("LISTING.S.NICKNAME","month","SOURCE"),all=T)
+
+sums = sums %>% 
+  mutate(cancel_pct = cancelled/(cancelled+confirmed),
+         SOURCE = sub('airbnb2','Airbnb',SOURCE))
+sums_yearly = sums %>% filter(substr(month,1,4) == 2026) %>%
+  group_by(SOURCE) %>%
+  reframe(cancelled = sum(cancelled,na.rm=T),
+         confirmed = sum(confirmed,na.rm=T)) %>%
+  mutate(cancel_pct = cancelled/(cancelled+confirmed))
+
+sums_monthly = sums %>% group_by(month,SOURCE) %>% 
+      reframe(cancelled = sum(cancelled,na.rm=T),
+              confirmed = sum(confirmed,na.rm=T)) %>%
+      mutate(cancel_pct = cancelled/(cancelled+confirmed))
+write.xlsx(sums_monthly,"../03-Revenue & Pricing/Analytics/cancelations_permonth.xlsx")
+
+sums_monthly %>% 
+  filter(substr(month,1,4) == 2026 & (!SOURCE %in% c("owner") &  
+           SOURCE %in% sums_yearly$SOURCE[sums_yearly$cancel_pct>0])) %>% 
+  mutate(cancel_pct=paste0(round(cancel_pct,2)*100,"%  (",cancelled,"/",cancelled+confirmed,")")) %>%
+  select(month,SOURCE,cancel_pct) %>%
+  pivot_wider(names_from = month,values_from = cancel_pct,values_fill = "") %>%
+  View()
+
+sums_monthly %>% filter(substr(month,1,4) == 2026) %>% 
+ggplot(aes(month,cancel_pct,group = SOURCE,color=SOURCE)) +
+  geom_point()+
+  geom_line()
+
+cancelled %>% 
+  filter(LISTING.S.NICKNAME %in% c('Hoodsport 26060')) %>% 
+  select(LISTING.S.NICKNAME,CheckIn,CheckOut,NUMBER.OF.NIGHTS,
+         cancelled_date,days,dayscateg)
 
