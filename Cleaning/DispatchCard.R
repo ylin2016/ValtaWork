@@ -97,7 +97,7 @@ dispatch_monthly = data_all %>% filter(Rate>0) %>%
 #        Income from STR and Residential
 #--------------------------------------------------------------------------------
 months = unique(substr(data$Cleaning.Date,1,7))
-months = months[-length(months)]
+#months = months[-length(months)]
 
 payout = read_payout(payfile2026,payfile2025,months)
 
@@ -137,7 +137,21 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
     mutate(Times.pay= coalesce(Times.str, 0) + coalesce(Times.Res, 0),
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
-both %>% filter(yearmonth %in% '2026-07' & diff!=0)
+both %>% filter(yearmonth %in% '2026-08' & diff!=0)
+
+#2026-08
+#Elektra 507: typo on dispatch card?  no payment record
+#Issaquah 1938: 2 dispatch, 1 payment
+#Mercer 2449: 3 dispatch,2 payment
+#Bellevue 14507U3: no dispatch record
+
+#2026-07
+#                 Times.disp Times.str Times.Res Times.pay diff
+#Clyde Hill 8833 : 3 /NA/2 /2 : one cleaning moved to 30th. Total 2
+#Sammamish 22525 : 2 /NA/1/1: missing 1 payment
+#Seattle 5544    : 5/NA/6/6
+
+
 ## 2026.06
 ## 6/11 Sammamish 20916 not Issaquah 20916
 
@@ -184,7 +198,8 @@ Elektra 909         5 -> 4
 Issaquah 917        1 -> 2
 Kirkland 8017       2 -1- 2
 
-month12 = both %>% filter(yearmonth %in% c('2026-05','2026-04','2026-03','2026-02','2026-01')) %>% 
+month12 = both %>% filter(yearmonth %in% c('2026-08','2026-07','2026-06',
+                            '2026-05','2026-04','2026-03','2026-02','2026-01')) %>% 
   group_by(Listing) %>%
   reframe(across(where(is.numeric), sum,na.rm=T)) %>% 
   mutate(diff = Times.disp-Times.pay) 

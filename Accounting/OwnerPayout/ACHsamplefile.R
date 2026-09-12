@@ -66,7 +66,7 @@ both = merge(owners %>% select(Property,Name),
 
 ## ======================================================
 ### create ACH file
-paydate ="20260914"
+paydate ="20260915"
 paymonth = "2609"
 creation.date = "260909"
 
