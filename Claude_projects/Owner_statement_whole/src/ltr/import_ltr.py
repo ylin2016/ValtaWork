@@ -14,30 +14,16 @@ real QBO-synced rows (whose source_object is Bill/Deposit/Invoice/JournalEntry/
 Purchase) or guesty bookings.
 """
 import argparse
-import re
 import uuid
 import calendar
 import pandas as pd
-from pathlib import Path
 
-from ..common.config import load_config
 from ..common.db import connect
 from ..common.utils import now_iso
-
-# Listings whose slugged name does not match the canonical property_id.
-_ALIASES = {
-    "bellevue 14507u3": "bellevue_14507_unit_3",
-}
-
-
-def to_property_id(listing: str) -> str:
-    cleaned = str(listing).strip().lower()
-    alias = _ALIASES.get(cleaned)
-    if alias:
-        return alias
-    cleaned = re.sub(r"[^a-z0-9]+", "_", cleaned)
-    cleaned = re.sub(r"_+", "_", cleaned).strip("_")
-    return cleaned
+# Listing label -> property_id lives in `records` (the display-layer module that
+# also ships in the deploy bundle), so the importer and the Booking Breakdown can
+# never disagree about which unit a CSV row belongs to.
+from .records import to_property_id  # noqa: F401  (re-exported for callers/tests)
 
 
 def to_float(v) -> float:
@@ -109,6 +95,16 @@ def import_ltr_csv(conn, csv_path: str, period: str):
              AND LOWER(description) LIKE '%rent%' AND include_in_statement=0""",
         (period_start, period_end),
     )
+    # ...and any prior _replace_colliding suppression of QBO deposits that carry a
+    # confirmation code in vendor_customer, for the same reason.
+    cur.execute(
+        """UPDATE ledger_lines SET include_in_statement=1
+           WHERE source='qbo' AND category='INCOME'
+             AND source_object NOT IN ('LTR','DEFERRED')
+             AND posting_date>=? AND posting_date<=?
+             AND vendor_customer LIKE '% - %' AND include_in_statement=0""",
+        (period_start, period_end),
+    )
 
     def _suppress_rent_deposits(prop):
         """Hide the QBO 'rent' deposits for this property/period from the statement
@@ -140,14 +136,38 @@ def import_ltr_csv(conn, csv_path: str, period: str):
         return n, total
 
     def _replace_colliding(code):
-        """LTR wins: delete any non-LTR/DEFERRED ledger row (e.g. a guesty
-        booking) sharing this confirmation code, so the LTR/DEFERRED amount
-        fully replaces it. Returns the number of rows deleted."""
+        """LTR wins: drop any non-LTR/DEFERRED ledger row for this confirmation code, so
+        the LTR/DEFERRED amount fully replaces it. Returns the number of rows affected.
+
+        TWO ways a row can carry the code, because QBO and Guesty key rows differently:
+
+        * `source_txn_id` — guesty bookings. DELETED (guesty-import re-adds them, and the
+          existing dedup expects them gone). **Scoped to the period**: the DELETE used to
+          be unscoped, so importing a deferred row for month N wiped the ORIGINAL Guesty
+          booking wherever it lived. Importing 2026-05 deleted `GY-LsV362As` from 2026-04
+          and took $14,772.94 of Seattle 9021's April revenue with it (plus three more
+          properties across 2026-03/04). Recovery is a guesty-import of the robbed period.
+        * `vendor_customer` — QBO Deposits, which key on the QBO transaction id and put the
+          code in Guesty's "<channel> - <guest> - <code>" customer string (the same shape
+          reporting.other_income parses). SUPPRESSED rather than deleted: qbo-sync would
+          re-add a deleted row, and include_in_statement=0 is reversible and idempotent.
+          Missing these let one booking be counted twice — bellevue_1326 2026-07 carried
+          BOTH the $9,112.25 DEFERRED row and a $6,519.38 QBO deposit for HMPA8BRAYA.
+        """
         cur.execute(
             """DELETE FROM ledger_lines
-               WHERE source_txn_id=? AND source_object NOT IN ('LTR','DEFERRED')""",
-            (code,))
-        return cur.rowcount
+               WHERE source_txn_id=? AND source_object NOT IN ('LTR','DEFERRED')
+                 AND posting_date>=? AND posting_date<=?""",
+            (code, period_start, period_end))
+        n = cur.rowcount
+        cur.execute(
+            """UPDATE ledger_lines SET include_in_statement=0
+               WHERE source='qbo' AND category='INCOME'
+                 AND source_object NOT IN ('LTR','DEFERRED')
+                 AND posting_date>=? AND posting_date<=?
+                 AND vendor_customer LIKE ('% - ' || ?)""",
+            (period_start, period_end, code))
+        return n + cur.rowcount
 
     ltr_n = deferred_n = clean_n = 0
     replaced = []
@@ -167,6 +187,11 @@ def import_ltr_csv(conn, csv_path: str, period: str):
                # counted + commissioned exactly once. (Was: add only the shortfall,
                # which left QBO-deposited rent sitting UNCOMMISSIONED in Other Credits.)
             add_amount = round(x["amount"], 2)
+            # Owner rule: if the LTR CSV carries the booking, the LTR record wins — so an
+            # LTR row also displaces a QBO deposit that names its confirmation code.
+            n_del = _replace_colliding(x["code"])
+            if n_del:
+                replaced.append((x, n_del))
             n_sup, sup_total = _suppress_rent_deposits(x["prop"])
             if n_sup:
                 suppressed.append((x, n_sup, sup_total))

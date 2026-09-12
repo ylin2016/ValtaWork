@@ -2,10 +2,16 @@ from pathlib import Path
 import re
 import yaml
 
+from dotenv import load_dotenv
+
+from src import paths
 from src.common.config import load_config
 from src.expense.qbo_client import QBOClient
 
-cfg = load_config("config.yml")
+# Read-only QBO scripts. `paths` resolves config and the .env regardless of cwd;
+# these predate it and passed a bare relative "config.yml".
+load_dotenv(paths.ENV_FILE)
+cfg = load_config(str(paths.CONFIG_YML))
 q = cfg["qbo"]
 
 qbo = QBOClient(

@@ -13,9 +13,6 @@ def sha256_file(path: str) -> str:
 def now_iso() -> str:
     return datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
-def ensure_dir(p: str) -> None:
-    Path(p).mkdir(parents=True, exist_ok=True)
-
 def read_json(path: str, default=None):
     p = Path(path)
     if not p.exists():

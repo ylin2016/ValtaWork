@@ -1,28 +1,24 @@
 from pathlib import Path
 from datetime import datetime
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
-from openpyxl.utils import get_column_letter
+from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.comments import Comment
 
-from .booking_breakdown import DISP as _BD_DISP, NUM as _BD_NUM, natural_key
+from .booking_breakdown import natural_key
 
 # ── palette ──────────────────────────────────────────────────────────────────
 _DARK_BLUE  = "1F4E79"
 _MED_BLUE   = "2E74B5"
-_LIGHT_BLUE = "BDD7EE"
 _GREEN_FILL = "E2EFDA"
 _ALT_FILL   = "F5F5F5"
 _WHITE      = "FFFFFF"
 
 _SECTION_FILL = PatternFill("solid", fgColor=_DARK_BLUE)
 _COL_HDR_FILL = PatternFill("solid", fgColor=_MED_BLUE)
-_SUMM_FILL    = PatternFill("solid", fgColor=_LIGHT_BLUE)
 _TOTAL_FILL   = PatternFill("solid", fgColor=_GREEN_FILL)
 _GRAND_FILL   = PatternFill("solid", fgColor="CFE0C3")  # darker green for the grand Total Net Revenue
 _ALT          = PatternFill("solid", fgColor=_ALT_FILL)
 
-_THIN   = Side(style="thin", color="CCCCCC")
-_BORDER = Border(bottom=_THIN)
 
 CURRENCY = '$#,##0.00'
 FONT_SIZE = 14
@@ -79,19 +75,28 @@ def _spacer(ws, row, height=6):
 
 # Excel Booking Breakdown columns: (header, row-key). The dashboard/PDF fold channel/Guesty/
 # Stripe into one "Fees" column; Excel splits them into the three components the rows already
-# carry (_ch/_gu/_st, per reporting.booking_breakdown.FEE_PARTS). Everything else matches _BD_DISP.
+# carry (_ch/_gu/_st, per reporting.booking_breakdown.FEE_PARTS). Everything else matches
+# booking_breakdown.DISP.
 _BD_XLS_COLS = [
     ("Conf Code", "Conf Code"),
     ("Bookings", "Bookings"),
     ("Guest Pay", "Guest Pay"),
+    ("Accommodation", "Accommodation"),
+    ("Markup", "Markup"),
+    ("Add-ons", "Add-ons"),
     ("Channel Fee", "_ch"),
     ("Guesty Fee", "_gu"),
     ("Stripe Fee", "_st"),
+    # Cohost handling fee out of an Airbnb Resolution Center line (payment_model.
+    # ARC_NOT_OWNER_INCOME) — $0.00 on every ordinary booking, but it has to have a
+    # column of its own or the Excel fee split stops adding up to "Fees".
+    ("Cohost Handling", "_ar"),
     ("Cleaning Fee", "Cleaning Fee"),
     ("Tax", "Tax"),
     ("Net Rental Revenue", "Net Rental Revenue"),
 ]
-_BD_XLS_NUMKEYS = {"Guest Pay", "_ch", "_gu", "_st", "Cleaning Fee", "Tax", "Net Rental Revenue"}
+_BD_XLS_NUMKEYS = {"Guest Pay", "Accommodation", "Markup", "Add-ons",
+                   "_ch", "_gu", "_st", "Cleaning Fee", "Tax", "Net Rental Revenue"}
 
 
 def _write_breakdown(ws, row, unit_rows, title="Booking Breakdown", ncols=None):
@@ -112,7 +117,16 @@ def _write_breakdown(ws, row, unit_rows, title="Booking Breakdown", ncols=None):
         for col, (_hdr, key) in enumerate(_BD_XLS_COLS, start=1):
             v = r.get(key, "")
             if key in _BD_XLS_NUMKEYS:
-                _cell(ws, row, col, round(float(v or 0), 2), bold=is_total, bg=bg, fmt=CURRENCY, align="right")
+                if v is None:
+                    _cell(ws, row, col, "", bold=is_total, bg=bg, align="right")
+                else:
+                    _cell(ws, row, col, round(float(v or 0), 2), bold=is_total, bg=bg,
+                          fmt=CURRENCY, align="right")
+                    # Excel has no hover, so name the add-on in a real cell note —
+                    # "Add-ons $50.00" alone does not tell the owner what it was.
+                    if key == "Add-ons" and str(r.get("_addon_detail") or ""):
+                        ws.cell(row=row, column=col).comment = Comment(
+                            str(r["_addon_detail"]), "Valta Realty")
             else:
                 _cell(ws, row, col, str(v), bold=is_total, bg=bg,
                       align=("center" if key == "Conf Code" else "left"))
@@ -177,8 +191,8 @@ def write_statement(output_path: str, period: str, property_info: dict,
 
     bookings: list of dicts with keys:
       - booking_id, guest_name, checkin, checkout, net_revenue
-      - total_channel_and_card_fees (negative, deducted from net_rental)
       - owner_cleaning_cost, owner_tax_cost (negative values)
+      - commission (optional; per-ledger-line rounded — see booking_breakdown)
     """
     wb = Workbook()
     ws = wb.active
@@ -190,8 +204,6 @@ def write_statement(output_path: str, period: str, property_info: dict,
         ncols_revenue += 1
     if owner_pays_taxes:
         ncols_revenue += 1
-
-    ncols_expenses = 7  # Date, Description (merged B-C), Type (merged D-E), F, Amount in G
 
     # Column widths
     ws.column_dimensions["A"].width = 18
@@ -268,7 +280,12 @@ def write_statement(output_path: str, period: str, property_info: dict,
             net_rental = round(float(b.get("net_revenue") or 0), 2)
             cleaning_fee = round(float(b.get("owner_cleaning_cost") or 0), 2) if owner_pays_cleaning else 0.0
             tax_paid = round(float(b.get("owner_tax_cost") or 0), 2) if owner_pays_taxes else 0.0
-            comm = round(-net_rental * pm_fee_rate, 2)
+            # Prefer the commission the caller computed: booking_breakdown.net_revenue_rows
+            # rounds it PER LEDGER LINE (a booking plus any merged add-on is two lines),
+            # exactly as netrevenue.engine sums the stored PM fee. Recomputing it here from
+            # the merged net rounds once and drifts a penny (elektra_1413 2026-07).
+            comm = (round(float(b["commission"]), 2) if b.get("commission") is not None
+                    else round(-net_rental * pm_fee_rate, 2))
             owner_rev = round(net_rental + cleaning_fee + tax_paid + comm, 2)
             col = 1
             _cell(ws, r, col, _fmt_dates(b["checkin"], b["checkout"]), bg=bg); col += 1
@@ -368,7 +385,7 @@ def write_statement(output_path: str, period: str, property_info: dict,
         row = _spacer(ws, row)
 
     # ── EXPENSE SECTIONS ──────────────────────────────────────────────────────
-    ORDER = ["Repairs & Maintenance", "Cleaning Labor", "Supplies", "Utilities",
+    ORDER = ["Repairs", "Maintenance", "Cleaning Labor", "Supplies", "Utilities",
              "Internet/Cable", "HOA", "Insurance", "Property Taxes", "Other Expense"]
 
     def _sort_key(s):

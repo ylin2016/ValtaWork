@@ -17,7 +17,6 @@ CLAUDE.md). The Open API silently excludes deactivated (active=false) listings; 
 """
 import argparse
 import calendar
-import json
 
 import pandas as pd
 
@@ -25,8 +24,8 @@ from .. import paths
 from .convert_export import to_property_id
 from ..guesty.client import GuestyClient
 from ..guesty.reservation_financials import build_breakdown, categorize_item
-from ..guesty.reservations_batch import summary_row
-from .payment_model import compute_breakdown
+from ..guesty.reservations_batch import fetch_range, summary_row
+from .payment_model import applied_adjustments, compute_breakdown
 
 # Stable column order for the folded fee-category pivot (mirrors reservations_batch.main).
 CAT_ORDER = [
@@ -39,7 +38,6 @@ CAT_ORDER = [
     "discount_weekly_monthly", "airbnb_resolution_center", "host_channel_fee",
 ]
 
-PAGE = 100
 # summary FIELDS + guestsCount (needed for the UI-shaped export's NUMBER OF GUESTS)
 # + specialRequests (Expedia stamps "Payment method: EXPEDIA VIRTUAL CARD" there, which
 # selects the virtual-card channel-fee formula in payment_model).
@@ -47,26 +45,6 @@ FIELDS = ("confirmationCode source status checkIn checkOut nightsCount guestsCou
           "listing.nickname listingId guest.fullName money specialRequests")
 
 
-def fetch_range(client: GuestyClient, dfrom: str, dto: str, statuses: list[str] | None) -> list[dict]:
-    filt = [
-        {"field": "checkIn", "operator": "$gte", "value": dfrom},
-        {"field": "checkIn", "operator": "$lte", "value": f"{dto}T23:59:59.999Z"},
-    ]
-    if statuses:
-        filt.append({"field": "status", "operator": "$in", "value": statuses})
-    out, skip = [], 0
-    while True:
-        r = client.get("/reservations", params={
-            "filters": json.dumps(filt), "fields": FIELDS,
-            "limit": PAGE, "skip": skip, "sort": "checkIn",
-        })
-        batch = r.get("results", [])
-        out.extend(batch)
-        total = r.get("count", len(out))
-        print(f"  fetched {len(out)}/{total}")
-        skip += len(batch)
-        if not batch or len(out) >= total or skip >= total:
-            return out
 
 
 def build_summary_frame(reservations: list[dict]) -> pd.DataFrame:
@@ -166,7 +144,7 @@ def main():
 
     client = GuestyClient()
     print(f"Fetching reservations with check-in {dfrom} … {dto} (status in {statuses})")
-    reservations = fetch_range(client, dfrom, dto, statuses)
+    reservations = fetch_range(client, dfrom, dto, statuses, fields=FIELDS)
     print(f"Building summary for {len(reservations)} reservation(s)…")
     S = build_summary_frame(reservations)
     S["data_source"] = "API (active listing)"
@@ -190,6 +168,33 @@ def main():
     b_path = paths.payment_breakdown_csv(args.period)
     bd.to_csv(b_path, index=False)
     print(f"[B] wrote {len(bd)} rows (dropped {dropped} with InvoiceItem=0) -> {b_path}")
+
+    # A source string no row group claims falls through to `unknown`, which charges NO
+    # channel/Guesty/Stripe fee — so it silently OVERSTATES the owner's net rather than
+    # failing. Guesty adds storefront variants without warning ("homeaway2" showed up in
+    # 2026-08 and cost $314.77 over 5 bookings), so say so loudly here instead of leaving
+    # it to be spotted on a statement.
+    unknown = bd[bd["row_group"].eq("unknown")]
+    if len(unknown):
+        print(f"\n  !! {len(unknown)} booking(s) on {unknown['channel'].nunique()} UNMAPPED "
+              f"source(s) — charged NO fees (net overstated). Map them in "
+              f"payment_model._assign_row_group:")
+        for ch, g in unknown.groupby("channel"):
+            print(f"       {str(ch):22s} {len(g):3d} booking(s)  "
+                  f"InvoiceItem ${g['InvoiceItem'].sum():,.2f}")
+
+    # Every per-reservation manual adjustment this pull re-applied. This file is the ONLY
+    # writer of payment_breakdown_<p>.csv and it overwrites, so a correction that lives
+    # only in the CSV is destroyed here; printing the list is how you confirm each one is
+    # in `payment_model` and actually fired, rather than discovering months later that a
+    # number quietly reverted.
+    hits = applied_adjustments(bd["confirmationCode"].astype(str))
+    if hits:
+        print(f"\n  manual adjustments re-applied for {args.period} ({len(hits)}):")
+        for name, code, value in hits:
+            print(f"    {code:24s} {name}" + (f" = {value}" if value is not None else ""))
+    else:
+        print(f"\n  no manual adjustments apply to {args.period}.")
 
     print("\nNext: python -m src.breakdown.convert_export "
           f"--input {a_path} --output {paths.guesty_converted_csv(args.period)}")

@@ -17,6 +17,25 @@ clean. Nothing in the workflow imports anything here.
 | `build_channel_calculator.py` | Pull the Guesty account channel **markups** and build `output/channel_pricing_calculator.xlsx` — a live-formula what-if: one accommodation fare -> markup / fees / tax / net revenue on every channel | tool — run ad hoc |
 | `update_mapping_term.py` | Backfill the `term` (STR/LTR) field on mapping entries | one-time (done) |
 
+## Moved out — QuickBooks WRITES live in `../QBO_operations`
+
+The channel-payout journal entries, the reservation-payment repointing and the
+account recategorisations used to sit here. They write to QuickBooks, and this
+project only reads it, so they moved to the sibling `QBO_operations` project:
+
+| was | now |
+|---|---|
+| `build_airbnb_je.py` | `QBO_operations/src/je/build_airbnb.py` |
+| `build_bookingcom_je.py` | `QBO_operations/src/je/build_bookingcom.py` |
+| `post_airbnb_je.py` | `QBO_operations/src/je/post.py` |
+| `repoint_bookingcom_payments.py` | `QBO_operations/src/payments/repoint.py` |
+| `fix_passthrough_tot.py` | `QBO_operations/src/fixes/passthrough_tot.py` |
+| `move_refunds_to_resolutions.py` | `QBO_operations/src/fixes/refunds_to_resolutions.py` |
+
+`inputs/JE/` moved to `QBO_operations/inputs/JE/` and the review CSVs to
+`QBO_operations/review/`. `list_classes.py` and `export_class_stubs.py` stayed:
+they only read, and they feed this project's `mapping_classes.yml`.
+
 Run them (from the project root) as modules, e.g.:
 
 ```bash

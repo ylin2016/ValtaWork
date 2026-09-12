@@ -32,7 +32,15 @@ FIELDS = ("confirmationCode source status checkIn checkOut nightsCount "
           "listing.nickname listingId guest.fullName money")
 
 
-def fetch_range(client: GuestyClient, dfrom: str, dto: str, statuses: list[str] | None) -> list[dict]:
+def fetch_range(client: GuestyClient, dfrom: str, dto: str, statuses: list[str] | None,
+                fields: str = None) -> list[dict]:
+    """Page the /reservations endpoint over a check-in date range.
+
+    `fields` selects which reservation fields the API returns; it defaults to the
+    lean FIELDS above. breakdown.fetch_month passes its own richer set (it also needs
+    guestsCount and specialRequests) — that projection is the ONLY thing that ever
+    differed between the two copies of this loop, so it is a parameter, not a fork.
+    """
     filt = [
         {"field": "checkIn", "operator": "$gte", "value": dfrom},
         {"field": "checkIn", "operator": "$lte", "value": f"{dto}T23:59:59.999Z"},
@@ -42,7 +50,7 @@ def fetch_range(client: GuestyClient, dfrom: str, dto: str, statuses: list[str] 
     out, skip = [], 0
     while True:
         r = client.get("/reservations", params={
-            "filters": json.dumps(filt), "fields": FIELDS,
+            "filters": json.dumps(filt), "fields": fields or FIELDS,
             "limit": PAGE, "skip": skip, "sort": "checkIn",
         })
         batch = r.get("results", [])

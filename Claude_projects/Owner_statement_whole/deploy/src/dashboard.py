@@ -4,27 +4,27 @@ Web dashboard for owner statements with property selector and PDF export.
 import streamlit as st
 from pathlib import Path
 import sqlite3
+import calendar
 from datetime import datetime
 import pandas as pd
-from openpyxl import load_workbook
-from reportlab.lib.pagesizes import letter, A4
+from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, PageBreak
-from reportlab.lib.enums import TA_RIGHT, TA_CENTER, TA_LEFT
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
 import io
 from html import escape as _esc
 import sys, os
 sys.path.insert(0, os.path.dirname(__file__))
 import paths
-from ltr.records import (build_records as ltr_build_records,
-                         is_rent_income as ltr_is_rent_income,
-                         ltr_claimed_codes)
-from reporting.booking_breakdown import (build_by_unit as _bd_build,
-                                         DISP as _pb_disp, NUM as _pb_num, FEE_PARTS as _fee_parts)
-from scope.listing_filter import allowed_property_ids
-from scope.pm_rate import resolve_pm_fee_rate
+from ltr.records import is_rent_income as ltr_is_rent_income
+from reporting.other_income import ledger_keys as _oi_keys
+from reporting.period_sources import PeriodSources
+from reporting.booking_breakdown import (build_by_unit as _bd_build, natural_key as _natural_key,
+                                        net_revenue_rows as _nr_build,
+                                         DISP as _pb_disp, NUM as _pb_num)
+from scope.listing_filter import allowed_property_ids, statement_rollups
+from scope.pm_rate import owner_pays_cleaning_at, pm_rate_resolver, resolve_pm_fee_rate
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Configuration
@@ -119,6 +119,8 @@ def load_mapping_with_addresses():
                         addresses[prop_id] = address
                     owner_flags[prop_id] = {
                         'owner_pays_cleaning': item.get('owner_pays_cleaning', False),
+                        # kept raw; owner_pays_cleaning_at() applies it to the period below
+                        'owner_pays_cleaning_from': item.get('owner_pays_cleaning_from'),
                         'owner_pays_taxes': item.get('owner_pays_taxes', False),
                         'owner_pays_supplies': item.get('owner_pays_supplies', False),
                     }
@@ -127,14 +129,25 @@ def load_mapping_with_addresses():
 
 @st.cache_data
 def load_rollups():
-    """Load statement_rollups from config.yml: child property_id -> parent, and parent -> [members]."""
+    """parent property_id -> [members], and the set of member ids.
+
+    Same shared resolver the build uses (scope.listing_filter.statement_rollups):
+    Listing_contacts.csv's Property column defines the statement, merged with the
+    legacy config.yml map. Reading it here rather than config.yml alone is what
+    keeps the dashboard's consolidation identical to the Excel/PDF build.
+    """
     import yaml
     cfg_path = paths.CONFIG_YML
-    rollups = {}
+    legacy = {}
     if cfg_path.exists():
         with open(cfg_path, 'r') as f:
             cfg = yaml.safe_load(f) or {}
-            rollups = cfg.get('statement_rollups') or {}
+            legacy = cfg.get('statement_rollups') or {}
+    conn = sqlite3.connect(DB_PATH)
+    try:
+        rollups = statement_rollups(conn, legacy)
+    finally:
+        conn.close()
     children = {child for kids in rollups.values() for child in kids}
     return rollups, children
 
@@ -160,24 +173,15 @@ def load_property_names():
     conn.close()
     return names
 
-# LTR/deferred Net-Revenue lines are sourced from the period's LTR CSV via the
-# shared ltr_records module (same logic the Excel build uses).
-def build_ltr_records(property_id: str, period: str, pm_fee_rate: float, owner_pays_cleaning: bool):
-    """Return (display_records, covered_pids).
+def build_ltr_records(raw, pm_fee_rate: float, owner_pays_cleaning: bool):
+    """Decorate PeriodSources.ltr into Net-Revenue-style display rows.
 
-    display_records: Net-Revenue-style rows (formatted like Guesty bookings) for LTR
-    rents + deferred bookings — one line per CSV row (full monthly rent). Each carries
-    numeric helpers (_net/_gross/_comm/_owner) for totalling.
-    covered_pids: property_ids that got a line (their rent is moved out of Other Credits).
+    `raw` is the shared LTR/deferred record list (reporting.period_sources loads it
+    through the same ltr.records reader the Excel build uses, so the two products see
+    the same bookings). This function only adds the display/numeric helpers
+    (_net/_gross/_comm/_owner and the _in/_out/_guest the Net Revenue section needs) —
+    it does no loading and no dedup of its own.
     """
-    conn = sqlite3.connect(DB_PATH)
-    raw, covered = ltr_build_records(
-        BASE, period, _member_ids(property_id),
-        lambda code: conn.execute(
-            "SELECT 1 FROM ledger_lines WHERE source='guesty' AND source_txn_id=? LIMIT 1",
-            (code,)).fetchone() is not None)
-    conn.close()
-
     out = []
     for x in raw:
         # Round to cents at source so each column's TOTAL equals the sum of the
@@ -208,15 +212,25 @@ def build_ltr_records(property_id: str, period: str, pm_fee_rate: float, owner_p
         rec["Management Commission"] = f"${comm:,.2f}"
         rec["Net Owner Proceeds"] = f"${owner:,.2f}"
         rec["Commission %"] = f"{-pm_fee_rate:.0%}"
+        # Keep the RAW dates alongside the formatted "Reservation Dates" string: the shared
+        # builders read them (booking_breakdown.ltr_row -> _pick("checkin","_in")), and
+        # net_revenue_rows carries them into Section 2. Without these the Net Revenue section
+        # crashed on strptime('') for every statement holding an LTR/deferred row.
         rec.update(_net=net, _gross=gross, _comm=comm, _owner=owner, _nights=ltr_nights,
                    _pid=x.get("property_id"), _cleaning=cleaning, _code=x["booking_id"],
-                   _is_ltr=bool(x.get("is_ltr", True)))
+                   _is_ltr=bool(x.get("is_ltr", True)), _guest=x.get("guest_name") or "",
+                   _in=str(x.get("checkin") or "")[:10], _out=str(x.get("checkout") or "")[:10])
         out.append(rec)
-    return out, covered
+    return out
 
 @st.cache_data
-def load_properties_and_periods():
-    """Load available properties and periods from database."""
+def load_properties_and_periods(period=None):
+    """Load available properties and periods from database.
+
+    `period` ('YYYY-MM') scopes the property list the same way the build does, so a
+    Status=Inactive listing keeps its historical statements but drops out of the
+    picker for the months after it stopped earning. Called twice: once bare to get
+    the period list, then again with the chosen period to filter the properties."""
     conn = sqlite3.connect(DB_PATH)
     conn.row_factory = sqlite3.Row
 
@@ -228,7 +242,13 @@ def load_properties_and_periods():
     """).fetchall()
 
     # Listings present in Listing_contacts.csv (shared with the build).
-    allowed = allowed_property_ids(conn, BASE)
+    if period:
+        _y, _m = map(int, period.split('-'))
+        _ps = f"{_y:04d}-{_m:02d}-01"
+        _pe = f"{_y:04d}-{_m:02d}-{calendar.monthrange(_y, _m)[1]:02d}"
+        allowed = allowed_property_ids(conn, BASE, _ps, _pe)
+    else:
+        allowed = allowed_property_ids(conn, BASE)
 
     properties = conn.execute("""
         SELECT p.property_id, p.property_name, o.owner_name
@@ -468,14 +488,19 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
 
     # Booking Breakdown (Section 1) — one static table per listing, rendered ABOVE that
     # listing's Net Revenue table (mirrors the dashboard). Shared builder → identical rows.
-    _bd_cols = [1.5*inch, 1.0*inch, 0.9*inch, 0.8*inch, 0.9*inch, 0.7*inch, 1.0*inch]
+    _bd_cols = [1.05*inch, 0.78*inch, 0.72*inch, 0.78*inch, 0.62*inch, 0.62*inch,
+                0.66*inch, 0.72*inch, 0.58*inch, 0.87*inch]
     _bd_numset = set(_pb_num)
 
     def _bd_fmt_row(r):
         out = []
         for c in _pb_disp:
             v = r.get(c, "")
-            out.append(f"${float(v):,.2f}" if c in _bd_numset else str(v))
+            if c in _bd_numset:
+                out.append("" if v is None or (isinstance(v, float) and v != v)
+                           else f"${float(v):,.2f}")
+            else:
+                out.append(str(v))
         return out
 
     def _bd_table(rows):
@@ -544,6 +569,9 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
                 groups.setdefault(_vals(b)[10], []).append(_vals(b))
             except Exception:
                 continue
+        # Natural listing order (osbr_2 before osbr_10, osbr_rv last) — matches the
+        # Booking-Breakdown section above and the Excel/PDF outputs.
+        groups = OrderedDict(sorted(groups.items(), key=lambda kv: _natural_key(kv[0])))
         multi = len(groups) > 1
         gt_net = gt_comm = gt_owner = 0.0
         gt_nights = 0
@@ -654,6 +682,13 @@ selected_period = st.sidebar.selectbox(
     format_func=lambda x: datetime.strptime(x, '%Y-%m').strftime('%B %Y')
 )
 
+# Re-resolve the property list for the chosen period (retired listings drop out of
+# the months after they stopped earning — same rule the build applies).
+properties, _ = load_properties_and_periods(selected_period)
+if not properties:
+    st.error("❌ No properties in scope for this period")
+    st.stop()
+
 property_opts = [(p['property_id'], p['property_name']) for p in properties]
 selected_prop = st.sidebar.selectbox(
     "Property",
@@ -687,7 +722,9 @@ pid_names = load_property_names()
 _rollups_map, _ = load_rollups()
 is_rollup_parent = property_id in _rollups_map
 prop_address = addresses.get(property_id, 'N/A')
-owner_pays_cleaning = owner_flags.get(property_id, {}).get('owner_pays_cleaning', False)
+# Date-aware: OSBR only takes the guest cleaning fee from 2026-08-01, so an earlier
+# period must still render (and pay) the old way.
+owner_pays_cleaning = owner_pays_cleaning_at(owner_flags.get(property_id, {}), f"{period}-01")
 owner_pays_taxes = owner_flags.get(property_id, {}).get('owner_pays_taxes', False)
 
 # PM fee rate: resolved in load_statement_data via resolve_pm_fee_rate (effective-dated
@@ -702,7 +739,17 @@ if _pm_rate_raw is None:
     )
     st.stop()
 pm_fee_rate = float(_pm_rate_raw)
-ltr_records, ltr_covered_pids = build_ltr_records(property_id, period, pm_fee_rate, owner_pays_cleaning)
+
+# All three booking sources for this statement, loaded ONCE through the shared
+# reporting.period_sources — the same object the Excel build and the summary sheets
+# use, so the products cannot disagree about which bookings exist this month.
+_c = sqlite3.connect(DB_PATH)
+_c.row_factory = sqlite3.Row
+sources = PeriodSources(_c, period, _member_ids(property_id), pb=load_payment_breakdown(period))
+_c.close()
+
+ltr_records = build_ltr_records(sources.ltr, pm_fee_rate, owner_pays_cleaning)
+ltr_covered_pids = sources.ltr_covered
 has_net_revenue = bool(data['bookings'] or ltr_records)
 
 # Move rent out of "Other Credits" only for properties that got a Net Revenue line
@@ -777,17 +824,25 @@ booking_records = []
 # owner-statement Net Owner Proceeds in Section 2 below, so the two "Net" figures
 # intentionally differ (Section 1 is pre-PM-commission, Guesty-side only).
 # ─────────────────────────────────────────────────────────────────────────────
-_member_pids = set(_rollups_map.get(property_id, [])) | {property_id}
-_pb = load_payment_breakdown(period)
+_member_pids = set(_member_ids(property_id))    # parent + rollup members
 
 # Dedup after the Guesty pull (owner's pull-steps model: pull Guesty → pull LTR → dedup
 # → make booking breakdown → create revenue sections). On a confirmation-code collision
-# LTR/DEFERRED wins; `_claimed` = codes now represented ONLY by an LTR/DEFERRED ledger
-# row. build_by_unit drops those stale Guesty breakdown rows so Section 1 foots with
-# Section 2 (the booking is re-shown once as an LTR/deferred row).
-_c = sqlite3.connect(DB_PATH)
-_claimed = ltr_claimed_codes(_c, period)
-_c.close()
+# LTR/DEFERRED wins; `sources.claimed` = codes now represented ONLY by an LTR/DEFERRED
+# ledger row. build_by_unit drops those stale Guesty breakdown rows so Section 1 foots
+# with Section 2 (the booking is re-shown once as an LTR/deferred row).
+# Booking-Breakdown source #3 (rental income with no payment-breakdown row: synthetic
+# Guesty income for Hipcamp/OsbrRV, and QBO-recorded rent) and the LTR dedup/override
+# maps all come off `sources`, loaded once above.
+#
+# Those lines render as booking rows in Section 1 now, so drop them from "Other
+# Credits" — same money, shown once. Utilities / refundable deposits / misc company
+# deposits aren't rent, so they stay in Other Credits.
+_bd_other_keys = _oi_keys(sources.other)
+data['other_income'] = [
+    oi for oi in data['other_income']
+    if (oi['property_id'], oi['posting_date'], round(float(oi['amount'] or 0), 2)) not in _bd_other_keys
+]
 
 # Booking-breakdown tables are rendered PER UNIT inside the Net Revenue below
 # (each unit's fee waterfall sits directly above its statement). Here we only prepare
@@ -804,21 +859,29 @@ _c.close()
 # Display columns/widths (the column SET + fold logic live in reporting.booking_breakdown,
 # imported above as _pb_disp/_pb_num/_fee_parts so dashboard/Excel/PDF share one source).
 # Fixed widths (sum to 100%) so the detail table and the total table align column-for-column.
-_pb_widths = {"Conf Code": "20%", "Bookings": "18%", "Guest Pay": "13%", "Fees": "12%",
-              "Cleaning Fee": "13%", "Tax": "10%", "Net Rental Revenue": "14%"}
+_pb_widths = {"Conf Code": "14%", "Bookings": "12%", "Guest Pay": "9%",
+              "Accommodation": "10%", "Markup": "8%", "Add-ons": "8%", "Fees": "9%",
+              "Cleaning Fee": "9%", "Tax": "8%", "Net Rental Revenue": "13%"}
 _pb_caption = (
     "Per-booking payment breakdown — guest pay, **Fees** (channel + Guesty + "
     "Stripe combined; hover a value to see the split), cleaning, tax, and **Net Rental "
     "Revenue** (carried into the statement below, where PM commission is subtracted to "
     "reach Net Owner Proceeds).  \n"
+    "**Accommodation / Markup / Add-ons** split what the booking was made of: room rent "
+    "(net of its own discounts), the channel markup on top of it, and everything else the "
+    "guest paid — pet, parking, extra-guest, resort and service fees. Cleaning and tax "
+    "keep their own columns. Blank means the split is not known for that booking.  \n"
     "For **HomeAway, Booking.com, Expedia, and Trip.com**, the channel fee is baked into "
     "the booking amount — the host has to pay it back, so it is included in Fees here.  \n"
+    "Hover an **Add-ons** value to see what it is (pet fee, parking, extra guest…).  \n"
     "**LTR** bookings are fee-free: Guest Pay (Total Payout) = accommodation fare + "
     "cleaning; the cleaning fee is non-commissioned, so Net Rental Revenue = accommodation fare."
 )
 # Build the per-unit breakdown from BOTH sources (Guesty fee waterfall + LTR/deferred,
 # fee-free), deduped, via the SHARED builder so dashboard/Excel/PDF match exactly.
-_bd_by_unit, _bd_grand = _bd_build(_pb, ltr_records, _member_pids, _claimed)
+_bd_by_unit, _bd_grand = _bd_build(sources.pb, ltr_records, _member_pids,
+                                   sources.claimed, sources.other,
+                                   net_overrides=sources.net_overrides)
 _pb_by_unit = {pid: pd.DataFrame(rows) for pid, rows in _bd_by_unit.items()}
 _pb_grand = pd.DataFrame([_bd_grand]) if _bd_grand else None
 
@@ -829,7 +892,9 @@ def _pb_render(df_rows, highlight_bg="#e2efda"):
     — so this renders detail-only (unhighlighted) and the standalone total row
     (highlighted) identically and aligned. The 'Fees' cell carries a hover tooltip
     breaking out channel/Guesty/Stripe."""
-    _fmt = lambda v: f"${float(v):,.2f}"
+    # None = this row's split is unknown (source #3, or a period pulled before the
+    # Accommodation/Markup/Add-ons columns existed). Blank, never a misleading $0.00.
+    _fmt = lambda v: "" if v is None or (isinstance(v, float) and v != v) else f"${float(v):,.2f}"
     _h = ['<table class="pb-table"><colgroup>']
     for c in _pb_disp:
         _h.append(f'<col style="width:{_pb_widths[c]}">')
@@ -844,9 +909,16 @@ def _pb_render(df_rows, highlight_bg="#e2efda"):
         for c in _pb_disp:
             v = row[c]
             if c in _pb_num:
-                if c == "Fees":
-                    _tip = _esc(f"Channel {_fmt(row['_ch'])}  +  Guesty {_fmt(row['_gu'])}  +  "
-                                f"Stripe {_fmt(row['_st'])}", quote=True)
+                if c == "Add-ons" and str(row.get("_addon_detail") or ""):
+                    _tip = _esc(str(row["_addon_detail"]), quote=True)
+                    _h.append(f'<td style="text-align:right" title="{_tip}">'
+                              f'<span class="pb-fees">{_fmt(v)}</span></td>')
+                elif c == "Fees":
+                    _parts_txt = (f"Channel {_fmt(row['_ch'])}  +  Guesty {_fmt(row['_gu'])}"
+                                  f"  +  Stripe {_fmt(row['_st'])}")
+                    if float(row.get('_ar') or 0.0):
+                        _parts_txt += f"  +  Cohost handling {_fmt(row['_ar'])}"
+                    _tip = _esc(_parts_txt, quote=True)
                     _h.append(f'<td style="text-align:right" title="{_tip}">'
                               f'<span class="pb-fees">{_fmt(v)}</span></td>')
                 else:
@@ -880,7 +952,33 @@ if has_net_revenue:
     total_expenses = 0.0
     total_nights = 0
 
-    for b in data['bookings']:
+    # Section 2 IS Section 1 with commission applied (owner decision 2026-08-29) — the
+    # SAME rows, through reporting.booking_breakdown.net_revenue_rows, so the dashboard,
+    # the Excel statement and the PDF cannot drift and booking source #3 (QBO-recorded
+    # rent / Hipcamp) finally gets a Net Revenue row instead of only a breakdown row.
+    _nr_status = {str(b['booking_id']): str(b.get('status') or '').lower()
+                  for b in data['bookings']}
+    _nr_tax = {str(b['booking_id']): round(float(b.get('owner_tax') or 0), 2)
+               for b in data['bookings']}
+    # Owner cleaning fee: the guest-paid Guesty fee (0 on a canceled stay), matching the
+    # OWNER_ADJ credit the build folds into amount_due; LTR cleaning comes from the CSV.
+    _nr_clean = {str(c): (0.0 if _nr_status.get(str(c)) == 'canceled' else round(float(v), 2))
+                 for c, v in cleaning_fee_map.items()}
+    for _lrec in ltr_records:
+        _nr_clean[str(_lrec.get('_code') or '')] = round(float(_lrec.get('_cleaning') or 0), 2)
+    # Per-BOOKING rate (see run_month_close): a mid-period rate change commissions each
+    # booking at the rate in force on its check-in. `pm_fee_rate` stays a float for the
+    # display-only uses below; only the money goes through the resolver.
+    _nr_y, _nr_m = (int(x) for x in period.split('-'))
+    _nr_start = f"{_nr_y:04d}-{_nr_m:02d}-01"
+    _nr_end = f"{_nr_y:04d}-{_nr_m:02d}-{calendar.monthrange(_nr_y, _nr_m)[1]:02d}"
+    _nr_conn = sqlite3.connect(DB_PATH)
+    _nr_rate_at = pm_rate_resolver(_nr_conn, property_id, _nr_start, _nr_end)
+    _nr_conn.close()
+    _nr_rows = [r for recs in _nr_build(_bd_by_unit, _nr_rate_at, _nr_clean, _nr_tax).values()
+                for r in recs]
+
+    for b in _nr_rows:
         # Round every displayed dollar figure to cents at source so each column's
         # TOTAL equals the sum of the rounded cells shown (no penny drift from
         # summing unrounded values and rounding only the total).
@@ -889,17 +987,12 @@ if has_net_revenue:
 
         # Gross revenue from converted Guesty CSV (total_payout before any fees)
         gross_revenue = round(gross_revenue_map.get(booking_id, net_rental), 2)
+        booking_status = _nr_status.get(str(booking_id), 'confirmed')
+        cleaning_fee = round(float(b.get('owner_cleaning_cost') or 0), 2)
 
-        # Check booking status
-        booking_status = str(b.get('status', 'confirmed')).lower()
-
-        # For canceled bookings, cleaning fee is 0; otherwise get from Guesty
-        if booking_status == 'canceled':
-            cleaning_fee = 0.0
-        else:
-            cleaning_fee = round(cleaning_fee_map.get(booking_id, 0.0), 2)
-
-        comm = round(-net_rental * pm_fee_rate, 2)
+        # Commission is rounded PER LEDGER LINE by the shared builder, exactly as
+        # netrevenue.engine sums the stored PM fee — do not recompute it here.
+        comm = round(float(b['commission']), 2)
         owner_rev = net_rental + comm
 
         # Add owner cleaning fee if owner_pays_cleaning is true
@@ -907,23 +1000,31 @@ if has_net_revenue:
             owner_rev += cleaning_fee
 
         # Tax passed to owner (transient occupancy tax) — owner income, added after MCR
-        tax_paid = round(float(b.get('owner_tax') or 0), 2) if owner_pays_taxes else 0.0
+        tax_paid = round(float(b.get('owner_tax_cost') or 0), 2) if owner_pays_taxes else 0.0
         if owner_pays_taxes:
             owner_rev += tax_paid
 
         owner_rev = round(owner_rev, 2)
 
-        checkin = datetime.strptime(b['checkin'], '%Y-%m-%d')
-        checkout = datetime.strptime(b['checkout'], '%Y-%m-%d')
+        # Dates are display-only, so a missing one must degrade to a blank cell — never
+        # take the whole statement down with a ValueError, which is what strptime('') did.
+        def _d(v):
+            try:
+                return datetime.strptime(str(v or "")[:10], '%Y-%m-%d')
+            except ValueError:
+                return None
+        checkin, checkout = _d(b.get('checkin')), _d(b.get('checkout'))
 
         # For canceled bookings, show 0 nights instead of actual days
-        if booking_status == 'canceled':
+        if booking_status == 'canceled' or checkin is None or checkout is None:
             nights = 0
         else:
             nights = (checkout - checkin).days
 
         # Same-day credit entries (e.g. OSBR-RV Hipcamp bookings) show a single date.
-        if checkin == checkout:
+        if checkin is None or checkout is None:
+            reservation_dates = ""
+        elif checkin == checkout:
             reservation_dates = checkout.strftime('%d. %b. %Y')
         else:
             reservation_dates = f"{checkin.strftime('%d. %b.')} - {checkout.strftime('%d. %b. %Y')} / {nights} nights"
@@ -946,7 +1047,8 @@ if has_net_revenue:
             record['Tax Paid to Owner'] = f"${tax_paid:,.2f}"
             record['tax_paid_value'] = tax_paid  # numeric, for TOTAL row
         record['Net Owner Proceeds'] = f"${owner_rev:,.2f}"
-        record['Commission %'] = f"{-pm_fee_rate:.0%}"
+        record['Commission %'] = (f"{comm / -net_rental:.0%}" if net_rental
+                                  else f"{-pm_fee_rate:.0%}")
         record.update(_pid=b.get('property_id'), _gross=gross_revenue, _net=net_rental,
                       _comm=comm, _owner=owner_rev, _nights=nights)
 
@@ -957,15 +1059,6 @@ if has_net_revenue:
         total_comm += comm
         total_owner += owner_rev
         total_nights += nights
-
-    # Append LTR rents + deferred bookings (from the LTR CSV) as Net Revenue lines
-    for rec in ltr_records:
-        booking_records.append(rec)
-        total_gross_revenue += rec['_gross']
-        total_net_rental += rec['_net']
-        total_comm += rec['_comm']
-        total_owner += rec['_owner']
-        total_nights += rec.get('_nights', 0)
 
     # Sum all expenses (already negative values)
     for exp in data['expenses']:
@@ -1071,6 +1164,9 @@ if has_net_revenue:
     groups = OrderedDict()
     for r in booking_records:
         groups.setdefault(r.get('_pid'), []).append(r)
+    # Natural listing order (osbr_2 before osbr_10, osbr_rv last) — matches the
+    # Booking-Breakdown section and the Excel/PDF outputs.
+    groups = OrderedDict(sorted(groups.items(), key=lambda kv: _natural_key(kv[0])))
     multi_listing = len(groups) > 1
     _helper_cols = ('cleaning_fee_value', 'tax_paid_value')
 
@@ -1096,7 +1192,11 @@ if has_net_revenue:
         if owner_pays_taxes:
             row['Tax Paid to Owner'] = round(float(tax), 2)
         row['Net Owner Proceeds'] = round(float(owner), 2)
-        row['Commission %'] = -pm_fee_rate
+        # BLENDED, not the scalar rate: a property whose rate changes mid-period
+        # (seattle_9021, 17.1% to 2026-08-10 then 22%) has no single rate, and printing
+        # one understates what the owner was actually charged.
+        row['Commission %'] = (round(float(comm) / -float(net), 4) if net
+                               else -pm_fee_rate)
         return row
 
     for _gpid, _recs in groups.items():
@@ -1207,7 +1307,8 @@ st.header("Expenses")
 all_categories = [
     'Cleaning Labor',
     'Supplies',
-    'Repairs & Maintenance',
+    'Repairs',
+    'Maintenance',
     'Utilities',
     'Other Expense'
 ]

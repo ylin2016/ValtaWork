@@ -31,10 +31,18 @@ DEPLOY = paths.PROJECT_ROOT / "deploy"
 FLAT_MODULES = ["paths.py"]
 DISPLAY_PACKAGES = {
     "scope": ["__init__.py", "listing_filter.py", "pm_rate.py"],
-    "ltr": ["__init__.py", "records.py"],
+    # labels.py holds to_property_id, which records.py re-exports — ship both.
+    "ltr": ["__init__.py", "records.py", "labels.py"],
     # booking_breakdown is the SHARED Section-1 builder the dashboard imports (flat);
-    # it is dependency-free (data-only). excel_writer etc. are NOT shipped (pipeline-only).
-    "reporting": ["__init__.py", "booking_breakdown.py"],
+    # it is dependency-free (data-only). period_sources is the ONE loader for the
+    # period's three booking sources — the dashboard, the Excel build and the summary
+    # sheets all construct it, so it has to ship or the deploy dashboard cannot start.
+    # excel_writer etc. are NOT shipped (pipeline-only).
+    "reporting": ["__init__.py", "booking_breakdown.py", "other_income.py",
+                  "period_sources.py", "qbo_adjustments.py"],
+    # income_rules holds the SQL predicates other_income shares with the engine,
+    # so "is rent" means the same thing in the deploy as in the pipeline.
+    "common": ["__init__.py", "income_rules.py"],
 }
 # Stale flat modules from the pre-scope/ltr layout — removed if a prior pack left them.
 _STALE_FLAT = ["listing_filter.py", "ltr_records.py", "pm_rate.py"]

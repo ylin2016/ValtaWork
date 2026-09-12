@@ -2,7 +2,7 @@
 One-time script: merge Listing_contacts.csv into mapping_classes.yml.
 Updates owner_name, owner_email, and adds pm_fee_rate per property.
 """
-import csv, yaml, re, sys
+import csv, yaml, re
 from pathlib import Path
 
 BASE = Path(__file__).parent.parent

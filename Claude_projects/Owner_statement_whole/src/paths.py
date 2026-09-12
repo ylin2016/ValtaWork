@@ -41,8 +41,15 @@ CHANNEL_CALCULATOR = OUTPUT_DIR / "channel_pricing_calculator.xlsx"
 
 # --- secrets ---
 ENV_FILE     = SECRETS_DIR / ".env"
-QBO_TOKENS   = SECRETS_DIR / "qbo_tokens.json"
 GUESTY_TOKEN = SECRETS_DIR / "guesty_token.json"
+
+# The QBO token store belongs to the QBO_operations project, which owns the
+# QuickBooks connection and runs the OAuth flow.  Intuit rotates the refresh token
+# on every refresh, so there is exactly ONE copy on disk and both projects share
+# it -- a second copy here would invalidate that one the first time either
+# refreshed.  This project only ever READS QuickBooks (see expense/qbo_client.py).
+QBO_OPERATIONS = PROJECT_ROOT.parent / "QBO_operations"
+QBO_TOKENS     = QBO_OPERATIONS / "config" / "secrets" / "qbo_tokens.json"
 
 # --- the single shared ledger DB (NOT per-month: balances roll forward) ---
 DB_PATH = DB_DIR / "owner_statement.sqlite"

@@ -21,15 +21,13 @@ try:
 except ImportError:
     from paths import ltr_csv as _ltr_csv
 
-_ALIASES = {"bellevue 14507u3": "bellevue_14507_unit_3"}
-
-
-def to_property_id(listing) -> str:
-    s = str(listing).strip().lower()
-    if s in _ALIASES:
-        return _ALIASES[s]
-    s = re.sub(r"[^a-z0-9]+", "_", s)
-    return re.sub(r"_+", "_", s).strip("_")
+# `to_property_id` lives in ltr/labels.py -- dependency-free, so the deploy bundle
+# and the QBO_operations JE builders can import it without pandas. Re-exported here
+# because this module has always been its address.
+try:
+    from .labels import to_property_id  # noqa: F401
+except ImportError:
+    from labels import to_property_id  # noqa: F401
 
 
 def _money(v) -> float:
@@ -54,12 +52,11 @@ def _date(v):
         return None
 
 
-def csv_path(base_dir, period) -> Path:
-    # base_dir kept for signature compatibility; location now lives in paths.py.
+def csv_path(period) -> Path:
     return _ltr_csv(period)
 
 
-def build_records(base_dir, period: str, members, is_guesty_code):
+def build_records(period: str, members, is_guesty_code):
     """Return (records, covered_pids).
 
     records: one dict per qualifying CSV row, with keys
@@ -74,7 +71,7 @@ def build_records(base_dir, period: str, members, is_guesty_code):
     must return True when a deferred booking is already in the ledger as a Guesty
     booking (so it is not shown twice).
     """
-    path = csv_path(base_dir, period)
+    path = csv_path(period)
     if not path.exists():
         return [], set()
 
@@ -106,6 +103,30 @@ def build_records(base_dir, period: str, members, is_guesty_code):
         covered.add(pid)
 
     return records, covered
+
+
+def guesty_code_checker(conn, period: str):
+    """The `is_guesty_code` predicate for `build_records`, scoped to THIS period.
+
+    The question build_records asks is "does this deferred booking already render as a
+    Guesty booking in the section I am building?" — so it must be asked of the period,
+    not of all time. A long stay recognized month by month (`GY-LsV362As`: one Guesty
+    row in 2026-04, then DEFERRED rows in 05/06/07) otherwise matched the April row and
+    was skipped in EVERY later month, leaving its rent in Section 2 with no Section-1
+    line. Owner rule: if the LTR CSV carries the record, the LTR record is what shows.
+
+    The ONE definition — run_month_close (Excel), the dashboard and reporting.monthly_summary
+    all take it from here, so the three products dedup identically. Mirrors the period
+    filter `ltr_claimed_codes` already applies on the other side of the same dedup.
+    """
+    y, m = map(int, period.split("-"))
+    start = f"{y:04d}-{m:02d}-01"
+    end = f"{y:04d}-{m:02d}-{calendar.monthrange(y, m)[1]:02d}"
+    codes = {str(r[0]) for r in conn.execute(
+        """SELECT DISTINCT source_txn_id FROM ledger_lines
+           WHERE source='guesty' AND category='INCOME' AND source_txn_id IS NOT NULL
+             AND posting_date>=? AND posting_date<=?""", (start, end))}
+    return lambda code: str(code) in codes
 
 
 def ltr_claimed_codes(conn, period: str) -> set:

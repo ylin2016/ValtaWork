@@ -1,5 +1,4 @@
 import uuid
-import re
 from ..common.mappings import apply_account_rules
 from ..common.utils import now_iso
 
@@ -60,7 +59,9 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
         vendor = (e.get("VendorRef") or {}).get("name") or (e.get("PayeeRef") or {}).get("name")
         # Credit=True marks a vendor refund/return (e.g. a returned supply). Its amount
         # is a credit back to the owner, so it must be POSITIVE (reduces the expense
-        # subtotal). A normal Purchase is a cost and stays negative.
+        # subtotal). A normal Purchase is a cost and stays negative. The line sign is
+        # preserved on top of that (see the Bill note below): a negative line on a normal
+        # Purchase is itself a credit.
         is_credit = bool(e.get("Credit"))
         lines = e.get("Line", []) or []
         for idx, ln in enumerate(lines, start=1):
@@ -96,12 +97,22 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                     ln.get("Description"),
                     vendor,
                     acct_name,
-                    abs(amount) if is_credit else -abs(amount),
+                    amount if is_credit else -amount,
                     now_iso(),
                 ),
             )
 
     # Bill (accrual lines; if you want strict cash basis, add BillPayment linking next)
+    #
+    # SIGN: keep QuickBooks' own line sign -- store `-amount`, never `-abs(amount)`.
+    # On these bills a POSITIVE line debits the account and a NEGATIVE line credits it, so
+    # the sign is the only thing separating a charge from a credit. `-abs()` collapsed both
+    # into a cost, which (a) charged owners for credits Valta had absorbed -- e.g. the
+    # `garbage collection` bills, `Other Owner Expenses -100.00` against
+    # `Wages - Cohost/PM +100.00`, were billed to the owner instead of credited -- and
+    # (b) made every commission CREDIT on `Management Commissions Revenue` (QBO writes a
+    # charge negative and a credit positive) indistinguishable from a charge, so nothing
+    # downstream could reconcile our PM fee against QuickBooks. See CLAUDE.md.
     qb = f"select * from Bill where TxnDate >= '{start_date}' and TxnDate <= '{end_date}'"
     bills = _all_pages(qbo, qb, "Bill")
     for b in bills:
@@ -152,7 +163,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                     ln.get("Description"),
                     vendor,
                     acct_name,
-                    -abs(amount),
+                    -amount,
                     now_iso(),
                 ),
             )
@@ -267,7 +278,6 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
 
         for idx, ln in enumerate(lines, start=1):
             detail = ln.get("DepositLineDetail") or {}
-            linked = detail.get("LinkedTxn") or []
 
             # Class can be on the line detail
             class_ref = (detail.get("ClassRef") or {}).get("value")
@@ -313,7 +323,7 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                     desc,
                     entity_name,
                     None,
-                    abs(amount),
+                    amount,
                     now_iso(),
                 ),
             )

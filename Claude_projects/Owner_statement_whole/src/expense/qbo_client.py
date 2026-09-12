@@ -1,12 +1,31 @@
+"""QuickBooks Online client -- READ ONLY.
+
+This project reads QuickBooks; it never writes to it.  ``request`` refuses any
+method but GET, so a write cannot be introduced here by accident: it fails at the
+client rather than silently posting to the live company file.
+
+QuickBooks WRITES live in the sibling ``QBO_operations`` project -- journal
+entries, payments, and account recategorisations.  If you need to change something
+in QuickBooks, add it there.
+
+The OAuth token also belongs to that project (``paths.QBO_TOKENS`` points into it).
+Refreshing is still allowed here, since it mutates only the token, not the books --
+and both projects must write back to the SAME file, because Intuit rotates the
+refresh token on every refresh.
+"""
 import base64
 import time
-from urllib.parse import urlencode
 import requests
 from ..common.config import env
 from ..common.utils import read_json, write_json
 from ..paths import QBO_TOKENS
 
 TOKEN_PATH_DEFAULT = str(QBO_TOKENS)
+
+
+class ReadOnlyError(RuntimeError):
+    """Raised when something tries to write to QuickBooks from this project."""
+
 
 class QBOClient:
     def __init__(self, realm_id: str, base_url: str, minorversion: int = 75, token_path: str = TOKEN_PATH_DEFAULT):
@@ -26,31 +45,6 @@ class QBOClient:
         tok = f"{self.client_id}:{self.client_secret}".encode("utf-8")
         return "Basic " + base64.b64encode(tok).decode("utf-8")
 
-    def auth_url(self, state: str) -> str:
-        params = {
-            "client_id": self.client_id,
-            "scope": "com.intuit.quickbooks.accounting",
-            "redirect_uri": self.redirect_uri,
-            "response_type": "code",
-            "state": state,
-        }
-        return "https://appcenter.intuit.com/connect/oauth2?" + urlencode(params)
-
-    def exchange_code_for_tokens(self, code: str) -> dict:
-        url = "https://oauth.platform.intuit.com/oauth2/v1/tokens/bearer"
-        headers = {
-            "Authorization": self._basic_auth_header(),
-            "Accept": "application/json",
-            "Content-Type": "application/x-www-form-urlencoded",
-        }
-        data = {"grant_type": "authorization_code", "code": code, "redirect_uri": self.redirect_uri}
-        r = requests.post(url, headers=headers, data=data, timeout=60)
-        r.raise_for_status()
-        tokens = r.json()
-        tokens["_obtained_at"] = int(time.time())
-        write_json(self.token_path, tokens)
-        return tokens
-
     def refresh_tokens(self) -> dict:
         tokens = read_json(self.token_path, default=None)
         if not tokens or "refresh_token" not in tokens:
@@ -63,8 +57,7 @@ class QBOClient:
         }
         data = {"grant_type": "refresh_token", "refresh_token": tokens["refresh_token"]}
         r = requests.post(url, headers=headers, data=data, timeout=60)
-        print("STATUS:", r.status_code)
-        print("BODY:", r.text)
+        # NB: never print r.text here -- the body carries the access and refresh tokens.
         r.raise_for_status()
         newt = r.json()
         newt["_obtained_at"] = int(time.time())
@@ -85,6 +78,10 @@ class QBOClient:
         return tokens["access_token"]
 
     def request(self, method: str, path: str, params: dict | None = None, json_body: dict | None = None) -> dict:
+        if method.upper() != "GET":
+            raise ReadOnlyError(
+                f"{method} {path}: Owner_statement_whole only READS QuickBooks. "
+                f"QuickBooks writes belong in the QBO_operations project.")
         token = self._get_access_token()
         headers = {"Authorization": f"Bearer {token}", "Accept": "application/json", "Content-Type": "application/json"}
         params = params or {}

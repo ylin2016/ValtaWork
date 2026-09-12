@@ -10,7 +10,6 @@ Docs: https://open-api-docs.guesty.com/docs/authentication
 """
 import json
 import time
-from pathlib import Path
 
 import requests
 

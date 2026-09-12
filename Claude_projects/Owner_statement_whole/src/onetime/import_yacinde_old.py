@@ -31,7 +31,6 @@ Usage:
 """
 import argparse
 import uuid
-from pathlib import Path
 
 import pandas as pd
 
