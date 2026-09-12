@@ -1,0 +1,15 @@
+# Lines that pay for two things at once, and how to split them.
+#
+# A rule fires when `match` (a regex) finds the line's description. It carves
+# `amount` off the line onto `account`; the remainder keeps the line's own
+# category. A line smaller than `amount` is a WARN, never split.
+#
+# Owner decision 2026-09-12: an invoice that includes a hot tub charges the owner $30
+# for the hot tub (Maintenance - Owner) and the rest is the cleaning payout. 62 of
+# Camila's 64 past hot tub lines were already booked to Maintenance - Owner.
+
+splits:
+  - name: hot tub
+    match: "(?i)hot ?tub"
+    amount: 30.00
+    account: "Trust Liabilities:Owner Payables:1C - Owner Expenses:Maintenance - Owner"

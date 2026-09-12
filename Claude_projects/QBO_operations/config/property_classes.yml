@@ -1,0 +1,11 @@
+# Property names on the expense sheets that are not a listing, -> QuickBooks Class.
+#
+# Anything not listed here resolves as `Listings:<property>` or `<property>`; a name that
+# matches neither is a WARN that blocks the post.  Add a row here rather than guessing.
+
+properties:
+  # Company-wide supplies.  45 of the 46 lines ever posted to `All units supplies`
+  # carry class Valta Realty (the 46th is Yacinde NuGrowth).
+  All Units: "Valta Realty"
+  # Owner decision 2026-09-12: a bare "Seattle 10057" (landscaping for the lot) is Whole.
+  Seattle 10057: "Listings:Seattle 10057 Whole"

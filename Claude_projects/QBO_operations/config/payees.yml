@@ -1,0 +1,11 @@
+# Zelle tracking sheet payee -> QuickBooks Vendor DisplayName.
+#
+# The sheet is filled in by hand and abbreviates ("Andea"), while a write payload
+# needs a Vendor Id, which only an exact DisplayName resolves.  A name that is
+# neither listed here nor an exact DisplayName is a WARN and blocks the post --
+# never a guess, because a wrong vendor is invisible once it is on the books.
+
+payees:
+  Andea: "Andrea Brannon"
+  Camila: "Camila - service"        # 164 Zelle expenses since March, all to this vendor
+  Valta Homes: "Valta Homes LLC"

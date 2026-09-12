@@ -1,0 +1,6 @@
+# QuickBooks Online company this project writes to.
+# Same realm as Owner_statement_whole (which only reads it).
+qbo:
+  base_url: "https://quickbooks.api.intuit.com"
+  minorversion: 75
+  realm_id: "9130356236278636"

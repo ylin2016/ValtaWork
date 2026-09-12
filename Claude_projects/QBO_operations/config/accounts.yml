@@ -1,0 +1,54 @@
+# Named QuickBooks accounts, so an account Id is never a bare literal in a script.
+#
+# `id` is what a write payload needs (AccountRef.value); `name` is the
+# FullyQualifiedName a read comes back with -- JE lines carry the FULL path, so
+# compare with .endswith(), never ==.  Both are recorded because the scripts need
+# both and they must not drift apart.
+
+accounts:
+  clearing_airbnb:
+    id: "1626"
+    name: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Airbnb"
+  clearing_bookingcom:
+    id: "1676"
+    name: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Booking.com"
+  resolutions:
+    id: "1643"
+    name: "Trust Liabilities:Owner Payables:1A - Net Earnings:Resolutions"
+  airbnb_taxes_withheld:
+    id: "1624"
+    name: "Trust Assets other than Cash & A/R:Airbnb Income Taxes Withheld from Trust"
+  repairs_owner:
+    id: "1679"
+    name: "Trust Liabilities:Owner Payables:1C - Owner Expenses:Repairs - Owner"
+
+  # Rebilled costs. Every fee Bill used to credit `billable_supplies_owner` whatever the
+  # cost actually was, so the owner statement -- which categorises on the ACCOUNT NAME --
+  # filed channel and Stripe fees under Supplies.  The two fee accounts already existed
+  # and were unused; `fixes/fee_rebill_accounts` repoints the Bills onto them.
+  billable_expense_income:
+    id: "1493"
+    name: "Billable Expense Income"
+  billable_supplies_owner:
+    id: "1695"
+    name: "Billable Expense Income:Billable Expense Income - Supplies Owner"
+  billable_channel_fee:
+    id: "1150040011"
+    name: "Billable Expense Income:Billable Expense Income - Channel Fee"
+  billable_stripe_fee:
+    id: "1150040012"
+    name: "Billable Expense Income:Billable Expense Income - Stripe Fee"
+
+# Accounts referenced by name only (the scripts resolve the Id through the API).
+names:
+  bank_str: "Chase Trust Checking 9967 - STR"
+  commission_revenue: "Management Commissions Revenue"
+
+# Every JE this project writes is Trust-side.
+location: "Trust"
+
+# Account-name suffixes that identify a payment-clearing account of any channel.
+clearing_suffixes:
+  - "Clearing - Booking.com"
+  - "Clearing - Airbnb"
+  - "Clearing - Stripe"
