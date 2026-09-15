@@ -133,6 +133,33 @@ def _label(item: dict) -> str:
     return NT_LABELS.get(nt, title or nt or "?")
 
 
+
+def local_date(resv: dict, which: str = "checkIn") -> str | None:
+    """The reservation's check-in / check-out as a LOCAL calendar date (YYYY-MM-DD).
+
+    Guesty's `checkIn` / `checkOut` are UTC instants, so taking their first 10
+    characters dates every late check-in a day late wherever the listing sits west of
+    UTC: 4:00 PM on 2026-11-27 in Manson, WA (PST, UTC-8) is `2026-11-28T00:00Z`, and
+    Keaau (HST, UTC-10) is shifted ALL year. Measured 2026-09-12 on 4,703 reservations:
+    722 dated a day late and 29 counted in the wrong month (18 Dec-31 check-ins landed in
+    January 2026). Guesty's own `checkInDateLocalized` / `checkOutDateLocalized` are the
+    date in the listing's timezone, so they are the answer; `listing.timezone` is the
+    fallback for a row that lacks them. Neither present -> the UTC date, flagged by
+    `fetch_range` so it cannot pass silently.
+    """
+    loc = resv.get(f"{which}DateLocalized")
+    if loc:
+        return str(loc)[:10]
+    ts = resv.get(which)
+    if not ts:
+        return None
+    tz = (resv.get("listing") or {}).get("timezone")
+    if tz:
+        from datetime import datetime
+        from zoneinfo import ZoneInfo
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).astimezone(ZoneInfo(tz)).date().isoformat()
+    return str(ts)[:10]
+
 def build_breakdown(resv: dict) -> dict:
     m = resv.get("money") or {}
     cur = m.get("currency", "USD")
@@ -156,7 +183,8 @@ def build_breakdown(resv: dict) -> dict:
             "status": resv.get("status"),
             "listing": (resv.get("listing") or {}).get("nickname") or resv.get("listingId"),
             "guest": (resv.get("guest") or {}).get("fullName"),
-            "checkIn": resv.get("checkIn"), "checkOut": resv.get("checkOut"),
+            # LOCAL dates, not the UTC instants — see local_date().
+            "checkIn": local_date(resv, "checkIn"), "checkOut": local_date(resv, "checkOut"),
             "nights": resv.get("nightsCount"), "currency": cur,
         },
         "line_items": line_items,

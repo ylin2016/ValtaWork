@@ -1,7 +1,7 @@
 from pathlib import Path
 from datetime import datetime
 from openpyxl import Workbook
-from openpyxl.styles import Font, PatternFill, Alignment
+from openpyxl.styles import Font, PatternFill, Alignment, Border, Side
 from openpyxl.comments import Comment
 
 from .booking_breakdown import natural_key
@@ -206,9 +206,9 @@ def write_statement(output_path: str, period: str, property_info: dict,
         ncols_revenue += 1
 
     # Column widths
-    ws.column_dimensions["A"].width = 18
-    ws.column_dimensions["B"].width = 15
-    ws.column_dimensions["C"].width = 28
+    ws.column_dimensions["A"].width = 18   # Confirmation Code (Net Revenue AND Booking Breakdown)
+    ws.column_dimensions["B"].width = 28   # Guest Name
+    ws.column_dimensions["C"].width = 18   # Reservation Dates
     ws.column_dimensions["D"].width = 18
     ws.column_dimensions["E"].width = 18
     ws.column_dimensions["F"].width = 18
@@ -217,42 +217,59 @@ def write_statement(output_path: str, period: str, property_info: dict,
     period_dt    = datetime.strptime(period, "%Y-%m")
     period_label = period_dt.strftime("%B %Y")
     starting_bal = float(totals.get("starting_balance", 0))
-    net_income   = float(totals.get("net_income", 0))
-    current_bal  = starting_bal + net_income
+    # Summary = the dashboard's decomposition (owner request 2026-09-13): Net Income is
+    # BEFORE owner expenses, Expense is their magnitude, Owner Payout = Net Income −
+    # Expense == the stored amount_due. `totals["net_income"]` carries amount_due, which
+    # already nets the expenses, and the rows below are the same ones the Expense
+    # section lists (stored negative), so adding them back gives the pre-expense figure.
+    amount_due    = float(totals.get("net_income", 0))
+    total_exp     = sum(float(e["amount"] or 0) for lines in expenses_by_subcat.values() for e in lines)
+    expense_mag   = round(-total_exp, 2) + 0.0            # +0.0 kills -0.0
+    net_income    = round(amount_due - total_exp, 2)
+    owner_payout  = round(net_income - expense_mag, 2)    # == amount_due
+    ending_bal    = round(starting_bal + net_income - expense_mag - owner_payout, 2)
 
     row = 1
 
     # ── HEADER ────────────────────────────────────────────────────────────────
+    # Left: Valta + the property/owner block. Right (E:G): a bordered two-column summary
+    # table — the label spans E:F, the amount sits in G.
+    _thin = Side(style="thin", color="BFBFBF")
+    _box  = Border(left=_thin, right=_thin, top=_thin, bottom=_thin)
+
+    def _sum_row(r, label, value, bold=False):
+        _cell(ws, r, 5, label, bold=bold, size=FONT_SIZE, merge_to=6)
+        _cell(ws, r, 7, value, bold=bold, size=FONT_SIZE, fmt=CURRENCY, align="right")
+        for col in (5, 6, 7):
+            ws.cell(row=r, column=col).border = _box
+
     ws.row_dimensions[row].height = 22
     _cell(ws, row, 1, "Valta Realty", bold=True, size=16)
     _cell(ws, row, 5, f"{period_label} - Summary",
           bold=True, color=_WHITE, size=14, bg=_DARK_BLUE, align="center", merge_to=7)
+    for col in (5, 6, 7):
+        ws.cell(row=row, column=col).border = _box
     row += 1
 
     _cell(ws, row, 1, "4027 Beach Drive Southwest, Seattle, WA 98116", size=FONT_SIZE, color="595959")
-    _cell(ws, row, 5, "Starting Balance", size=FONT_SIZE)
-    _cell(ws, row, 7, starting_bal, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _sum_row(row, "Starting Balance", starting_bal)
     row += 1
 
     _cell(ws, row, 1, "contact@valtarealty.com", size=FONT_SIZE, color="595959")
-    _cell(ws, row, 5, "Net Income", bold=True, size=FONT_SIZE)
-    _cell(ws, row, 7, net_income, bold=True, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _sum_row(row, "Net Income", net_income, bold=True)
     row += 1
 
-    _cell(ws, row, 5, "Current Balance", size=FONT_SIZE)
-    _cell(ws, row, 7, current_bal, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _sum_row(row, "Expense", expense_mag)
     row += 1
 
     ws.row_dimensions[row].height = 18
     _cell(ws, row, 1, property_info.get("property_name", ""), bold=True, size=14, merge_to=4)
-    _cell(ws, row, 5, "Owner Payout", size=FONT_SIZE)
-    _cell(ws, row, 7, net_income, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _sum_row(row, "Owner Payout", owner_payout)
     row += 1
 
     _cell(ws, row, 1, "Owner", bold=True, size=FONT_SIZE, color="595959")
     _cell(ws, row, 2, owner_info.get("owner_name", ""), size=FONT_SIZE)
-    _cell(ws, row, 5, "Ending Balance", bold=True, size=FONT_SIZE)
-    _cell(ws, row, 7, current_bal - net_income, bold=True, size=FONT_SIZE, fmt=CURRENCY, align="right")
+    _sum_row(row, "Ending Balance", ending_bal, bold=True)
     row += 1
 
     _cell(ws, row, 1, "Email", bold=True, size=FONT_SIZE, color="595959")
@@ -265,7 +282,9 @@ def write_statement(output_path: str, period: str, property_info: dict,
     if bookings:
         row = _section_row(ws, row, "Net Revenue", ncols_revenue)
 
-        headers = ["Reservation Dates", "Confirmation Code", "Guest Name", "Net Rental Revenue"]
+        # Confirmation Code first, then Guest Name (owner request 2026-09-13) — it also lines
+        # up with the Booking Breakdown's Conf Code in column A directly above.
+        headers = ["Confirmation Code", "Guest Name", "Reservation Dates", "Net Rental Revenue"]
         if owner_pays_cleaning:
             headers.append("Owner Cleaning Fee")
         headers.append("Management Commission")
@@ -274,6 +293,9 @@ def write_statement(output_path: str, period: str, property_info: dict,
         headers.extend(["Net Owner Proceeds", "Commission %"])
 
         names = property_names or {}
+        # Longest code / guest / dates actually written, so columns A-C fit them (a 14 pt
+        # "04. Aug. - 07. Aug. 2026 / 3 nights" does not fit the old 18-wide column).
+        _fit = {1: 0, 2: 0, 3: 0}
 
         def _nr_booking_row(r, b, bg):
             # Round each figure to cents at source so totals equal the sum of shown cells.
@@ -288,9 +310,12 @@ def write_statement(output_path: str, period: str, property_info: dict,
                     else round(-net_rental * pm_fee_rate, 2))
             owner_rev = round(net_rental + cleaning_fee + tax_paid + comm, 2)
             col = 1
-            _cell(ws, r, col, _fmt_dates(b["checkin"], b["checkout"]), bg=bg); col += 1
-            _cell(ws, r, col, b["booking_id"] or "", bg=bg, align="center"); col += 1
-            _cell(ws, r, col, b["guest_name"] or "", bg=bg); col += 1
+            _texts = (b["booking_id"] or "", b["guest_name"] or "", _fmt_dates(b["checkin"], b["checkout"]))
+            for _i, _t in enumerate(_texts, start=1):
+                _fit[_i] = max(_fit[_i], len(str(_t)))
+            _cell(ws, r, col, _texts[0], bg=bg, align="center"); col += 1
+            _cell(ws, r, col, _texts[1], bg=bg); col += 1
+            _cell(ws, r, col, _texts[2], bg=bg); col += 1
             _cell(ws, r, col, net_rental, fmt=CURRENCY, align="right", bg=bg); col += 1
             if owner_pays_cleaning:
                 _cell(ws, r, col, cleaning_fee, fmt=CURRENCY, align="right", bg=bg); col += 1
@@ -298,14 +323,18 @@ def write_statement(output_path: str, period: str, property_info: dict,
             if owner_pays_taxes:
                 _cell(ws, r, col, tax_paid, fmt=CURRENCY, align="right", bg=bg); col += 1
             _cell(ws, r, col, owner_rev, fmt=CURRENCY, align="right", bg=bg); col += 1
-            _cell(ws, r, col, -pm_fee_rate, fmt="0%", align="center", bg=bg)
+            # The booking's OWN rate (commission / net), not the period scalar: a rate that
+            # changes mid-period (seattle_9021, 17.1% to 2026-08-10, 22% after) has no single
+            # value. Negative, as this column always has been.
+            _cell(ws, r, col, (comm / net_rental if net_rental else -pm_fee_rate),
+                  fmt="0%", align="center", bg=bg)
             return net_rental, cleaning_fee, tax_paid, comm, owner_rev, _nights_between(b["checkin"], b["checkout"])
 
         def _nr_total_row(r, nights, net, clean, tax, comm, owner, fill):
             ws.row_dimensions[r].height = 16
             for c in range(1, ncols_revenue + 1):
                 ws.cell(row=r, column=c).fill = fill
-            _cell(ws, r, 1, f"{int(nights)} nights", bold=True, bg=fill)
+            _cell(ws, r, 3, f"{int(nights)} nights", bold=True, bg=fill)   # under Reservation Dates
             col = 4
             _cell(ws, r, col, net, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
             if owner_pays_cleaning:
@@ -314,7 +343,8 @@ def write_statement(output_path: str, period: str, property_info: dict,
             if owner_pays_taxes:
                 _cell(ws, r, col, tax, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
             _cell(ws, r, col, owner, bold=True, fmt=CURRENCY, align="right", bg=fill); col += 1
-            _cell(ws, r, col, -pm_fee_rate, bold=True, fmt="0%", align="center", bg=fill)
+            _cell(ws, r, col, (comm / net if net else -pm_fee_rate),       # blended
+                  bold=True, fmt="0%", align="center", bg=fill)
 
         from collections import OrderedDict
         groups = OrderedDict()
@@ -358,6 +388,15 @@ def write_statement(output_path: str, period: str, property_info: dict,
             _nr_total_row(row, gt_nights, gt_net, gt_clean, gt_tax, gt_comm, gt_owner, _GRAND_FILL)
             row += 1
             row = _spacer(ws, row)
+
+        # Widen A-C to their longest Net Revenue text, never below the base widths. Width
+        # units are ~one 11 pt character, so scale by the font size; cap so one freak value
+        # cannot blow the sheet out.
+        for _col, _n in _fit.items():
+            _letter = "ABC"[_col - 1]
+            _need = min(round(_n * FONT_SIZE / 11 + 2), 60)
+            if _need > (ws.column_dimensions[_letter].width or 0):
+                ws.column_dimensions[_letter].width = _need
 
     # ── OTHER INCOME ──────────────────────────────────────────────────────────
     if other_income:

@@ -25,6 +25,7 @@ import yaml
 from .. import bridge
 from ..config import acct_name, location, name as cfg_name
 from ..paths import JE_INPUTS, review_csv
+from ..resolver import Resolver
 
 CLEARING_ACCT = acct_name("clearing_bookingcom")
 BANK_ACCT = cfg_name("bank_str")
@@ -119,6 +120,7 @@ def iso(d: str) -> str:
 
 def build(src: Path, qbo, statements_root: str | None = None) -> tuple[list[dict], list[str]]:
     to_property_id = bridge.to_property_id(statements_root)
+    res = Resolver(qbo)
     classes = {e["property_id"]: e.get("qbo_class_name")
                for e in yaml.safe_load(bridge.mapping_classes(statements_root).read_text())}
     rows = list(csv.DictReader(open(src, encoding="utf-8-sig")))
@@ -164,6 +166,18 @@ def build(src: Path, qbo, statements_root: str | None = None) -> tuple[list[dict
             # about which unit the guest actually stayed in.
             if resno in RESERVATION_CLASS_OVERRIDES:
                 cls = RESERVATION_CLASS_OVERRIDES[resno]
+            if cls:
+                # The class map is not proof the class exists: check it against the
+                # company file now, so the review CSV never carries a name the poster
+                # cannot resolve.
+                real = res.klass_fqn(cls)
+                if real is None:
+                    warnings.append(f"{desc} line {line}: class {cls!r} is not in QuickBooks")
+                    cls = f"*** UNMAPPED {cls} ***"
+                elif real != cls:
+                    warnings.append(f"{desc} line {line}: class map says {cls!r}; QuickBooks "
+                                    f"has it as {real!r} — using that")
+                    cls = real
             if not cls:
                 cls = f"*** UNMAPPED {nick} ***"
                 warnings.append(f"{desc} line {line}: no class for nickname {nick!r}")

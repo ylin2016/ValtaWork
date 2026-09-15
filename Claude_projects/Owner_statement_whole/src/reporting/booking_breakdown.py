@@ -66,7 +66,11 @@ DROPPED_CANCELLATION_MAX_INVOICE = 6.10
 #               remove all of its income from the statement. NOTE QuickBooks still bills
 #               $15.81 of commission on it, i.e. QBO has not been told either -- worth
 #               reversing there so the two records agree.
-DROPPED_BOOKING_CODES = {"HA-LILLEKS", "EXP-2524018032-6QA31"}
+#   GY-dpHZ7593  seattle_710_adu 2026-08 -- Lisa Quam, website, Aug 20-23, cancelled. The
+#               $200.00 the guest paid left it $191.90 of net revenue, but QBO recognised
+#               $0.00 on every line (invoice, commission, channel and Stripe fees), so the
+#               owner earned nothing. Owner instruction 2026-09-13: remove it.
+DROPPED_BOOKING_CODES = {"HA-LILLEKS", "EXP-2524018032-6QA31", "GY-dpHZ7593"}
 
 
 # --- Owner-directed non-commissioned bookings -------------------------------------

@@ -149,9 +149,11 @@ class QBOClient:
         ``request`` makes requests treat it as a hostname and fail with a DNS
         error -- which has happened, and only looked like a network problem.
         """
-        key = entity[:1].upper() + entity[1:]
         res = self.post_raw(entity, body)
-        return res.get(key, res)
+        # Match the response key case-insensitively: capitalising the first letter
+        # turns "journalentry" into "Journalentry", which never matches QuickBooks'
+        # "JournalEntry" -- the write succeeded and the caller crashed reading its Id.
+        return next((v for k, v in res.items() if k.lower() == entity.lower()), res)
 
     def post_raw(self, entity: str, body: dict) -> dict:
         return self.request("POST", f"/v3/company/{self.realm_id}/{entity.lower()}",

@@ -25,32 +25,45 @@ import pandas as pd
 
 from .config import resolve
 from .client import GuestyClient
-from .reservation_financials import build_breakdown, categorize_item
+from .reservation_financials import build_breakdown, categorize_item, local_date
 
 PAGE = 100
 FIELDS = ("confirmationCode source status checkIn checkOut nightsCount "
           "listing.nickname listingId guest.fullName money")
+# Always requested, whatever projection the caller passes: the booking's dates come from
+# these, and fetch_range filters on them (see reservation_financials.local_date).
+LOCAL_FIELDS = "checkInDateLocalized checkOutDateLocalized listing.timezone"
 
 
 def fetch_range(client: GuestyClient, dfrom: str, dto: str, statuses: list[str] | None,
                 fields: str = None) -> list[dict]:
-    """Page the /reservations endpoint over a check-in date range.
+    """Page the /reservations endpoint over a LOCAL check-in date range.
+
+    `dfrom` / `dto` are calendar dates in each listing's own timezone. Guesty's filter
+    only sees the UTC instant, so the UTC window is widened by a day on each side and
+    the result cut back to rows whose LOCAL check-in falls inside [dfrom, dto]. Filtering
+    on UTC directly put a 2025-12-31 4 PM PST check-in into January and pulled a
+    2026-06-30 Keaau check-in into July.
 
     `fields` selects which reservation fields the API returns; it defaults to the
     lean FIELDS above. breakdown.fetch_month passes its own richer set (it also needs
     guestsCount and specialRequests) — that projection is the ONLY thing that ever
     differed between the two copies of this loop, so it is a parameter, not a fork.
     """
+    from datetime import date, timedelta
+    utc_from = (date.fromisoformat(dfrom) - timedelta(days=1)).isoformat()
+    utc_to = (date.fromisoformat(dto) + timedelta(days=1)).isoformat()
     filt = [
-        {"field": "checkIn", "operator": "$gte", "value": dfrom},
-        {"field": "checkIn", "operator": "$lte", "value": f"{dto}T23:59:59.999Z"},
+        {"field": "checkIn", "operator": "$gte", "value": utc_from},
+        {"field": "checkIn", "operator": "$lte", "value": f"{utc_to}T23:59:59.999Z"},
     ]
+    proj = f"{fields or FIELDS} {LOCAL_FIELDS}"
     if statuses:
         filt.append({"field": "status", "operator": "$in", "value": statuses})
     out, skip = [], 0
     while True:
         r = client.get("/reservations", params={
-            "filters": json.dumps(filt), "fields": fields or FIELDS,
+            "filters": json.dumps(filt), "fields": proj,
             "limit": PAGE, "skip": skip, "sort": "checkIn",
         })
         batch = r.get("results", [])
@@ -59,7 +72,24 @@ def fetch_range(client: GuestyClient, dfrom: str, dto: str, statuses: list[str] 
         print(f"  fetched {len(out)}/{total}")
         skip += len(batch)
         if not batch or len(out) >= total or skip >= total:
-            return out
+            break
+    # Page boundaries on a tied sort key can repeat a row AND skip another (2026-09-12:
+    # GY-hLgHkiMu came back twice, GY-e76S7wxq not at all, count still matched). Dedupe
+    # repairs the repeat; the skip cannot be repaired here, so say so rather than return
+    # a short list that looks complete.
+    out = list({r.get("_id") or id(r): r for r in out}.values())
+    if len(out) < total:
+        print(f"  !! {total - len(out)} reservation(s) missing after dedupe "
+              f"({len(out)} unique of {total}) -- pagination skipped them; re-run the pull.")
+    kept = [r for r in out if dfrom <= (local_date(r, "checkIn") or "") <= dto]
+    utc_only = sum(1 for r in kept if not r.get("checkInDateLocalized")
+                   and not (r.get("listing") or {}).get("timezone"))
+    print(f"  kept {len(kept)} with LOCAL check-in {dfrom} … {dto} "
+          f"({len(out) - len(kept)} outside it, from the widened UTC window)")
+    if utc_only:
+        print(f"  !! {utc_only} reservation(s) had no localized date or listing timezone -- "
+              f"dated by UTC, which may be a day late.")
+    return kept
 
 
 def summary_row(b: dict) -> dict:

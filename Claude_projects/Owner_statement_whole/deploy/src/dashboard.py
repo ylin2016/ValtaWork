@@ -200,8 +200,8 @@ def build_ltr_records(raw, pm_fee_rate: float, owner_pays_cleaning: bool):
         except Exception:
             dates = ""
         rec = {
-            "Guest Name": x["guest_name"],
             "Confirmation Code": x["booking_id"],
+            "Guest Name": x["guest_name"],
             "Reservation Dates": dates,
             "Gross Revenue": f"${gross:,.2f}",
             "Net Rental Revenue": f"${net:,.2f}",
@@ -521,9 +521,23 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
     if booking_records or data['bookings']:
         story.append(Paragraph("Net Revenue", heading_style))
 
-        _nr_cols = [1.2*inch, 1.2*inch, 1.2*inch, 1.1*inch, 1.1*inch, 1.1*inch]
-        _nr_header = ['Reservation Dates', 'Confirmation Code', 'Guest Name',
-                      'Net Rental Revenue', 'Management Commission', 'Net Owner Proceeds']
+        # Confirmation Code, Guest Name, then dates (owner request 2026-09-13). Measured at
+        # 8 pt the text needs up to 1.9" (codes like CT-1658113358878313-4DEOF, the dates,
+        # long names) and the money headers up to 1.5" — ~9.6" against a 7" page — so the
+        # text columns WRAP (Paragraph cells) and the money headers take two lines, rather
+        # than spilling across the neighbouring column as they did.
+        _nr_cols = [1.2*inch, 1.4*inch, 1.9*inch, 0.8*inch, 0.88*inch, 0.8*inch]
+        _nr_header = ['Confirmation Code', 'Guest Name', 'Reservation Dates',
+                      'Net Rental\nRevenue', 'Management\nCommission', 'Net Owner\nProceeds']
+        _nr_cell = ParagraphStyle('nr_cell', fontName='Helvetica', fontSize=8, leading=9.5)
+        _nr_code = ParagraphStyle('nr_code', parent=_nr_cell, wordWrap='CJK')   # codes have no spaces
+
+        def _wrap_text(v):
+            """Code / guest / dates as wrapping Paragraphs; money cells stay plain strings."""
+            code, guest, dates = (str(x or '') for x in v[:3])
+            esc = lambda t: t.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            return [Paragraph(esc(code), _nr_code), Paragraph(esc(guest), _nr_cell),
+                    Paragraph(esc(dates), _nr_cell)]
 
         def _nr_table(rows, grand=False):
             t = Table(rows, colWidths=_nr_cols)
@@ -535,6 +549,7 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
                 ('FONTNAME', (0, -1), (-1, -1), 'Helvetica-Bold'),
                 ('BACKGROUND', (0, -1), (-1, -1), colors.HexColor('#CFE0C3' if grand else '#E2EFDA')),
                 ('ALIGN', (3, 0), (-1, -1), 'RIGHT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
                 ('GRID', (0, 0), (-1, -1), 0.5, colors.grey),
             ]))
             return t
@@ -544,21 +559,28 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
         if booking_records:
             src = booking_records
             def _vals(r):
-                return (r.get('Reservation Dates', ''), r.get('Confirmation Code', ''), r.get('Guest Name', ''),
+                return (r.get('Confirmation Code', ''), r.get('Guest Name', ''), r.get('Reservation Dates', ''),
                         r.get('Net Rental Revenue', ''), r.get('Management Commission', ''), r.get('Net Owner Proceeds', ''),
                         r.get('_net', 0), r.get('_comm', 0), r.get('_owner', 0), int(r.get('_nights', 0)), r.get('_pid'))
         else:
             src = data['bookings']
+            # Per-booking rate, like the main path: seattle_9021 is 17.1% to 2026-08-10 and 22%
+            # after, so the period scalar would misstate half its bookings.
+            _y, _m = (int(x) for x in period.split('-'))
+            _rc = sqlite3.connect(DB_PATH)
+            _rate_at = pm_rate_resolver(_rc, property_id, f"{_y:04d}-{_m:02d}-01",
+                                        f"{_y:04d}-{_m:02d}-{calendar.monthrange(_y, _m)[1]:02d}")
+            _rc.close()
             def _vals(b):
                 net_rental = round(float(b['net_revenue'] or 0), 2)
-                comm = round(-net_rental * pm_fee_rate, 2)
+                comm = round(-net_rental * (_rate_at(b['checkin']) or pm_fee_rate), 2)
                 owner_rev = round(net_rental + comm, 2)
                 ci = datetime.strptime(b['checkin'], '%Y-%m-%d'); co = datetime.strptime(b['checkout'], '%Y-%m-%d')
                 nights = (co - ci).days
                 # Same-day credit entries (e.g. OSBR-RV Hipcamp bookings) show a single date.
                 dr = (co.strftime('%d. %b. %Y') if nights == 0
                       else f"{ci.strftime('%d. %b.')} - {co.strftime('%d. %b. %Y')} / {nights} nights")
-                return (dr, b['booking_id'] or '', b['guest_name'] or '',
+                return (b['booking_id'] or '', b['guest_name'] or '', dr,
                         f"${net_rental:,.2f}", f"${comm:,.2f}", f"${owner_rev:,.2f}",
                         net_rental, comm, owner_rev, nights, b.get('property_id'))
 
@@ -588,9 +610,9 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
             s_net = s_comm = s_owner = 0.0
             s_nights = 0
             for v in gv:
-                rows.append([v[0], v[1], v[2], v[3], v[4], v[5]])
+                rows.append(_wrap_text(v) + [v[3], v[4], v[5]])
                 s_net += v[6]; s_comm += v[7]; s_owner += v[8]; s_nights += v[9]
-            rows.append([f"{s_nights} nights", '', '', f"${s_net:,.2f}", f"${s_comm:,.2f}", f"${s_owner:,.2f}"])
+            rows.append(['', '', f"{s_nights} nights", f"${s_net:,.2f}", f"${s_comm:,.2f}", f"${s_owner:,.2f}"])
             story.append(_nr_table(rows))
             story.append(Spacer(1, 0.15*inch))
             gt_net += s_net; gt_comm += s_comm; gt_owner += s_owner; gt_nights += s_nights
@@ -602,7 +624,7 @@ def generate_pdf(property_id: str, period: str, data: dict, booking_records: lis
                 story.append(Spacer(1, 0.1*inch))
             story.append(Paragraph("<b>Total Net Revenue</b>", normal_style))
             grand_rows = [list(_nr_header),
-                          [f"{gt_nights} nights", '', '', f"${gt_net:,.2f}", f"${gt_comm:,.2f}", f"${gt_owner:,.2f}"]]
+                          ['', '', f"{gt_nights} nights", f"${gt_net:,.2f}", f"${gt_comm:,.2f}", f"${gt_owner:,.2f}"]]
             story.append(_nr_table(grand_rows, grand=True))
             story.append(Spacer(1, 0.2*inch))
 
@@ -1030,8 +1052,8 @@ if has_net_revenue:
             reservation_dates = f"{checkin.strftime('%d. %b.')} - {checkout.strftime('%d. %b. %Y')} / {nights} nights"
 
         record = {
-            'Guest Name': b['guest_name'],
             'Confirmation Code': b['booking_id'],
+            'Guest Name': b['guest_name'],
             'Reservation Dates': reservation_dates,
             'Gross Revenue': f"${gross_revenue:,.2f}",
             'Net Rental Revenue': f"${net_rental:,.2f}",
@@ -1047,7 +1069,7 @@ if has_net_revenue:
             record['Tax Paid to Owner'] = f"${tax_paid:,.2f}"
             record['tax_paid_value'] = tax_paid  # numeric, for TOTAL row
         record['Net Owner Proceeds'] = f"${owner_rev:,.2f}"
-        record['Commission %'] = (f"{comm / -net_rental:.0%}" if net_rental
+        record['Commission %'] = (f"{comm / net_rental:.0%}" if net_rental
                                   else f"{-pm_fee_rate:.0%}")
         record.update(_pid=b.get('property_id'), _gross=gross_revenue, _net=net_rental,
                       _comm=comm, _owner=owner_rev, _nights=nights)
@@ -1184,7 +1206,7 @@ if has_net_revenue:
     _nr_colcfg['Commission %'] = st.column_config.NumberColumn(format="percent")
 
     def _nr_num_row(guest, conf, dates, net, clean, comm, tax, owner):
-        row = {'Guest Name': guest, 'Confirmation Code': conf, 'Reservation Dates': dates,
+        row = {'Confirmation Code': conf, 'Guest Name': guest, 'Reservation Dates': dates,
                'Net Rental Revenue': round(float(net), 2)}
         if owner_pays_cleaning:
             row['Owner Cleaning Fee'] = round(float(clean), 2)
@@ -1195,7 +1217,7 @@ if has_net_revenue:
         # BLENDED, not the scalar rate: a property whose rate changes mid-period
         # (seattle_9021, 17.1% to 2026-08-10 then 22%) has no single rate, and printing
         # one understates what the owner was actually charged.
-        row['Commission %'] = (round(float(comm) / -float(net), 4) if net
+        row['Commission %'] = (round(float(comm) / float(net), 4) if net
                                else -pm_fee_rate)
         return row
 

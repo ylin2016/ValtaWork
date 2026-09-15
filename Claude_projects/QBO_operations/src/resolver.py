@@ -34,6 +34,24 @@ class Resolver:
     def klass(self, name: str) -> str | None:
         return self._one("Class", "FullyQualifiedName", name)
 
+    def klass_fqn(self, name: str) -> str | None:
+        """The class's real FullyQualifiedName, or None.
+
+        The statement project's class map records some listings one level too shallow
+        (`Listings:Yacinde E1` for `Listings:Yacinde NuGrowth:Yacinde E1`). An exact FQN
+        wins; otherwise the leaf Name is accepted only when exactly ONE class has it.
+        """
+        if self.klass(name) is not None:
+            return name
+        leaf = name.rsplit(":", 1)[-1].strip()
+        key = ("ClassLeaf", leaf)
+        if key not in self._cache:
+            r = self.qbo.query(
+                f"SELECT Id, FullyQualifiedName FROM Class WHERE Name = '{esc(leaf)}'")
+            got = r.get("QueryResponse", {}).get("Class", [])
+            self._cache[key] = got[0]["FullyQualifiedName"] if len(got) == 1 else None
+        return self._cache[key]
+
     def department(self, name: str) -> str | None:
         return self._one("Department", "FullyQualifiedName", name)
 

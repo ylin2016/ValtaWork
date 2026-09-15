@@ -217,7 +217,20 @@ and `ClassRef` that are invisible until they are gone.
 
 **`qbo.post()` already unwraps the entity** — it returns the object, not `{"Bill": {...}}`.
 Indexing `["Bill"]` on the result turns a SUCCESSFUL write into an exception, which once
-logged thousands of good writes as failures.
+logged thousands of good writes as failures. It matches the response key
+case-insensitively: it used to capitalise only the first letter, so `journalentry`
+looked for `Journalentry`, missed QuickBooks' `JournalEntry`, and `je/post` crashed
+reading the Id of a JE it had just written (JE 117999, 2026-09-14). **After any crash in
+a posting run, check QuickBooks for what was written before re-running.**
+
+## The class map is not proof a class exists
+
+Owner_statement_whole's `mapping_classes.yml` records some listings one level too
+shallow — `Listings:Yacinde E1` for `Listings:Yacinde NuGrowth:Yacinde E1`, and
+`Listings:Yacinde B3` for `Listings:Yacinde Holdings:Yacinde B3`. `build_bookingcom`
+now checks every class against the company file (`Resolver.klass_fqn`) and writes the
+real full name into the review CSV, WARNing when it corrected one. `build_airbnb` gets
+classes a different way and does not do this check yet.
 
 ### The fee Bills are generated upstream, and the generator is still wrong
 
