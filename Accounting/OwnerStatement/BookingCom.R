@@ -30,4 +30,12 @@ for(k in c("Jan","Feb","Mar","Apr","May","Jun"))
 bookings= merge(bookings,BookingIDs %>% select(ID,NICKNAME),
             by.x="Property.ID",by.y="ID",all.x=T)
 write.csv(bookings,"bookings_JE_input_2026_Sept.csv",row.names=F,na="")
-  
+
+
+inputfile = "/Users/ylin/ValtaWork/Claude_projects/QBO_operations/inputs/JE/bookingcom/"
+
+tmp = read.csv(paste0(inputfile,"bookings_JE_input_2026_0901-0914.csv"))
+bookings= merge(tmp,BookingIDs %>% select(ID,NICKNAME),
+                by.x="Property.ID",by.y="ID",all.x=T)
+write.csv(bookings,paste0(inputfile,"bookings_JE_input_2026_0901-0914.csv"),
+          row.names=F,na="")

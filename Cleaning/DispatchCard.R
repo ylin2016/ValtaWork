@@ -140,10 +140,8 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
 both %>% filter(yearmonth %in% '2026-08' & diff!=0)
 
 #2026-08
-#Elektra 507: typo on dispatch card?  no payment record
-#Issaquah 1938: 2 dispatch, 1 payment
-#Mercer 2449: 3 dispatch,2 payment
-#Bellevue 14507U3: no dispatch record
+#Issaquah 1938: 2 dispatch, 1 payment-> reschedule
+#Mercer 2449: 3 dispatch,2 payment-> reschedule
 
 #2026-07
 #                 Times.disp Times.str Times.Res Times.pay diff

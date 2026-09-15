@@ -143,6 +143,35 @@ are now no CSV-only corrections left: `STRIPE_FEE_OVERRIDES` absorbed the last t
 - **`deactivated.py`** — the Open API silently drops **deactivated** (`active=false`) listings.
   `--deactivated-csv <ui_export>` folds them in (add-only-missing by confirmation code).
 
+### Booking dates are LOCAL, and a month is pulled by LOCAL check-in
+
+Guesty's `checkIn` / `checkOut` are **UTC instants**, and the code used to take their
+first 10 characters. West of UTC that dates every late check-in a day late: 4:00 PM on
+2026-11-27 in Manson, WA (PST, UTC−8) is `2026-11-28T00:00Z`. Under PDT (UTC−7) 4 PM is
+23:00Z the same day, so **only winter stays shifted — except Keaau, which is UTC−10 and
+shifted all year.** The monthly pull filtered on the same UTC instants, so a boundary
+check-in landed in the wrong month. Measured 2026-09-12 on 4,703 reservations: **722
+dated a day late, 29 in the wrong month** — 18 Dec-31 check-ins counted in January 2026,
+5 Jan-31 in February, 6 Feb-28 in March (e.g. seattle_9021 `HMKFN54W5E`).
+
+Fixed 2026-09-12, at the one place both pulls go through:
+
+- **`guesty.reservation_financials.local_date(resv, which)`** returns Guesty's own
+  `checkInDateLocalized` / `checkOutDateLocalized` (the date in the listing's timezone),
+  falling back to converting through `listing.timezone`. `build_breakdown` dates the
+  booking with it, so `summary_row`, Output A's `CHECK-IN` and the breakdown's `checkIn`
+  are all local without touching their `.str[:10]`.
+- **`guesty.reservations_batch.fetch_range`** always requests those fields, widens the UTC
+  window by a day on each side, then keeps only rows whose LOCAL check-in is in the
+  month. It also dedupes by `_id` and warns when the unique count falls short of Guesty's
+  total — a tied sort key on a page boundary can repeat one row and SKIP another.
+
+**History was deliberately left alone** (owner, 2026-09-12). Every stored
+`inputs/<p>/` file before this fix carries the shifted dates, and only a `fetch_month`
+re-pull rewrites them — re-pulling a closed month restates statements already sent. So
+the boundary errors above remain in 2025-12 … 2026-03 (and, unmeasured, in 2025's
+winter months). A future pull of any month is correct.
+
 ### Task 2 — QBO expenses → ledger (`src/expense/`)
 
 `qbo_sync.py` / `owner_costs.py` / `qbo_client.py`, ~unchanged from mvp.
