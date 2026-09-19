@@ -9,3 +9,8 @@ properties:
   All Units: "Valta Realty"
   # Owner decision 2026-09-12: a bare "Seattle 10057" (landscaping for the lot) is Whole.
   Seattle 10057: "Listings:Seattle 10057 Whole"
+  # Owner decision 2026-09-19: a bare building name with no unit is the Whole class,
+  # the same call as Seattle 10057 above.  Both properties have been classed every
+  # way in the past (Bellevue 2323: Whole 4 / ADU 5 / Main 2), so it is not inferable.
+  Bellevue 2323: "Listings:Bellevue 2323 Whole"
+  Seattle 7434: "Listings:Seattle 7434 Whole"

@@ -43,6 +43,11 @@ accounts:
 names:
   bank_str: "Chase Trust Checking 9967 - STR"
   commission_revenue: "Management Commissions Revenue"
+  # The Yacinde HOA's share of an AA Professional Cleaners bill.  The HOA is a third
+  # party that reimburses, not an owner whose payable can be charged, so its share is
+  # an ASSET until the HOA is invoiced and pays -- never `Cleaning Expense - Owner`.
+  # See fixes/yacinde_hoa_split.
+  hoa_receivable_yacinde: "Trust Assets other than Cash & A/R:HOA Receivable - Yacinde"
 
 # Every JE this project writes is Trust-side.
 location: "Trust"

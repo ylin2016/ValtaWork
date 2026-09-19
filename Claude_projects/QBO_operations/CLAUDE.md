@@ -54,6 +54,24 @@ Misrouted payments come from **manual Receive Payment entries** inheriting a ban
 account default — 29 of 30 lacked `PaymentRefNum` where 551 of 579 synced ones had
 it. The sync is correct; the hand-entered ones are the deviation.
 
+### Which model applies depends on channel AND year
+
+The two-step model is not universal back in time. Before 2026, **Booking.com had no payout
+JEs**: in 2025, 457 of 458 Booking.com reservation payments were deposited straight to
+Chase 9967 and reconciled there, and not one JE touched Booking.com clearing. Airbnb was
+two-step throughout (2025: 1,807 payments to Airbnb clearing, 870 payout JEs).
+
+So a catch-up payment for an old unpaid invoice goes where its channel and year put it:
+
+| Channel / period          | Reservation payment deposits to   | Bank line matches    |
+|---------------------------|-----------------------------------|----------------------|
+| Airbnb, any year          | Payments Clearing - Airbnb        | the payout JE        |
+| Booking.com, 2024 – 2025  | **Chase Trust Checking 9967**     | the payment itself   |
+| Booking.com, 2026 on      | Payments Clearing - Booking.com   | the payout JE        |
+
+A 2025 Booking.com payment moved into Booking.com clearing strands its amount there —
+there is no payout JE to clear it against (Payment 118025, 2026-09-14).
+
 ## A booking's payment must equal its net exposure across ALL JEs, not one payout
 
 A refund often lands in a *different* payout batch from the reservation. Reconciling
@@ -107,6 +125,13 @@ is that shape, in one place.
 and the reservation invoice already recognises it under `Guest Charges:Tax`.
 Routing it to Tax Liability in the payout JE strands it in clearing, which the
 payment then cannot clear. Owner decision: credit clearing for the full payout.
+
+`build_airbnb` does this correctly. But **an external integration also posts Airbnb
+payout JEs** — same `M-…` Airbnb reference as DocNumber, memo
+`External Payment ID: M-…`, created late at night (22:16 and 22:22 on 9/06 and 9/12) —
+and it **still credits Pass Through Tot to Tax Liability**. It is not a scheduled task
+here and nothing in `review/CHANGE_LOG.csv` created them. So every Keaau payout it books
+needs `fixes/passthrough_tot` afterwards; re-run the dry run to find new ones.
 
 ## Reading Owner_statement_whole — only through `src/bridge.py`
 
@@ -252,3 +277,120 @@ Two more things that generator does, both left alone because neither moves money
   although only ONE is a Trip.com booking: 93 are Airbnb (`HM…`), 54 Booking.com
   (10-digit), 31 VRBO (`HA-`), 14 direct (`GY-`). All $0.00. The reservation code in the
   memo is the truth; the label is not.
+
+## The HOA's share of a cleaning bill is a RECEIVABLE, not an owner expense
+
+One AA Professional Cleaners bill (`YacindeCL_<inv#>`, vendor Id 200000021) covers cleans
+that two different parties bear.  The HOA is a third party that REIMBURSES -- not an owner
+whose payable can be charged -- so its share is an asset until the HOA is invoiced and pays:
+
+    owner's clean   1C - Owner Expenses:Cleaning Expense - Owner (1678)   class = the listing
+    HOA's clean     HOA Receivable - Yacinde (1150040013)                 class = Yacinde HOA
+
+**As of 2026-09-17 these lines carry their LISTING class, not the flat one** (owner decision,
+for per-unit reporting; `fixes/yacinde_hoa_classes --to listing`).  That leaves a known
+exposure: until `qbo_sync` gates on the ACCOUNT, the next statement build charges the ten
+Yacinde owners $11,160.00 for the HOA's cleans.  `--to hoa` reverses it in one run.  The
+paragraph below is why the flat class existed and why it is still the safe state.
+
+**The class matters as much as the account.** `Owner_statement_whole`'s `qbo_sync` ingests
+EVERY Bill line carrying a mapped class and filters on nothing else -- there is no account
+filter -- so a listing class on an HOA line charges that owner for a clean the HOA is
+paying for, whatever account it points at.  `Yacinde HOA` (1000000041) is deliberately not
+under `Listings:` and not in the statement project's `mapping_classes.yml`, so those lines
+land in its exceptions table as CLASS_NOT_MAPPED and reach no statement.  The unit then has
+nowhere to live but the Description: `07/13/2026 C1 Cleaning Fee`.
+
+Which cleans are the HOA's is never inferred here -- it comes from the `Invoice - HOA` tab
+of `yacinde_expense/output/yacinde_expense_allocation_<period>.xlsx`, after the owner's hand
+corrections.  `fixes/yacinde_hoa_split` repointed all four bills on 2026-09-17: 63 lines,
+$11,160.00 of $14,760.00, leaving $3,600.00 on owners.  It is idempotent (a line already on
+the receivable is skipped), so re-run it as each month's bill arrives.
+
+Two gotchas it exists to survive:
+
+- **A line description can contain a newline** (`"07/24/2026 Cleaning_Intensive cleaning do
+  to marijuana\nsmoked"`).  A `.*$` parse stops at it and the whole match fails, so that
+  line's date came back None and the $250 B6 clean matched nothing.  Use `re.S`.
+- **The workbook and the bill can name different units for the same clean** -- 08/20 F1 vs
+  C1, 08/22 F5 vs B3.  The two-way reconciliation was otherwise exact (83 lines, $14,760.00
+  on both sides), so it is one clean under two labels and the HOA pays it either way; only
+  the description text is in doubt.  The script relaxes the UNIT and flags it, never the
+  date.  Owner decision 2026-09-17: **the allocation workbook is right.**
+
+`invoices/hoa_cleaning` is the other half: one Invoice per month to Customer `Yacinde HOA`
+(100000031), one line per clean, through the Service item `HOA Reimbursement - Cleaning`
+(182) whose income account IS the receivable.  Recovering a cost is not revenue, so nothing
+reaches the P&L -- and an item in this file may point at a balance-sheet account, which is
+the house pattern rather than a workaround (`Guest Charges:Tax` credits Rental Taxes
+Payable).  A margin, if one is ever charged, is a separate line against a real income
+account.  An invoice LINE has no account of its own: the credit account comes from the item,
+which is why an item has to exist at all.  Class tracking here is per transaction LINE
+(`ClassTrackingPerTxnLine`), so the class goes on the line, not the item -- not one of the
+50 items carries a ClassRef.
+
+Posted 2026-09-17: HOA-2026-07 (118386, $4,550.00) and HOA-2026-08 (118387, $6,610.00).
+**The receivable is the control account** -- it went to $0.00, so everything laid out has
+been invoiced; a balance means cleans paid for and not yet billed on.  The HOA's payment
+deposits to **Chase Trust 9967**, the account that paid the cleaner: reimbursement landing
+in 7197 leaves the trust permanently short.
+
+### Cleaning is not the only thing the HOA bears
+
+Pool chemicals, a pool hook, common-area maintenance -- these have no allocation workbook
+behind them.  They arrive one Amazon purchase at a time and get categorised to an owner
+expense account by whoever enters them, which charges the Yacinde owners for a cost the
+HOA reimburses.  Two scripts, and the order is not optional:
+
+    fixes/hoa_recategorize --ids 117982,117983     1C - Owner Expenses:Maintenance - Owner
+                                                   -> HOA Receivable - Yacinde, class Yacinde HOA
+    invoices/hoa_maintenance --into HOA-2026-08     bills whatever sits on the receivable
+
+**The receivable IS the source list.**  There is nothing to maintain: a line categorised to
+`HOA Receivable - Yacinde` is by definition money laid out and not yet billed on, so
+`hoa_maintenance` reads the account's open debits rather than a workbook tab or a hardcoded
+set of Ids.  It skips AA Professional Cleaners and `YacindeCL_` bills, because
+`invoices/hoa_cleaning` owns those and double-billing them is the obvious failure mode.
+
+Recategorising FIRST is what makes a cost billable at all.  Invoicing a line still sitting
+on `Maintenance - Owner` credits an asset that was never debited: the receivable goes
+negative and the owners keep carrying the money.
+
+**Which purchases the HOA bears is never inferred, and `pool` in a description is not a
+rule** -- `hoa_recategorize` takes explicit Ids from the owner, exactly as the workbook
+decides which cleans are the HOA's.  Both scripts are reversible and abort on the first
+TotalAmt that moves; only AccountRef and ClassRef change.
+
+These lines carry class **`Yacinde HOA`, not a listing**: the pool is common area and
+belongs to no single unit, so there is no listing class to give them.  That also keeps the
+purchase and the invoice line on the same class, which is what makes the two sides
+reconcile.  The item is `Owner Charges:HOA Reimbursement - Maintenance` (184), income
+account 1150040013 -- the receivable, so nothing reaches the P&L, same as the cleaning item.
+
+`hoa_maintenance --into <DocNumber>` APPENDS to an existing invoice rather than raising a
+new one, reading it back and echoing it whole: an Invoice carries `BillAddr`,
+`TxnTaxDetail`, `CustomField` and per-line `ItemAccountRef` that QBO blanks if the payload
+omits them, and the new lines go in BEFORE the `SubTotalLineDetail` line.  It aborts unless
+the new total is the old total plus exactly what was added.
+
+2026-09-19: $352.78 of pool chemicals appended to HOA-2026-08 ($6,610.00 -> $6,962.78, 40
+lines), and the two September pool purchases (117982, 117983, $231.06) recategorised --
+leaving the receivable open at exactly $231.06, awaiting HOA-2026-09.
+
+**These were paid by Business Credit Card (4783), not the trust.**  The cleaning on the same
+invoice came out of Chase Trust 9967, so one HOA payment against a mixed invoice puts money
+into the trust that the company actually spent.  Open question, not yet decided: whether
+that share moves back to the company afterwards.
+
+## Cleared / reconciled status: use the General Ledger report, never TransactionList
+
+`reports/TransactionList` has **no `account` parameter** — it silently ignores one and
+returns the whole company, and its `Clr` column then misreports bank-line status. It
+once showed a week of Chase 9967 payout JEs as "uncleared, never matched" when every one
+was reconciled. `reports/GeneralLedger` with `account=<Id>` does filter, and its
+`is_cleared` column (`Clr`: blank / C / R) is the truth for that account.
+
+A bank-feed line in *For Review* whose transaction is already **R** will never appear in
+Find match — QuickBooks does not offer reconciled transactions. Such a line is a leftover
+of a period reconciled in the register without matching the feed: **Exclude** it. Adding it
+would put a second deposit into a period that already balances.
