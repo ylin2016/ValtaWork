@@ -1079,3 +1079,46 @@ force-refresh in a loop.**
 Think before coding; state assumptions. Only implement what was asked. Surgical changes; match
 existing style. Fix at the shared source layer so dashboard/Excel/PDF/end_balances update
 together — never patch one product and leave the others stale.
+
+## Two gates: the CLASS locates a line, the ACCOUNT decides who bears it
+
+`qbo_sync` used to gate on the class ALONE. Any line carrying a class in
+`mapping_classes.yml` was charged to that property's owner, whatever account it sat on,
+and `apply_account_rules` only picked the label. That inversion is why
+`Billable Expense Income - Supplies Owner` -- Valta INCOME -- was filed under the owner's
+*Supplies* line (718 lines, $22,828.07): the regex `(?i)suppl` matched the name, and
+nothing looked at where the account sits.
+
+Since 2026-09-17 both gates must pass (`gate:` in `config/mapping_accounts.yml`):
+
+    class -> property_map   which property the line belongs to
+    account -> gate         whether the OWNER bears it
+
+The chart of accounts already encodes the second answer in its tree, so the gate reads the
+tree rather than re-deriving it from substrings: only `Owner Payables:1A - Net Earnings:`,
+`1C - Owner Expenses:` and `2 - Owner Distributions` reach a statement. `include_exact` is
+the escape hatch for a deliberate exception; it is empty on purpose.
+
+A failing line is **skipped and logged as ACCOUNT_NOT_OWNER_SIDE**, never stored with
+`include_in_statement=0` -- `_central_supply` and `_drop_tiny_cancellations` both
+re-include rows in bulk, so a suppressed row can come back.
+
+An **Invoice line names an ITEM, not an account**, so the gate resolves the item's income
+account first (in this file an item may legitimately point at a balance-sheet account:
+`Guest Charges:Tax` credits Rental Taxes Payable). **Deposit lines carry no account at
+all** and are classified from their description; the gate cannot speak to them and leaves
+them alone.
+
+**Preview before rebuilding — it changes real statements:**
+
+    python -m src.expense.gate_preview --start 2026-07-01 --end 2026-08-31 --by-property
+
+On Jul-Aug 2026 it removes **$93,141.04 of charges from real owners** (plus $219,645.11
+from the `valta_realty` house bucket). The recurring drivers are Valta's own COGS and
+overhead reaching owner statements: `Fee - Stripe Processing` on 77 properties while
+`1A - Net Earnings:Credit Card Fees` already charges the owner side of the same fee,
+`Fee - Booking.com Commission` on 47 alongside `1A - Net Earnings:Channel Fees`,
+`Cleaning Fee Revenue:Cleaning Payout` on 13 properties not flagged `owner_pays_cleaning`,
+`Security Deposits Payable`, `Accounts Receivable/Payable` and `0_Employees 1099:Wages - *`.
+Each needs an owner decision: move the cost onto a `1C - Owner Expenses:*` account (the
+tree is the point), or add it to `include_exact` with a reason.
