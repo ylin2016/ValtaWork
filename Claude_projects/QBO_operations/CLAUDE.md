@@ -285,7 +285,7 @@ that two different parties bear.  The HOA is a third party that REIMBURSES -- no
 whose payable can be charged -- so its share is an asset until the HOA is invoiced and pays:
 
     owner's clean   1C - Owner Expenses:Cleaning Expense - Owner (1678)   class = the listing
-    HOA's clean     HOA Receivable - Yacinde (1150040013)                 class = Yacinde HOA
+    HOA's clean     HOA Receivable - Yacinde (1150040013)                 class = the listing
 
 **As of 2026-09-17 these lines carry their LISTING class, not the flat one** (owner decision,
 for per-unit reporting; `fixes/yacinde_hoa_classes --to listing`).  That leaves a known
@@ -301,9 +301,20 @@ under `Listings:` and not in the statement project's `mapping_classes.yml`, so t
 land in its exceptions table as CLASS_NOT_MAPPED and reach no statement.  The unit then has
 nowhere to live but the Description: `07/13/2026 C1 Cleaning Fee`.
 
-Which cleans are the HOA's is never inferred here -- it comes from the `Invoice - HOA` tab
-of `yacinde_expense/output/yacinde_expense_allocation_<period>.xlsx`, after the owner's hand
-corrections.  `fixes/yacinde_hoa_split` repointed all four bills on 2026-09-17: 63 lines,
+Which cleans are the HOA's is never INFERRED here, but there are now two sources that
+STATE it, and which one wins is a per-tool decision:
+
+| source                                                   | used by                              |
+|----------------------------------------------------------|--------------------------------------|
+| allocation workbook, `Invoice - HOA` / `Cleaning Allocation` | `fixes/yacinde_hoa_split`            |
+| the expense sheet's own `Category` column                | `invoices/build_aa_cleaning` (default) |
+
+The allocation workbook is `yacinde_expense/output/yacinde_expense_allocation_<period>.xlsx`
+after the owner's hand corrections.  Read `Cleaning Allocation`, not `Invoice - HOA`, when
+you need BOTH halves of the split: only it carries `hoa_paid` and `owner_paid` side by side,
+and its `$0` rows are "fraction week, no clean" markers, not cleans.
+
+`fixes/yacinde_hoa_split` repointed all four bills on 2026-09-17: 63 lines,
 $11,160.00 of $14,760.00, leaving $3,600.00 on owners.  It is idempotent (a line already on
 the receivable is skipped), so re-run it as each month's bill arrives.
 
@@ -315,8 +326,54 @@ Two gotchas it exists to survive:
 - **The workbook and the bill can name different units for the same clean** -- 08/20 F1 vs
   C1, 08/22 F5 vs B3.  The two-way reconciliation was otherwise exact (83 lines, $14,760.00
   on both sides), so it is one clean under two labels and the HOA pays it either way; only
-  the description text is in doubt.  The script relaxes the UNIT and flags it, never the
-  date.  Owner decision 2026-09-17: **the allocation workbook is right.**
+  the description text is in doubt.  The script relaxes the UNIT and flags it.
+- **They can also disagree on the DATE, because a clean gets RESCHEDULED.**  On INV1200 the
+  allocation carries F1 at 09/08 -- its own note reads `checkout at 9/8, rescheduled
+  cleaning` -- where AA invoiced it on 09/11.  Refusing to pair them dropped the line and
+  left the expense $180.00 short of the money that actually left the bank, so the bank feed
+  would not have matched.  Owner decision 2026-09-19: **pair them**, under AA's invoice date.
+  Unit and amount must still agree exactly, and the relaxation is the LAST pass, after both
+  the exact match and the unit relaxation, so it can never steal a clean from a better pair.
+
+Relax one field at a time and flag every relaxation; two at once is not a reconciliation.
+
+### Valta pays the cleaner first, so the cash out is an EXPENSE, not a bill
+
+The four bills above arrived as `Bill` + `BillPayment` (Check).  From INV1200 the shape is
+the owner's stated model -- **expense first, then recover**:
+
+    Expense    Dr HOA Receivable / Cleaning Expense - Owner   Cr Chase Trust 9967
+    Invoice    Dr A/R (Yacinde HOA)                           Cr HOA Receivable
+
+`invoices/build_aa_cleaning` builds the expense from the same `<date>_Expense2qbo.xlsx`
+sheet the Zelle transfers come from, reconciles it two-way against the allocation workbook,
+and writes the ordinary review CSV -- so `invoices/post` posts it with no special case, and
+the duplicate check, the DocNumber rule and the change log all apply unchanged.  Pay it from
+**Chase Trust 9967**: that is where the past AA BillPayments came from (117673, 117675) and
+where the HOA's reimbursement deposits back to.
+
+**The owner's share needs no separate bill.**  `Cleaning Expense - Owner` is an owner
+payable, so the statement pipeline charges it on its own; "bill the owner for their portion"
+means put the line on that account, not raise a second document.
+
+Two things this changed, both owner decisions of 2026-09-19 that OVERRIDE rules stated
+absolutely above -- read them together, not separately:
+
+- **The expense sheet's `Category` column outranks the allocation workbook** for who bears a
+  clean (`--split sheet`, the default; `--split allocation` is the reverse).  The owner fills
+  that column in by hand per invoice, knowing what they intend to recover.  On INV1200 it put
+  all 25 cleans on the receivable where the allocation gave 2 ($360.00, B3 on 09/03 and
+  09/07) to Yacinde Holdings.  This does NOT retire the 2026-09-17 "the allocation workbook
+  is right" call -- that still governs `fixes/yacinde_hoa_split`, which repoints BILL lines
+  and has no hand-marked column to read.  The disagreement is always printed, never silent.
+- **Know what `--split sheet` costs.**  The HOA is then invoiced for the full amount, and
+  anything it declines to reimburse strands on the receivable instead of reaching the owner
+  who bore it.  The receivable being the control account is what catches this: a non-zero
+  balance after the HOA pays is the signal, so do not write it off, find the line.
+
+Posted 2026-09-19: Purchase 118594, INV1200, $4,500.00 over 25 lines, all on the receivable.
+The Zelle reference reads `..._4680_4500` while both the sheet and the allocation say
+$4,500.00 -- **open**: if AA's paper invoice is $4,680.00 a 26th clean is missing from both.
 
 `invoices/hoa_cleaning` is the other half: one Invoice per month to Customer `Yacinde HOA`
 (100000031), one line per clean, through the Service item `HOA Reimbursement - Cleaning`
@@ -329,9 +386,11 @@ which is why an item has to exist at all.  Class tracking here is per transactio
 (`ClassTrackingPerTxnLine`), so the class goes on the line, not the item -- not one of the
 50 items carries a ClassRef.
 
-Posted 2026-09-17: HOA-2026-07 (118386, $4,550.00) and HOA-2026-08 (118387, $6,610.00).
-**The receivable is the control account** -- it went to $0.00, so everything laid out has
-been invoiced; a balance means cleans paid for and not yet billed on.  The HOA's payment
+Posted 2026-09-17: HOA-2026-07 (118386, $4,550.00) and HOA-2026-08 (118387, $6,610.00),
+which took the receivable to $0.00.  **The receivable is the control account** -- $0.00
+means everything laid out has been invoiced; a balance means cleans paid for and not yet
+billed on.  It stands at **$4,731.06** as of 2026-09-19 and that is expected, not a fault:
+$4,500.00 of INV1200 plus $231.06 of pool items, all awaiting HOA-2026-09.  The HOA's payment
 deposits to **Chase Trust 9967**, the account that paid the cleaner: reimbursement landing
 in 7197 leaves the trust permanently short.
 
