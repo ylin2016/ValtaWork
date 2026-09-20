@@ -9,7 +9,7 @@ import pandas as pd
 
 from .common.config import load_config
 from .common.db import connect, init_db
-from .common.mappings import load_class_mapping, load_account_rules
+from .common.mappings import load_account_gate, load_class_mapping, load_account_rules
 from .common.income_rules import NOT_OWNER_PRED
 from .expense.qbo_client import QBOClient
 from .expense.qbo_sync import sync_qbo_expenses
@@ -566,6 +566,7 @@ def cmd_qbo_sync(args):
 
     property_map = {m["qbo_class_id"]: m["property_id"] for m in items if m.get("qbo_class_id") and m.get("property_id")}
     acct_rules = load_account_rules(args.mapping_accounts)
+    acct_gate = load_account_gate(args.mapping_accounts)
 
     q = cfg["qbo"]
     qbo = QBOClient(realm_id=q["realm_id"], base_url=q["base_url"], minorversion=int(q.get("minorversion",75)))
@@ -578,7 +579,11 @@ def cmd_qbo_sync(args):
     conn.commit()
 
     exc_cb = exception_logger(conn)
-    sync_qbo_expenses(conn, qbo, property_map, acct_rules, args.start, args.end, exceptions_cb=exc_cb)
+    if acct_gate['enabled']:
+        print(f"  account gate ON: only {', '.join(acct_gate['include_prefixes'])} "
+              f"(+{len(acct_gate['include_exact'])} exact) reach a statement.")
+    sync_qbo_expenses(conn, qbo, property_map, acct_rules, args.start, args.end,
+                      exceptions_cb=exc_cb, account_gate=acct_gate)
     print("QBO sync complete.")
 
 def cmd_guesty_import(args):

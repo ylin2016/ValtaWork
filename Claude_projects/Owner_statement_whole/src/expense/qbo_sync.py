@@ -1,5 +1,5 @@
 import uuid
-from ..common.mappings import apply_account_rules
+from ..common.mappings import account_is_owner_side, apply_account_rules, load_account_gate
 from ..common.utils import now_iso
 
 def _parse_date(d: str) -> str:
@@ -35,8 +35,38 @@ def _all_pages(qbo, base_query: str, entity: str, page_size: int = 500) -> list:
     return results
 
 
-def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], start_date: str, end_date: str, exceptions_cb=None):
+def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], start_date: str, end_date: str, exceptions_cb=None, account_gate: dict | None = None):
+    """Pull QuickBooks into ledger_lines for the period.
+
+    TWO gates, and both must pass before a line is charged to anyone:
+
+      the CLASS says which property the line belongs to  (property_map)
+      the ACCOUNT says whether the OWNER bears it        (account_gate)
+
+    Until 2026-09-17 only the first existed, and the account merely picked a label --
+    so any line carrying a mapped listing class was charged to that owner whatever
+    account it sat on. `Billable Expense Income - Supplies Owner` (Valta INCOME) was
+    filed under the owner's Supplies line that way: 718 lines, $22,828.07.
+
+    A line failing the account gate is SKIPPED, not stored with include_in_statement=0
+    -- two build steps re-include rows in bulk and a suppressed row could come back.
+    `src.expense.gate_preview` shows the delta before a rebuild.
+    """
     cur = conn.cursor()
+    gate = account_gate or {"enabled": False}
+
+    # An Invoice line names an ITEM, not an account; the account the owner is judged on
+    # is the item's income account (which in this file may be a balance-sheet account --
+    # `Guest Charges:Tax` credits Rental Taxes Payable).  Resolved once, and only when
+    # the gate is on.
+    item_account: dict[str, str] = {}
+    if gate.get("enabled"):
+        _accts = {a["Id"]: a["FullyQualifiedName"]
+                  for a in _all_pages(qbo, "select Id, FullyQualifiedName from Account", "Account")}
+        for _i in _all_pages(qbo, "select * from Item", "Item"):
+            _ref = (_i.get("IncomeAccountRef") or {}).get("value")
+            if _ref in _accts:
+                item_account[_i["FullyQualifiedName"]] = _accts[_ref]
 
     # Idempotent re-sync: clear this period's QBO rows before re-importing, else every re-run
     # INSERTs a fresh copy (no upsert) and the ledger triplicates. All rows imported below are
@@ -75,6 +105,12 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                 continue
             if class_ref not in property_map:
                 exc("error", "CLASS_NOT_MAPPED", f"QBO Class {class_ref} not mapped to property_id.", e, line_id=str(idx))
+                continue
+
+            if not account_is_owner_side(acct_name, gate):
+                exc("error", "ACCOUNT_NOT_OWNER_SIDE",
+                    f"Account {acct_name!r} is not an owner-statement account; excluded.",
+                    e, line_id=str(idx))
                 continue
 
             property_id = property_map[class_ref]
@@ -143,6 +179,12 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                 exc("warning", "CLASS_NOT_MAPPED", f"QBO Class {class_ref} not mapped to property_id.", b, line_id=str(idx))
                 continue
 
+            if not account_is_owner_side(acct_name, gate):
+                exc("warning", "ACCOUNT_NOT_OWNER_SIDE",
+                    f"Account {acct_name!r} is not an owner-statement account; excluded.",
+                    b, line_id=str(idx))
+                continue
+
             property_id = property_map[class_ref]
             category, subcat = apply_account_rules(acct_name or "", vendor or "", account_rules)
 
@@ -186,6 +228,12 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                 continue
             if class_ref not in property_map:
                 exc("warning", "CLASS_NOT_MAPPED", f"QBO Class {class_ref} not mapped to property_id.", j, line_id=str(idx))
+                continue
+
+            if not account_is_owner_side(acct_name, gate):
+                exc("warning", "ACCOUNT_NOT_OWNER_SIDE",
+                    f"Account {acct_name!r} is not an owner-statement account; excluded.",
+                    j, line_id=str(idx))
                 continue
 
             property_id = property_map[class_ref]
@@ -240,6 +288,12 @@ def sync_qbo_expenses(conn, qbo, property_map: dict, account_rules: list[dict], 
                 continue
             if class_ref not in property_map:
                 exc("warning", "CLASS_NOT_MAPPED", f"QBO Class {class_ref} not mapped to property_id.", inv, line_id=str(idx))
+                continue
+
+            if not account_is_owner_side(item_account.get(acct_name or '', acct_name or ''), gate):
+                exc("warning", "ACCOUNT_NOT_OWNER_SIDE",
+                    f"Account {item_account.get(acct_name or '', acct_name or '')!r} is not an owner-statement account; excluded.",
+                    inv, line_id=str(idx))
                 continue
 
             property_id = property_map[class_ref]
