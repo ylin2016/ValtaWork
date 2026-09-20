@@ -441,6 +441,72 @@ invoice came out of Chase Trust 9967, so one HOA payment against a mixed invoice
 into the trust that the company actually spent.  Open question, not yet decided: whether
 that share moves back to the company afterwards.
 
+### AA cleaning is an Expense, not a Bill (from 2026-09)
+
+Owner decision 2026-09-19: AA Professional Cleaners cleaning is entered as an **Expense**
+paid from Chase Trust 9967, because that is what happens -- the invoice is paid on arrival,
+so parking it in A/P and paying it back out the same week adds a step and nothing else.
+The first one entered this way was `20260917_INV1200_4500` (Purchase 118594).  DocNumber
+scheme: `<yyyymmdd>_INV<aa invoice>_<total>`.
+
+The four historical Bills were converted by `fixes/bill_to_expense`, which CREATES the
+replacement and leaves the delete to the owner -- QBO has no "convert", deleting is not
+something this project does, and QBO refuses to delete a paid Bill until its payment goes
+first.  **Create before deleting.**  In between the amount is on the books twice and
+plainly visible; the other order leaves the HOA receivable short while the HOA invoices
+still clear debits that no longer exist, which is a far worse place to stop half way.
+
+| Bill | AA inv | was | Expense | now |
+|------|--------|-----|---------|-----|
+| 116622 | 1167 | 2026-07-31 $4,660.00 | 118595 | 2026-08-03 |
+| 116623 | 1173 | 2026-07-31 $250.00   | 118596 | 2026-08-03 |
+| 116789 | 1180 | 2026-08-31 $3,370.00 | 118597 | 2026-08-18 |
+| 116696 | 1186 | 2026-08-31 $6,480.00 | 118598 | 2026-09-01 |
+
+**An Expense has ONE date where a Bill had two, and the choice moves money between owner
+statements.**  These Bills were all dated month-end; the cash left days later.  `--date
+payment` (chosen) re-matches the bank-feed line released by deleting the Bill Payment, but
+moved $360.00 of owner-borne cleaning from July to August and $2,880.00 from August to
+September -- so July and August owner statements no longer reproduce and need rebuilding.
+`--date bill` keeps every line in its month and makes the bank line match a few days off.
+The dry run prints the movement under each; decide from that, never from the flag name.
+
+**The subtotal guard compares Ids, never names.** QuickBooks renders the same class
+differently depending on which object is asked: Bill 116623 reports
+`Listings:Yacinde NuGrowth:Yacinde B6`, the Purchase built from it reports `Yacinde B6`,
+both Id 1000000030.  Comparing names rejected a Purchase that was correct in every respect
+and aborted the run after it had already been written.  Same family as the JE
+`AccountRef.name` trap above.
+
+`fixes/yacinde_hoa_split` still queries **Bill** objects only.  Now that cleaning arrives as
+an Expense it must read Purchase too, or each month's HOA split has to be done by hand --
+which is how INV1200 was entered, and it put all 25 lines on the receivable when the
+allocation workbook says the HOA's share is 23 cleans / $4,140.00.
+
+#### A Purchase's PaymentType is what it IS, and it is final
+
+`Cash` renders as an **Expense**, `Check` renders as a **Check**, `CreditCard` as an Expense
+on a card.  The posting is identical -- same accounts, classes, amounts, bank -- but the
+label, the register icon and the internal TxnType (`PurchaseEx`: 54 vs 3) are not.
+
+**It cannot be changed afterwards, and QuickBooks does not say so honestly.** A full update
+answers `610 Object Not Found: Something you're trying to use has been made inactive`, which
+names no field and sends you hunting for a deactivated account, class or vendor -- every one
+of which was active.  A SPARSE update is worse: it returns 200 with the old value intact, so
+it looks like it worked.  Forcing `PurchaseEx.TxnType` fails the same way.  The only fix is
+to create a new object and delete the old one.
+
+So `--paytype` is decided in the dry run, not afterwards.  `fixes/bill_to_expense --clone
+<purchase ids> --paytype Cash` exists because that lesson cost four objects: the first
+conversion mirrored each Bill's `BillPaymentCheck` and produced four Checks.  It carries
+everything over except the server-owned fields (`Id`, `SyncToken`, `MetaData`, `PurchaseEx`,
+`PrintStatus`, and the per-line `Id`s) and verifies the new object reproduces the old
+totals and per-account/per-class subtotals before printing what to delete.
+
+Final chain, 2026-09-19: Bill 116622/116623/116789/116696 -> Check 118595/118596/118597/118598
+-> Expense **118602/118603/118604/118605**.  The Bills and their Bill Payments were deleted by
+the owner; the Checks are deleted last, after the Expenses exist.
+
 ## Cleared / reconciled status: use the General Ledger report, never TransactionList
 
 `reports/TransactionList` has **no `account` parameter** — it silently ignores one and

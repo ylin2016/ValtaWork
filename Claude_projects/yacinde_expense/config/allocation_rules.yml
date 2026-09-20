@@ -1,0 +1,50 @@
+# Yacinde expense allocation settings (read by src/build.py)
+
+inputs:
+  previous_company: data/previous_company/1-Yacinde Arrivals July 9 2026 to July 8 2027.xlsx
+  fractional_master: "data/owner_timeshare/Yacinde_Fractional_Owner_Master  July 2026.xlsx"
+  whole_owners: "data/owner_timeshare/YCA_Owners_Aug 13 2026.xlsx"   # unit owners; used for units not in the fractional master
+  fractional_sheet: Bookings
+  guesty_json: data/guesty/guesty_reservations.json
+  cleaning: data/cleaning/Yacinde_Cleaning_Records_Jul-Sep_2026.xlsx
+
+# Reporting period: stays are counted by CHECK-OUT date (the turnover being cleaned).
+period:
+  start: 2026-07-01             # confirmed by user 2026-09-16
+  end: 2026-09-15
+
+# Individual (timeshare) owner weeks from the fractional master are added as stays when no booking
+# source has them, starting with the week that begins on this date (06/26-07/03 covers early July).
+timeshare_weeks_from: 2026-06-26
+
+# Bookings were migrated from the previous company into Guesty for check-ins on/after
+# this date. Before it the previous-company file is the system of record; on/after it Guesty is.
+migration_cutoff: 2026-07-30
+
+supplies:
+  rate_per_guest_night: 0.9      # guests * nights * rate; timeshare stays use max sleeps instead of guests
+  hoa_pays_from: 2026-07-12      # HOA bears supplies for every booking checking in on/after this date
+  source_workbook: output/yacinde_expense_allocation_20260701_20260915.xlsx   # supplies per stay, for extracts without the column
+
+# Cleans merge to stays by checkout: same unit, clean on the checkout date or up to N days after it.
+cleaning_match:
+  max_days_after_checkout: 3
+
+# ownership type (from the fractional master) -> party that bears the expense
+parties:
+  Individual: Fractional share
+  Developer: NuGrowth
+  LLC: Yacinde Holdings
+  Whole owner: NuGrowth                 # B6, C1, E1, E3, F5 - wholly owned by NuGrowth Chelan LLC.
+
+# HOA-covered cleaning. Cleans outside these rules are paid by the allocated party.
+#  - Whole-owner units: HOA pays the first N cleans of each calendar month (by clean date).
+#  - Fractional units (B1 B2 B3 B4 F1): every fraction week (any owner: Individual, Developer, LLC)
+#    gets N HOA cleans (~4/unit/month); further cleans that week are paid by the week's owner.
+#    A clean belongs to the week with week_start < date <= week_end. Weeks with no invoiced clean get a $0 HOA row.
+hoa_cleaning:
+  paid_by: HOA
+  free_cleans_per_month: 4
+  fraction_free_cleans_per_week: 1
+  scope: unit                           # confirmed by user 2026-09-16: 4 per unit per month
+  exclude_invoices: ["1173"]            # special cleans (B6 intensive/smoke) never count toward or get HOA coverage
