@@ -1,8 +1,16 @@
-"""Post Zelle lump-sum Expenses from a review CSV into QuickBooks.
+"""Post Expenses from a review CSV into QuickBooks.
 
     python -m src.invoices.post --all                        # dry run, every transfer
     python -m src.invoices.post --ref 20260908_Andea_455.93  # dry run, one
     python -m src.invoices.post --all --confirm              # WRITES
+
+Written for the Zelle lump-sum transfers and since shared by every builder that
+produces this CSV shape -- AA cleaning, Booking.com commission, the expense form's card
+purchases.  Five columns are optional and default to the Zelle behaviour when a builder
+leaves them out: `DocNumber`, `EntityType` (Vendor unless the payee is a Customer),
+`LineCustomer`, `Memo` and `PaymentType` (Cash; `CreditCard` for a charge on a card).  Keeping one poster is the point: the DocNumber check, the
+content-based duplicate check and the `--confirm` rule then apply to every builder
+without each one re-implementing them.
 
 Refuses to post when a line is still unresolved in the review CSV, when the lines
 do not add up to the transfer total the owner recorded, or when the transfer is
@@ -72,6 +80,23 @@ def docnumber(ref: str, rows: list[dict]) -> str:
     return ((rows[0].get("DocNumber") or "").strip() or ref)[:DOCNUMBER_MAX]
 
 
+def entity(rows: list[dict], res: Resolver) -> tuple[str, str, str | None]:
+    """(name, type, Id) of the payee.
+
+    Defaults to a Vendor, which is what a Zelle transfer pays.  Booking.com is filed as
+    a CUSTOMER in this company file (Id 471) and every commission Expense already on the
+    books carries it that way, so the review CSV may say so with an `EntityType` column
+    rather than each builder hand-rolling its own payload.
+    """
+    nm = rows[0]["Vendor"]
+    kind = (rows[0].get("EntityType") or "Vendor").strip() or "Vendor"
+    return nm, kind, (res.customer(nm) if kind == "Customer" else res.vendor(nm))
+
+
+def memo(ref: str, vendor_name: str, rows: list[dict]) -> str:
+    return (rows[0].get("Memo") or "").strip() or f"Zelle payment to {vendor_name} {ref}"
+
+
 def build_payload(ref: str, rows: list[dict], res: Resolver) -> tuple[dict, list[str]]:
     errs: list[str] = []
 
@@ -83,10 +108,9 @@ def build_payload(ref: str, rows: list[dict], res: Resolver) -> tuple[dict, list
     if rows[0]["Location"] and dept is None:
         errs.append(f"location not found: {rows[0]['Location']!r}")
 
-    vendor_name = rows[0]["Vendor"]
-    vendor = res.vendor(vendor_name)
+    vendor_name, vendor_type, vendor = entity(rows, res)
     if vendor is None:
-        errs.append(f"vendor not found: {vendor_name!r}")
+        errs.append(f"{vendor_type.lower()} not found: {vendor_name!r}")
 
     lines = []
     for r in rows:
@@ -103,6 +127,13 @@ def build_payload(ref: str, rows: list[dict], res: Resolver) -> tuple[dict, list
             if cid is None:
                 errs.append(f"line {r['LineNum']}: class not found: {r['Class']!r}")
             detail["ClassRef"] = {"value": cid}
+        if (r.get("LineCustomer") or "").strip():
+            # The per-line customer the existing Booking.com commission Expenses carry.
+            # NotBillable, so it never becomes a rebill -- it is only the payee stamp.
+            lc = res.customer(r["LineCustomer"].strip())
+            if lc is None:
+                errs.append(f"line {r['LineNum']}: customer not found: {r['LineCustomer']!r}")
+            detail["CustomerRef"] = {"value": lc}
         lines.append({
             "DetailType": "AccountBasedExpenseLineDetail",
             "Amount": round(float(r["Amount"]), 2),
@@ -118,12 +149,12 @@ def build_payload(ref: str, rows: list[dict], res: Resolver) -> tuple[dict, list
         errs.append(f"lines total {total:,.2f} but the transfer was {float(stated):,.2f}")
 
     payload = {
-        "PaymentType": "Cash",
+        "PaymentType": (rows[0].get("PaymentType") or "").strip() or "Cash",
         "AccountRef": {"value": bank},
-        "EntityRef": {"value": vendor, "type": "Vendor"},
+        "EntityRef": {"value": vendor, "type": vendor_type},
         "DocNumber": docnumber(ref, rows),
         "TxnDate": rows[0]["TxnDate"],
-        "PrivateNote": f"Zelle payment to {vendor_name} {ref}",
+        "PrivateNote": memo(ref, vendor_name, rows),
         "Line": lines,
     }
     if dept:

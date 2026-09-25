@@ -1,12 +1,55 @@
-# Zelle tracking sheet payee -> QuickBooks Vendor DisplayName.
+# Owner-entered payee spelling -> QuickBooks Vendor DisplayName.
 #
-# The sheet is filled in by hand and abbreviates ("Andea"), while a write payload
-# needs a Vendor Id, which only an exact DisplayName resolves.  A name that is
-# neither listed here nor an exact DisplayName is a WARN and blocks the post --
-# never a guess, because a wrong vendor is invisible once it is on the books.
+# The sheets are filled in by hand and the owner-payout one carries the BANK's ACH
+# label ("VALTA COJI LLC"), while a write payload needs a Vendor Id, which only an
+# exact DisplayName resolves.  A name that is neither listed here nor an exact
+# DisplayName is a WARN and blocks the post -- never a guess, because a wrong vendor
+# is invisible once it is on the books.
+#
+# Shared by the Zelle expense builder and the owner-payout builder: the same person
+# is abbreviated the same way on both sheets, and two maps would drift.
 
 payees:
   Andea: "Andrea Brannon"
   Andrea: "Andrea Brannon"       # the same person, spelled in full on the 09/19 sheet
   Camila: "Camila - service"        # 164 Zelle expenses since March, all to this vendor
   Valta Homes: "Valta Homes LLC"
+
+  # --- expense form stores (the `store` of `store_stuff`; build_form_expenses) --------
+  # Matched case-insensitively.  The vendor each card's own feed Expenses already carry
+  # (checked 2026-09-24).  A store that is already an exact Vendor name (Target, Walmart,
+  # Ace Hardware) needs no row.
+  Costco: "Costco Wholesale"
+  Amazon: "Amazon.com"
+  Home Depot: "The Home Depot"     # 'Home Depot' also exists; the feed uses The Home Depot
+  HomeDepot: "The Home Depot"
+
+  # --- owner-payout sheet spellings (Payout_<period>.xlsx) ---------------------
+  # Most are spacing and case only -- the DisplayName differs by a space, a case, or a
+  # trailing unit number.  The last two are NOT: they are owner decisions of 2026-09-20,
+  # written down here rather than inferred, because nothing in the data says them.  A
+  # name that is neither listed nor an exact DisplayName stays unresolved in the review
+  # CSV and blocks the post.
+  Chrissie Yim 1621: "Chrissie Yim"           # the ACH label carries the unit number
+  Jing Zhou Chase: "Jing Zhou"                # the ACH label carries the bank
+  Jing Zhou chase bank: "Jing Zhou"           # ... and the 09-20 sheet spells it out
+  Jing Zhou US bank: "Jing Zhou"              # Seatac 12834's label names the RECEIVING
+                                              # bank, which is the owner's and changes;
+                                              # all three spellings are one Vendor
+  The FeifeiFamily Trust: "The Feifei Family Trust"
+  VALTA COJI LLC: "Valta Coji L.L.C"
+  BAOFU WANG: "Baofu Wang"
+  Max O Sigander: "Max Sigander"              # NOT Jessi Sigander, the other Poulsbo 563 owner
+  AFN SheltonAdvisorLLC: "AFN Shelton Advisor LLC"
+  Suki E: "Suet Ki Poon"                      # Shelton 310's ACH label; Hoodsport 26060 on
+                                              # the same sheet spells the same owner in full
+  # Redmond 14707's bank line names BOTH owners.  Owner decision 2026-09-20: the bill is
+  # Zhongyan Qiu's.  Listed rather than resolved in code -- a two-owner row is never
+  # reduced to one of them by a rule, only by the owner saying so.
+  Yuhui Mao_Zhongyan Qiu: "Zhongyan Qiu"
+  # Mercer 2449's owner, with the two name parts the other way round.  Not inferred from
+  # the resemblance: every Mercer 2449 payout Bill since May (105103, 108234, 112087,
+  # 116368) carries Vendor "Si Na" AND a line description reading
+  # "20260512_Mercer 2449_Na Si_Owner Payout_5327.22" -- the books record both spellings
+  # of the same person side by side.
+  Na Si: "Si Na"

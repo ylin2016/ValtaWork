@@ -10,7 +10,7 @@ from functools import lru_cache
 import yaml
 from dotenv import load_dotenv
 
-from .paths import ACCOUNTS_YML, CONFIG_YML, ENV_FILE, PAYEES_YML
+from .paths import ACCOUNTS_YML, BOOKING_IDS, CONFIG_YML, ENV_FILE, PAYEES_YML
 from .qbo_client import QBOClient
 
 
@@ -30,6 +30,31 @@ def payees() -> dict:
     if not PAYEES_YML.exists():
         return {}
     return (yaml.safe_load(PAYEES_YML.read_text()) or {}).get("payees", {})
+
+
+@lru_cache(maxsize=1)
+def booking_ids() -> dict[str, list[str]]:
+    """Booking.com Property ID -> listing nickname(s), from `config/booking_Id.csv`.
+
+    Owner-maintained and the single source.  A nickname legitimately has MORE THAN ONE
+    id -- `Microsoft 14615-D303` has two, one per Booking.com listing of the same unit --
+    so this is many ids to one listing, never the reverse.
+
+    Read here rather than in each consumer: the payout builder needs it because the raw
+    Booking.com export carries no nickname at all, and the commission reconciliation needs
+    it to join the invoice to a class.  Two readers would disagree the first time a
+    listing is renamed.
+    """
+    import csv  # noqa: PLC0415 - only this one function needs it
+    from collections import defaultdict  # noqa: PLC0415
+    m: dict[str, set] = defaultdict(set)
+    if BOOKING_IDS.exists():
+        with BOOKING_IDS.open(encoding="utf-8-sig") as fh:
+            for r in csv.DictReader(fh):
+                pid, nk = (r.get("ID") or "").strip(), (r.get("NICKNAME") or "").strip()
+                if pid and nk:
+                    m[pid].add(nk)
+    return {k: sorted(v) for k, v in m.items()}
 
 
 def acct_id(key: str) -> str:

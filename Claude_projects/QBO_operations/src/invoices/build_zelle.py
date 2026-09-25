@@ -27,6 +27,16 @@ Two workbook layouts are read:
                                   `filename`:  <date>_<Property>_<payee>_..._<amount>_<lump>
 
     python -m src.invoices.build_zelle --src inputs/Invoice_payment/20260911_Expense2qbo.xlsx
+
+A third source is the expense form's export (../expense_form, weekly reimbursement run):
+
+    zelle_expense2qbo.csv          one row per reimbursed receipt; Amount, Property, `qbo_account`
+                                   (the form's category account, used as-is), `Paid from` (QBO bank
+                                   name) and `typed_in` (a value typed under "Other" that the reviewer
+                                   has not mapped yet: that line is DROPPED with a warning, and the
+                                   transfer then fails its JE Amount check, so nothing half-posts)
+
+    python -m src.invoices.build_zelle --src "<Drive>/Expense_processing/exports/zelle_expense2qbo.csv"
 """
 from __future__ import annotations
 
@@ -94,10 +104,15 @@ def load_workbook_data(src: Path, map_csv: Path | None = None
     Category is matched case-insensitively: the sheet says `Cleaning Payout` on some
     rows and `Cleaning payout` on others, and those are one category, not two.
     """
-    wb = load_workbook(src, data_only=True, read_only=True)
-    ws = wb[RECORDS_SHEET] if RECORDS_SHEET in wb.sheetnames else wb.worksheets[0]
-    records = rows_of(ws)
-    if map_csv is None and ACCOUNT_MAP_SHEET in wb.sheetnames:
+    if src.suffix.lower() == ".csv":                      # the expense form's export
+        with open(src, encoding="utf-8-sig", newline="") as fh:
+            records = [r for r in csv.DictReader(fh) if any((v or "").strip() for v in r.values())]
+        wb = None
+    else:
+        wb = load_workbook(src, data_only=True, read_only=True)
+        ws = wb[RECORDS_SHEET] if RECORDS_SHEET in wb.sheetnames else wb.worksheets[0]
+        records = rows_of(ws)
+    if wb is not None and map_csv is None and ACCOUNT_MAP_SHEET in wb.sheetnames:
         pairs = [(r.get("Categorization"), r.get("qbo_account")) for r in rows_of(wb[ACCOUNT_MAP_SHEET])]
         origin = f"{src.name}:{ACCOUNT_MAP_SHEET}"
     else:
@@ -106,7 +121,8 @@ def load_workbook_data(src: Path, map_csv: Path | None = None
             pairs = [(r.get("Category") or r.get("Categorization"), r.get("qbo_account"))
                      for r in csv.DictReader(fh)]
         origin = str(path.name)
-    wb.close()
+    if wb is not None:
+        wb.close()
     amap = {str(k).strip().lower(): str(v).strip() for k, v in pairs if k and v}
     return records, amap, origin
 
@@ -214,6 +230,11 @@ def build(src: Path, qbo, map_csv: Path | None = None) -> tuple[list[dict], list
         line = 0
         for r in items:
             line += 1
+            if str(r.get("typed_in") or "").strip():
+                warnings.append(f"{ref} line {line} (row {r['_row']}): {r['typed_in']} typed in on the "
+                                f"form and not mapped yet — fix the Expense Ledger row; line DROPPED")
+                line -= 1
+                continue
             amt = amount_of(r)
             if amt is None or str(amt).strip() == "":
                 warnings.append(f"{ref} line {line} (row {r['_row']}): no Amount — line DROPPED")
@@ -233,7 +254,8 @@ def build(src: Path, qbo, map_csv: Path | None = None) -> tuple[list[dict], list
                                 f"{lump} — the filename layout may not be <amount>_<total>")
 
             cat = str(r.get("Category") or "").strip()
-            acct = amap.get(cat.lower())
+            # The expense form sends the account itself (Expense Config category -> qb_account).
+            acct = str(r.get("qbo_account") or "").strip() or amap.get(cat.lower())
             if not acct:
                 acct = f"*** NEEDS ACCOUNT {cat or '(blank)'} ***"
                 warnings.append(f"{ref} line {line}: category {cat or '(blank)'!r} is not in "

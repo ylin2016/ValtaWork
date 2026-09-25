@@ -1,0 +1,30 @@
+# Owner-payout property -> QuickBooks Class.
+#
+# SEPARATE from property_classes.yml on purpose.  That file answers "an expense sheet
+# says `Bellevue 2323`, which class does the COST belong to" and the owner's answer there
+# was the Whole class.  This file answers "the bank paid one ACH for `Bellevue 2323`,
+# which class did the PAYOUT sit on", and the register's own answer is a different unit.
+# Merging the two would silently move one of them.
+#
+# Only properties whose bank line names a property that has NO class of its own belong
+# here.  Everything else resolves as `Listings:<property>` against the live company file;
+# a name that resolves to nothing is `*** UNMAPPED ***` and blocks the post.
+#
+# Each entry below is what the register already did, not a guess:
+#   Seattle 7434   PAY-202608-5K2AB  Dai Li                  Listings:Seattle 7434 Whole
+#   Seattle 10057  PAY-202608-2TWMO  Wenjin Yao              Listings:Seattle 10057 Whole
+#   Burien 14407   PAY-202608-NQP6Y  9750 Rainier LLC        Listings:Burien 14407 Middle
+#   Seattle 906    PAY-202608-VOB3V  Arsham Mesbah Shoolami  Listings:Seattle 906 Lower
+#   Bellevue 2323  OWNPAY-20260630-8MRRL  Guangbin Xing      Listings:Bellevue 2323 ADU
+# (Bellevue 2323 was not in the August batch; June's row for the SAME payee is the source.)
+#
+# Note the statement project's mapping_classes.yml claims `Listings:Bellevue 2323` and
+# `Listings:Burien 14407` exist.  They do not -- the class map is not proof a class
+# exists.  Owner decision 2026-09-20: follow the register, do not create the classes.
+
+properties:
+  Seattle 7434:   "Listings:Seattle 7434 Whole"
+  Seattle 10057:  "Listings:Seattle 10057 Whole"
+  Burien 14407:   "Listings:Burien 14407 Middle"
+  Seattle 906:    "Listings:Seattle 906 Lower"
+  Bellevue 2323:  "Listings:Bellevue 2323 ADU"

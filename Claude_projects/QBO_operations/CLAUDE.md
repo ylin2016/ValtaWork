@@ -271,8 +271,10 @@ Plain `Billable Expense Income` does not match `(?i)suppl`, so these stragglers 
 re-create the Supplies misfiling on owner statements; they are only off-convention.
 
 Two more things that generator does, both left alone because neither moves money:
-- Every fee Bill's A/P account (`APAccountRef`) is **Insurance Liability** (1600), not
-  Accounts Payable. Harmless while the Bills total $0.00 — which all 38,291 do.
+- Every fee Bill's A/P account (`APAccountRef`) is 1600, not the default Accounts
+  Payable. Harmless while the Bills total $0.00 — which all 38,291 do. (1600 was named
+  *Insurance Liability*; as of 2026-09-20 it is **`PMS Clearing – A/P`**, type Accounts
+  Payable, and it is what every owner-payout Bill uses too. The name carries an EN DASH.)
 - 198 cancelled-reservation Bills created 2026-09-03 are labelled `Tripcom Channel fee`
   although only ONE is a Trip.com booking: 93 are Airbnb (`HM…`), 54 Booking.com
   (10-digit), 31 VRBO (`HA-`), 14 direct (`GY-`). All $0.00. The reservation code in the
@@ -507,6 +509,213 @@ Final chain, 2026-09-19: Bill 116622/116623/116789/116696 -> Check 118595/118596
 -> Expense **118602/118603/118604/118605**.  The Bills and their Bill Payments were deleted by
 the owner; the Checks are deleted last, after the Expenses exist.
 
+## Booking.com commission: billed per reservation, invoiced per PROPERTY
+
+Commission touches the books three times and all three should agree:
+
+    billed to the owner   9Z5X_<reservation> Bill, DEBIT 1A - Net Earnings:Channel Fees
+                          (a $0.00 rebill -- the owner is charged, Valta books the matching
+                          Billable Expense Income - Channel Fee, so Valta nets to zero)
+    invoiced by Booking   the monthly commission invoice, ONE ROW PER PROPERTY
+    paid in cash          Purchase line, DEBIT Fee - Processing & Commission:
+                          Fee - Booking.com Commission (1602), out of Chase Trust 9967
+
+**A bank charge from Booking.com is COGS (1602), never a `1C - Owner Expenses` account.**
+The owner was already charged at reservation time; booking it as an owner expense charges
+them twice.  This is also why the statement account gate correctly drops 1602.
+
+`reconcile/bookingcom_commission` is the three-way report (read-only).  Four things it
+exists to get right:
+
+- **The invoice is per PROPERTY**, so a per-reservation match is impossible from the invoice
+  side however much one wants it.  The reservation detail is only on OUR side, in the
+  `9Z5X_<reservation>` DocNumbers, so the report compares at property level and lists the
+  reservations behind each row.
+- **Join in two hops**: invoice `ID` -> NICKNAME from the payout CSVs under `payment/`,
+  NICKNAME -> property_id via `ltr.labels.to_property_id` through `bridge.py`.  That is what
+  makes `Cottage 3` and `OSBR 3` one unit.  Never hardcode it; the map is the statement
+  project's and a copy goes stale on the first rename.
+- **Keep every `Invoice Type`, not just `Commission`.**  A file also carries
+  `Customer complaint costs`, booked to the same 1602 (Purchase 114697 has one at $201.84
+  beside a commission line).  Filtering them out made the invoice look $296.70 short of the
+  cash that paid it.
+- **Take the period from the invoice DATE, not the filename.**  Booking.com bills in
+  arrears -- an invoice dated 2026-09-06 is AUGUST's commission, paid later still.  The
+  same file has arrived named `..._2026-08.xlsx`, `..._20260919.xlsx` and
+  `20260815_Booking.xlsx`: the stay month, the due date and the issue date.  Comparing cash
+  from the bills' own month lines August's payment of July's commission up against August's
+  bills and is pure noise.
+
+**Reconcile at least two months together.** A 9Z5X_ bill is dated by the stay and the
+invoice by Booking.com's cut-off, so a reservation on the boundary lands in different months
+on the two sides and shows as equal and opposite gaps.  Jul+Aug 2026: $392.95 of apparent
+difference cancelled exactly that way (elektra_1212 $200.14, osbr_4 $107.63, osbr_7 $37.72,
+bellevue_1420 $237.87), leaving **$1,133.28 real** -- of which **Shelton 310 is $890.13**,
+invoiced $997.68 in July with no owner charged at all.
+
+Cash ties exactly where it can be checked: July's invoice $8,225.26 = August's cash
+$8,225.26, property by property.  August's $10,221.81 invoice (27 rows Paid $5,967.16,
+18 Overdue $4,254.65) was still unbooked as of 2026-09-20.
+
+### The bank feed cannot be categorised through the API -- create the match instead
+
+QuickBooks has no public endpoint for the *For Review* list, so no script here can touch a
+downloaded bank line: not to categorise it, not to add it, not to write a bank rule.  The
+only automation available is to put the right transaction on the books FIRST.  The feed
+then offers it under **Find match** and the owner accepts it with one click instead of
+choosing an account and a class 27 times.  A match keeps the transaction's OWN date, so an
+Expense dated a few days off the real debit still matches cleanly -- the amount is what
+identifies it.
+
+`invoices/build_bcom_commission` does this for Booking.com commission:
+
+    python -m src.invoices.build_bcom_commission                     # newest invoice, Paid rows
+    python -m src.invoices.post --all --csv review/bcom_commission_expenses_<period>.csv --confirm
+
+Four things it has to get right, none of them guessable from the invoice alone:
+
+- **Booking.com is a CUSTOMER here (Id 471), not a Vendor**, and these Expenses carry
+  Location `Valta Realty`, not Trust.  Every commission Expense already on the books does,
+  and a report that groups by payee splits in two if a new one disagrees.
+- **Only `Paid` rows have left the bank.**  August's invoice was 27 Paid / 18 Overdue;
+  posting an Overdue row invents cash that has not moved.  `--status all` overrides.
+- **Booking.com debits per PROPERTY** -- 2026-08-15 came through as 27 separate bank lines,
+  one per invoice row -- so the default is one Expense per property.  It is not invariable:
+  Purchase 114699 is a single $2,629.86 debit covering 11.  `--group batch` builds that
+  shape, and the dry run prints the count and total so the feed can be compared against it.
+- **The class takes two hops**, Property ID -> NICKNAME (`config/booking_Id.csv`) ->
+  property_id -> QBO class, each verified against the live company file.  A direct leaf
+  lookup is tried first; the statement project's map is only consulted when that misses,
+  which is where `Cottage 3` -> `OSBR 3` lives.  A nickname reaching no class is written
+  `*** UNMAPPED ***` and blocks the post.
+
+`invoices/post` is shared, not forked: `DocNumber`, `EntityType`, `LineCustomer` and `Memo`
+are optional columns that default to the Zelle behaviour.  That is what keeps the
+content-based duplicate check -- `(bank, TxnDate, amount)` within +/-3 days over Purchase --
+covering this builder too, which matters here precisely because the owner may *Add* a feed
+line instead of matching it.
+
+## The monthly owner payout: a Bill AND its payment, one pair per bank line
+
+The bank pays one ACH per property, so the books carry one pair per property:
+
+    Bill          Dr 2 - Owner Distributions (Payouts) (1633)   Cr PMS Clearing - A/P (1600)
+    BillPayment   Dr PMS Clearing - A/P                         Cr Chase Trust 9967   (Check)
+
+**The BillPayment is the object the feed matches**, not the Bill. A Bill on its own leaves
+the bank line uncategorised and an open A/P balance, so the pair is posted together and
+`invoices/post_owner_payout` stops the whole run if a payment fails after its Bill posted
+— naming the Bill Id, because half a pair is the one state worth interrupting for.
+
+    python -m src.invoices.build_owner_payout --expect-total <the bank batch>   # review CSV
+    python -m src.invoices.post_owner_payout --all --csv review/owner_payout_<period>.csv
+    #   ... --confirm  to WRITE
+
+### The sheet's `Paid From` column says which bank, and it is not optional
+
+**The bank is not derivable from anything else on the sheet, and one month used two
+accounts at once.** 2026-09: $270,868.91 and the individual lines debited Chase Trust
+9967 - STR, while a $23,191.62 batch of six debited **Chase Trust 3038 - monthly** — and
+Beachwood, which had been on 3038 since June, came back to 9967. Nothing in the register
+predicts that, so the owner records it per row and `build_owner_payout` reads it.
+
+A payment on the wrong bank is the hardest error in this project to see. The Bill is
+right, the vendor is right, the amount and the date are right, the owner statement is
+right, and `Balance = 0` says it is paid. Only the feed disagrees — by silently never
+offering the payment under *Find match*, which reads as a QuickBooks fault rather than a
+data one. It cost a full round of "where are the bills?" on 2026-09-20.
+`fixes/repoint_payment_bank --ids <...> --to "<bank>"` moves just
+`CheckPayment.BankAccountRef` and re-reads every object to prove the write landed.
+
+**Column roles come from the HEADER, never from position.** The sheet was one column,
+then grew a batch column, and then grew `Paid From` IN THAT SAME POSITION — so a builder
+counting columns read every bank name as a batch label and carried on, because a batch
+nobody named is not an error. `read_sheet` matches the header text (`Paid From` / `Bank` /
+`Account`, or `Batch`) and **refuses a header it does not recognise**: a column the owner
+took the trouble to fill in is not something to ignore.
+
+The spelling is the bank statement's, not the company file's — `Chase Trust 9967 - STR`
+against `Chase Trust Checking 9967 - STR`, or just `3038`. `resolve_bank` tries the exact
+name, then containment, then every word appearing somewhere in the account name, and each
+pass demands a UNIQUE hit. `Chase Trust` matches both trust accounts and is therefore
+**refused, never picked**. An unresolved bank is written `*** NEEDS BANK: ... ***` into
+`PaidFrom`, which blocks the post exactly as an unresolved vendor or class does.
+
+`--bank <name>` supplies it for a sheet that has no such column, and `--batch
+NAME=AMOUNT@BANK` for one carved out by `--only`/`--exclude`. Precedence: the row's own
+column, then its batch's `@BANK`, then `--bank`, then the built-in default.
+
+The build now prints what the feed will be asked to match, per account, and **each group
+must be a real debit in THAT account's feed**:
+
+      paid from                              rows            total
+      Chase Trust Checking 3038 - monthly       6        23,191.62
+      Chase Trust Checking 9967 - STR          57       319,145.81
+
+Cross-check it against the books with `reports/GeneralLedger`, `account=<Id>`, the `Clr`
+column: uncleared bill payments per bank must equal that bank's outstanding line.
+
+### Beachwood is USUALLY paid by direct ACH — check before you exclude it
+
+`Valta Beachwood LLC` has been paid by an ACH that the bank feed books as an **Expense
+straight to 1633**, every month for two years: 2026-06-16 $15,455.53, 2026-07-16
+$19,522.74, 2026-08-20 $27,492.92 (Purchases 107241 / 110850 / 114906). When one of those
+exists, a `Beachwood` row on the payout sheet is the same cash a second time.
+
+**September 2026 was not one of those months, and assuming it was cost an afternoon.**
+"Exclude Beachwood, it's already posted" (owner decision, 2026-09-20) was taken on a
+reported ACH Expense of $20,952.13 dated 2026-09-15 that **did not exist** — no Purchase
+of that amount anywhere in 2026, no Purchase line on 1633 in September at all. The payout
+was unbooked, and excluding it left it that way. Posted the same day as an ordinary pair,
+Bill 118842 + BillPayment 118843.
+
+So: Beachwood is excluded when the ACH is **on the books**, not because it is Beachwood.
+`post_owner_payout` prints the count it found — `N direct-ACH payout Expense(s) already
+on the books` — and `0` there means nothing is being double-paid and the row should post.
+
+**The ACH does not always leave the same account.** It came out of Chase Trust 9967 - STR
+through 2026-05, moved to Chase Trust 3038 - monthly for June–August, and the owner
+confirmed September is back on 9967. The register is therefore not evidence for the
+current month: ask, because only the BillPayment carries the account and it is what the
+feed matches. The Bill half is bank-independent — Dr 1633 / Cr PMS Clearing – A/P — so
+this is the only place the answer shows up.
+
+This is still why the duplicate check reads **Purchase**, not just Bill and BillPayment:
+an ACH Expense is invisible to a query over the other two, exactly as the $55,972.41 of
+double-counted channel cash was. The check is keyed `(Vendor, amount)` across the window
+rather than on an exact date, because the ACH carries the bank's date and the sheet
+carries another.
+
+### The sheet is the bank, and the statement is only a check against it
+
+`inputs/owner_payout/Payout_<period>.xlsx` is one column of the same filename-style
+reference the expense sheets use, `<yyyymmdd>_<Property>_<payee>_Owner Payout_<amount>`.
+Two things about it are not negotiable:
+
+- **The amount posted is the BANK's, never the statement's.** The builder prints every
+  difference against `amount_due_to_owner` for the period and writes `StatementAmount` and
+  `Diff` into the review CSV, so a payout that went out at the wrong figure is visible
+  before it is booked. 2026-08: 34 of 52 tied to the cent; 18 did not, +$16,223.22 net,
+  the large ones being Yacinde NuGrowth +$16,804.22 (a timeshare-pool distribution, not a
+  per-listing statement) and Seattle 1502 +$4,679.93. It also lists properties with a
+  balance and NO payout row — 18 of them for 2026-08, incl. OSBR $28,951.04 and Beachwood
+  $23,832.13. Beachwood was paid $20,952.13 on 09-16, $2,880.00 under its statement.
+- **The payee is the bank's ACH label, not a QuickBooks DisplayName** — `VALTA COJI LLC`,
+  `Jing Zhou Chase`, `AFN SheltonAdvisorLLC`. `config/payees.yml` (shared with the Zelle
+  builder) carries the spelling-only differences. A row naming TWO owners
+  (`Huijing Tao Jing Zhou`, `Zhongyan Qiu Yuhui Mao`, `JiachenHuang ChenyuDai`) is never
+  resolved to one of them by the script; it stays `*** NEEDS VENDOR ***` and blocks the
+  post until the owner says which.
+
+**A property paid as one ACH is not always a class.** Bellevue 2323, Burien 14407, Seattle
+10057, Seattle 7434 and Seattle 906 have only per-unit classes, and the statement project's
+`mapping_classes.yml` claims `Listings:Bellevue 2323` and `Listings:Burien 14407` exist —
+they do not, the same "class map is not proof a class exists" trap. Owner decision
+2026-09-20: **follow the register, do not create property-level classes.**
+`config/payout_classes.yml` records which unit class each already sits on, and it is
+deliberately SEPARATE from `property_classes.yml`: that file says a bare `Bellevue 2323`
+*expense* is the Whole class, while the *payout* is on ADU. Merging them moves one.
+
 ## Cleared / reconciled status: use the General Ledger report, never TransactionList
 
 `reports/TransactionList` has **no `account` parameter** — it silently ignores one and
@@ -519,3 +728,49 @@ A bank-feed line in *For Review* whose transaction is already **R** will never a
 Find match — QuickBooks does not offer reconciled transactions. Such a line is a leftover
 of a period reconciled in the register without matching the feed: **Exclude** it. Adding it
 would put a second deposit into a period that already balances.
+
+## Expense form reimbursements feed build_zelle (2026-09-24)
+
+`../expense_form` (the no-login receipt form) writes `Expense_processing/exports/zelle_expense2qbo.csv`
+on billing@'s Drive after each weekly reimbursement run. `build_zelle --src <that .csv>` reads it:
+the row's `qbo_account` is used as-is (the form's category map), `Paid from` is the bank, and a row
+with `typed_in` set (a name/property/category typed under "Other", not yet mapped) is DROPPED with a
+warning, so its transfer fails the JE Amount check rather than posting short. Same build -> review ->
+`post --confirm` path as the hand workbook. The form never writes to QBO.
+
+## Guest pet/parking fees from the expense form (2026-09-24)
+
+`deposits/build_guest_fees` reads the form's exports (`submissions.csv`, `bank_deposits.csv`,
+`config/deposit_types.csv`, `config/properties.csv` under billing@'s Drive
+`Expense_processing/exports/`) and writes `review/guest_fees.csv`; `deposits/post_guest_fees`
+posts it (dry run by default, `--confirm` writes). Per fee: customer by confirmation code
+(`Resolver.customer("x - <code>")`); an invoice carrying the fee item with enough Balance ->
+PAY_EXISTING, no invoice carries it -> NEW_INVOICE (`<code>-PET` / `<code>-PARK`, item
+`Pet Fee (Owner)` / `Parking Fee`, class from the form's `qbo_class_name`), carried but paid ->
+HELD (nothing drafted, owner decides). Payments -> **Undeposited Funds** (`names.undeposited_funds`),
+then ONE Deposit per bank_deposits row into 9967 for exactly the bank line; a group with a HELD /
+ERROR fee or a total mismatch is not deposited. Before a Deposit, the same amount already in 9967
+within 3 days as a Deposit, a direct-to-bank Payment or a JE debit stops it. Re-runs find the
+invoice (DocNumber), payment (customer+amount+linked invoice) and deposit (same linked payments)
+instead of duplicating. Writes append to review/CHANGE_LOG.csv; Ids go to review/guest_fees_posted.csv.
+Offline tests: `venv/bin/python -m unittest tests.test_guest_fees`. **Not yet run against live QBO**
+-- first run `python -m src.verify_accounts` (checks the Undeposited Funds name).
+
+## Card / bank purchases from the expense form (2026-09-24)
+
+`invoices/build_form_expenses` reads the form's exports (`submissions.csv`, `attachments.csv`,
+`config/money_accounts.csv`, `config/expense_categories.csv`, `config/properties.csv`) and writes
+`review/form_expenses.csv` in the shared poster's shape; post with
+`python -m src.invoices.post --all --csv review/form_expenses.csv [--confirm]`. One approved expense
+= one Purchase, one line, matching the card feed's own Expenses (checked live 2026-09-24):
+paid from `money_accounts.qb_account`, `PaymentType` **CreditCard** for kind `card` (post.py's new
+optional column; Cash otherwise -- final once posted), vendor = the store through `payees.yml`
+(case-insensitive; Costco -> Costco Wholesale, Amazon -> Amazon.com, Home Depot -> The Home Depot)
+or an exact Vendor name, else `*** NO VENDOR ***` which blocks; line account = the category's
+qb_account; class = `qbo_class_name`, else property_classes.yml / `Listings:<name>` / `<name>`;
+Location **Trust** for a `Trust ...` account, else **Valta Realty** (what the books do); memo and
+description = the receipt's Drive name; DocNumber `EF<submission id>`. Skipped: `personal` (that is
+build_zelle), `in_qbo` FALSE (owner-paid, Valta Homes, Baselane), `typed_in`, already-posted rows.
+The poster's content check (same account, amount, ±3 days) skips a purchase the card feed already
+booked. Offline tests: `venv/bin/python -m unittest tests.test_form_expenses`. Live name resolution
+checked with sample rows (read-only); **no live post yet**.

@@ -10,6 +10,7 @@ independent copies invalidate each other.
     config/secrets/    -- .env, qbo_tokens.json (git-ignored)
     inputs/JE/         -- channel payout exports (Airbnb / Booking.com CSVs)
     inputs/Invoice_payment/ -- the Zelle payment tracking workbook
+    inputs/owner_payout/    -- the monthly owner-payout sheet (one row per bank line)
     review/            -- generated review CSVs, reviewed BEFORE anything is posted
 
 Dependency-free (only pathlib), like its opposite number in Owner_statement_whole.
@@ -24,11 +25,14 @@ SECRETS_DIR = CONFIG_DIR / "secrets"
 INPUTS_DIR  = PROJECT_ROOT / "inputs"
 JE_INPUTS   = INPUTS_DIR / "JE"
 INVOICE_INPUTS = INPUTS_DIR / "Invoice_payment"
+OWNER_PAYOUT_INPUTS = INPUTS_DIR / "owner_payout"
 REVIEW_DIR  = PROJECT_ROOT / "review"
 
 CONFIG_YML   = CONFIG_DIR / "config.yml"
 ACCOUNTS_YML = CONFIG_DIR / "accounts.yml"
 PAYEES_YML   = CONFIG_DIR / "payees.yml"
+PAYOUT_CLASSES_YML = CONFIG_DIR / "payout_classes.yml"
+BOOKING_IDS  = CONFIG_DIR / "booking_Id.csv"
 
 ENV_FILE   = SECRETS_DIR / ".env"
 QBO_TOKENS = SECRETS_DIR / "qbo_tokens.json"

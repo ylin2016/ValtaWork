@@ -22,6 +22,16 @@ accounts:
     id: "1679"
     name: "Trust Liabilities:Owner Payables:1C - Owner Expenses:Repairs - Owner"
 
+  # The monthly owner payout.  A payout DEBITS this account (it settles the payable),
+  # and the A/P side of the Bill is `pms_clearing_ap` -- NOT the default Accounts
+  # Payable -- because that is what every payout Bill on the books already uses.
+  owner_distributions:
+    id: "1633"
+    name: "Trust Liabilities:Owner Payables:2 - Owner Distributions (Payouts)"
+  pms_clearing_ap:
+    id: "1600"
+    name: "PMS Clearing \u2013 A/P"      # EN DASH, not a hyphen -- an exact-name lookup fails on '-'
+
   # Rebilled costs. Every fee Bill used to credit `billable_supplies_owner` whatever the
   # cost actually was, so the owner statement -- which categorises on the ACCOUNT NAME --
   # filed channel and Stripe fees under Supplies.  The two fee accounts already existed
@@ -48,6 +58,11 @@ names:
   # an ASSET until the HOA is invoiced and pays -- never `Cleaning Expense - Owner`.
   # See fixes/yacinde_hoa_split.
   hoa_receivable_yacinde: "Trust Assets other than Cash & A/R:HOA Receivable - Yacinde"
+  # Guest pet/parking fees from the expense form: each Payment lands here, and one Deposit
+  # per bank-feed line moves the group into bank_str -- never a Payment straight to 9967
+  # (that is the $55,972.41 double count).  See deposits/build_guest_fees.  Verify the
+  # exact name with `python -m src.verify_accounts` before the first post.
+  undeposited_funds: "Undeposited Funds"
 
 # Every JE this project writes is Trust-side.
 location: "Trust"

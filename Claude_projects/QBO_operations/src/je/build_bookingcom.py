@@ -9,6 +9,14 @@ Journal no. = Statement Descriptor.  Journal date = payout date.
 Shape follows the 2024 Booking.com JEs already in QuickBooks (e.g. Id 51796).
 
     python -m src.je.build_bookingcom --out review/bookingcom_je.csv
+
+Reads the payout export in EITHER shape.  Booking.com's own download has plain headers
+(`Payout date`, `Total amount (gross)`) and no nickname column at all; earlier files here
+had been put through R, which turns every non-alphanumeric into a dot, and had a NICKNAME
+column pasted on by hand.  Both are accepted -- headers are canonicalised to the dotted
+form, and a missing nickname is filled from `config/booking_Id.csv` by Property ID, which
+is what that map is for.  An ID the map does not carry is a WARN that blocks the post,
+never a guess.
 """
 from __future__ import annotations
 
@@ -16,6 +24,7 @@ import argparse
 import csv
 import glob
 import os
+import re
 from collections import defaultdict
 from datetime import datetime
 from pathlib import Path
@@ -23,7 +32,7 @@ from pathlib import Path
 import yaml
 
 from .. import bridge
-from ..config import acct_name, location, name as cfg_name
+from ..config import acct_name, booking_ids, location, name as cfg_name
 from ..paths import JE_INPUTS, review_csv
 from ..resolver import Resolver
 
@@ -107,6 +116,39 @@ OUT_COLS = [
 ]
 
 
+def canon(header: str) -> str:
+    """`Total amount (gross)` -> `Total.amount..gross.`, the shape the builder reads.
+
+    This is what R's make.names did to the earlier exports, one dot per non-alphanumeric
+    character -- so it is idempotent on a file that has already been through it.
+    """
+    return re.sub(r"[^A-Za-z0-9]", ".", header.strip())
+
+
+def read_payouts(src: Path) -> tuple[list[dict], list[str]]:
+    """Payout rows with canonical keys and a NICKNAME on every one."""
+    raw = list(csv.DictReader(open(src, encoding="utf-8-sig")))
+    rows = [{canon(k): v for k, v in r.items() if k is not None} for r in raw]
+    ids, warnings, filled = booking_ids(), [], 0
+    for r in rows:
+        if (r.get("NICKNAME") or "").strip():
+            continue
+        pid = (r.get("Property.ID") or "").strip()
+        nk = ids.get(pid) or []
+        if len(nk) == 1:
+            r["NICKNAME"] = nk[0]
+            filled += 1
+        else:
+            r["NICKNAME"] = ""
+            warnings.append(
+                f"reservation {r.get('Reservation.number')}: Property.ID {pid} "
+                + ("is not in config/booking_Id.csv" if not nk
+                   else f"maps to {len(nk)} nicknames {nk} — pick one in config/booking_Id.csv"))
+    if filled:
+        print(f"nickname: filled {filled} of {len(rows)} row(s) from config/booking_Id.csv")
+    return rows, warnings
+
+
 def iso(d: str) -> str:
     """Normalise a payout date.  Exports come as M/D/YY or already ISO."""
     d = d.strip()
@@ -123,7 +165,7 @@ def build(src: Path, qbo, statements_root: str | None = None) -> tuple[list[dict
     res = Resolver(qbo)
     classes = {e["property_id"]: e.get("qbo_class_name")
                for e in yaml.safe_load(bridge.mapping_classes(statements_root).read_text())}
-    rows = list(csv.DictReader(open(src, encoding="utf-8-sig")))
+    rows, warnings = read_payouts(src)
     by_pid_ci, by_ci_amt, by_pid_amt = load_guesty(statements_root)
 
     cust_cache: dict[str, str | None] = {}
@@ -149,7 +191,6 @@ def build(src: Path, qbo, statements_root: str | None = None) -> tuple[list[dict
         batches[r["Statement.Descriptor"]].append(r)
 
     out: list[dict] = []
-    warnings: list[str] = []
 
     for desc, items in batches.items():
         jdate = iso(items[0]["Payout.date"])

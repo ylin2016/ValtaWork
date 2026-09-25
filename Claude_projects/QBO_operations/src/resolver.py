@@ -55,6 +55,10 @@ class Resolver:
     def department(self, name: str) -> str | None:
         return self._one("Department", "FullyQualifiedName", name)
 
+    def item(self, name: str) -> str | None:
+        """A product/service by its full name (a sub-item is `Parent:Child`)."""
+        return self._one("Item", "FullyQualifiedName", name)
+
     def vendor(self, name: str) -> str | None:
         return self._one("Vendor", "DisplayName", name)
 
