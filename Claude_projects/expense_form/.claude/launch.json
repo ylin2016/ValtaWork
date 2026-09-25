@@ -1,0 +1,34 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "mock-webapp",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tests/mock_server.js",
+        "8787"
+      ],
+      "port": 8787
+    },
+    {
+      "name": "mock-webapp-flaky",
+      "runtimeExecutable": "env",
+      "runtimeArgs": [
+        "FLAKY=1",
+        "node",
+        "tests/mock_server.js",
+        "8788"
+      ],
+      "port": 8788
+    },
+    {
+      "name": "form-preview",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/preview_form.js",
+        "8789"
+      ],
+      "port": 8789
+    }
+  ]
+}

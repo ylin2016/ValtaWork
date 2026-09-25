@@ -1,0 +1,10 @@
+{
+  "_comment": "Where uploads go in Drive = year root folder + template. Year roots must ALSO be set in the Apps Script as Script Property ROOT_FOLDERS (same JSON); the script refuses a year it does not know, so add next year's folder there each January. Placeholders: {account} (money_accounts.drive_folder) {yyyy} {mm} {yyyy_mm} {entity} {property} {category} {deposit_type} {submitter}.",
+  "year_roots": {
+    "2026": "1Hz-76uPBm6fEvggje8ekdYcDfKisj_Ju"
+  },
+  "expense": "{yyyy_mm}/{account}",
+  "deposit": "{yyyy_mm}/{account}",
+  "_comment_no_account": "Accounts with no drive_folder (owner-paid) are filed under this folder name instead. ⚠️ placeholder until the user decides.",
+  "no_account_folder": "Owner paid"
+}

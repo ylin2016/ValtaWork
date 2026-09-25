@@ -1,0 +1,7 @@
+{
+  "scriptId": "115tBrGkdicIg7uOiqzG86IAnZzYtVKRTBhZl_IvoA3re3FD8tmCbBk89",
+  "rootDir": "apps_script",
+  "filePushOrder": [
+    "apps_script/Admin.gs"
+  ]
+}

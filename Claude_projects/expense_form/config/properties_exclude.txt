@@ -1,0 +1,27 @@
+# Properties in Owner_statement_whole/config/mapping_classes.yml that the form must NOT offer.
+# One property_id per line. src/sync_properties.py skips these, so re-running the sync keeps them out.
+# Initial list = the 24 rows the user deleted from properties.csv on 2026-09-23.
+ashford_137
+auburn_29123
+bellevue_14621_g307
+bellevue_16237
+bellevue_16310_a3
+bellevue_1940
+bellevue_300
+bothell_11131
+hoquiam_21
+jing_s_listings
+kirkland_10219
+kirkland_11006_815
+kirkland_8252_d201
+longbranch_6821_lower
+longbranch_6821_upper
+redmond_16012
+seattle_10057
+seattle_1512
+seattle_3617
+seattle_906
+shelton_310_upper
+tacoma_7811
+woodinville_18625
+woodinville_19319

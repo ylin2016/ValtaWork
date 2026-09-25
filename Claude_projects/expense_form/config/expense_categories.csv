@@ -1,0 +1,12 @@
+code,label_en,qb_account,owner_billable_default
+Supplies,Supplies,Trust Liabilities:Owner Payables:1C - Owner Expenses:Supplies - Owner,TRUE
+Repairs,Repair,Trust Liabilities:Owner Payables:1C - Owner Expenses:Repairs - Owner,TRUE
+Maintainence,Maintainence,Trust Liabilities:Owner Payables:1C - Owner Expenses:Maintenance - Owner,TRUE
+Landscaping,Landscaping,Trust Liabilities:Owner Payables:1C - Owner Expenses:Maintenance - Owner,TRUE
+Cleaning,Cleaning,Trust Liabilities:Owner Payables:1C - Owner Expenses:Cleaning Expense - Owner,TRUE
+All unit supplies,All unit supplies,All units supplies,FALSE
+Cleaning payout,Cleaning payout,Cleaning Fee Revenue:Cleaning Payout,FALSE
+Maintenance,Maintenance,Trust Liabilities:Owner Payables:1C - Owner Expenses:Maintenance - Owner,TRUE
+Staging,Staging,Trust Liabilities:Owner Payables:1C - Owner Expenses:Other Owner Expenses,TRUE
+Staging service materials,Staging service materials,Trust Liabilities:Owner Payables:1C - Owner Expenses:Other Owner Expenses,TRUE
+Other owner expense,Other owner expense,Trust Liabilities:Owner Payables:1C - Owner Expenses:Other Owner Expenses,TRUE

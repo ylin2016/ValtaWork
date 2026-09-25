@@ -1,0 +1,18 @@
+{
+  "name": "expense_form",
+  "version": "1.0.0",
+  "description": "A no-login receipt and deposit form. Your own form page sends each submission to a **Google Apps Script web app**. The script checks it, adds a row to the **Expense Ledger** Google Sheet, files the receipt in Drive (`2026/<month>/<account>/`), and emails the reviewer Approve/Reject links.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "@google/clasp": "^3.4.1"
+  }
+}

@@ -1,0 +1,13 @@
+code,label,qb_account,kind,drive_folder,in_qbo,drive_path
+chase-9967,Chase Trust Checking 9967 - STR,Chase Trust Checking 9967 - STR,bank,9967,TRUE,
+ops-7197,Operating account 7197,Chase Checking 7197,bank,7197,TRUE,
+ltr-3038,Long-term lease account 3038,Chase Trust Checking 3038 - monthly,bank,3038,TRUE,
+baselane,Baselane (long-term lease),,bank,Baselane,FALSE,
+credit-7439,Credit card 7439,Credit Card 7439,card,7439,TRUE,
+credit-6305,Credit card 6305,CitiCostco3104-Supplies,card,6305,TRUE,
+credit-3104,Credit card 3104,CitiCostco3104-Supplies,card,Credit 3104,TRUE,
+credit-5565,Credit card 5565,Chase Credit Card 5565,card,Credit 5565,TRUE,
+amazon-4783,Amazon card 4783,Business Credit Card (4783),card,Amazon 4783,TRUE,
+personal,Paid personally (reimbursed by Zelle from 9967),,personal,9967,TRUE,
+owner-paid,Paid directly by owner,,owner,,FALSE,
+valta-homes,Paid by Valta Homes,,company,,FALSE,Valta Homes Unprocessed Invoices/Testing
