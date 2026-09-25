@@ -1,0 +1,23 @@
+# Expense categories for receipt line items.
+# Each item on a receipt gets exactly one category. Edit freely — add, rename, or merge.
+categories:
+  Supplies:     Consumables — toilet paper, soap, trash bags, light bulbs, batteries, cleaning products, guest amenities
+  Repair:       Fixing something broken — replacement parts, plumbing/electrical fix parts, patch/caulk for a specific fix
+  Maintenance:  Routine upkeep — filters, paint touch-up, lubricants, pest control, smoke-detector batteries, HVAC service
+  Landscaping:  Plants, mulch, soil, fertilizer, yard tools, irrigation parts, lawn service
+  Staging:      Functional furnishings that finish a room for guests and stay — lamps, rugs, curtains/blinds, mirrors, shower curtains, bath mats, baskets/storage, hooks, clocks
+  Decor:        Purely ornamental items that stay — wall art, prints, signs, vases, faux/indoor plants, throw pillows, decorative candles & objects, seasonal decor
+  Furniture:    Beds, sofas, tables, chairs, dressers, outdoor furniture
+  Appliances:   Major and small appliances — fridge, washer, microwave, coffee maker, vacuum
+  Linens:       Sheets, towels, blankets, duvets, mattress protectors
+  Kitchenware:  Cookware, dishes, utensils, glassware, small kitchen tools
+  Cleaning:     Housekeeping labor — cleaner payouts and cleaning contractors (not cleaning products; those are Supplies)
+  Utilities:    Internet/phone/TV, power, water, garbage service billed to the resort
+  Mileage:      Vehicle mileage reimbursement for supply/errand trips
+  Tools:        Hand/power tools and equipment kept for reuse
+  Other:        Anything that doesn't fit — always add a note explaining why
+
+# Tax, shipping/fees and order-level discounts are spread over each receipt's items
+# pro rata in src/build.py (not configurable here).
+# Changing categories affects only files extracted afterwards; re-run
+# `python -m src.extract --force` to re-categorize old ones.
