@@ -754,6 +754,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -765,6 +774,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -776,6 +794,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -787,6 +814,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -798,6 +834,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -809,6 +854,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -820,6 +874,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -831,6 +894,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -842,6 +914,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -853,6 +934,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -864,6 +954,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -875,6 +974,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -886,6 +994,15 @@
   owner_name: Yang Dai
   owner_email: yyd7286@gmail.com
   pm_fee_rate: 0.16
+  # Owner, 2026-09-03: OSBR moved to 18% and the guest cleaning fee became the
+  # owner's, both effective 2026-08-01. Dated so the 19 earlier months keep 16%
+  # and keep cleaning as Valta's — the contacts file has no time dimension, so a
+  # bare edit would silently restate every past statement.
+  pm_fee_rate_history:
+    - from: '2026-08-01'
+      rate: 0.18
+  owner_pays_cleaning: true
+  owner_pays_cleaning_from: '2026-08-01'
   owner_pays_supplies: true
   term: STR
   address: 1757 WA-105, Grayland, WA 98547, USA
@@ -986,6 +1103,16 @@
   pm_fee_rate: 0.2
   term: STR
   address: 7579 Old Redmond Rd, Redmond, WA 98052, USA
+- qbo_class_id: '1000000036'
+  qbo_class_name: Listings:Renton 18823
+  property_id: renton_18823
+  property_name: Renton 18823
+  owner_id: owner_renton_18823
+  owner_name: Valta Realty
+  owner_email: ''
+  pm_fee_rate: 0.24
+  term: STR
+  address: 18823 SE 132nd PL, Renton, WA 98058
 - qbo_class_id: '2100000000001653158'
   qbo_class_name: Listings:Sammamish 2009
   property_id: sammamish_2009
@@ -1236,6 +1363,11 @@
   owner_name: Brianne Riley
   owner_email: manager@chillhavenhomes.com
   pm_fee_rate: 0.171
+  # Owner decision 2026-09-09: 22% for stays checking in AFTER 2026-08-10 (so a
+  # 2026-08-10 check-in keeps 17.1%). VRT independently commissions the same split.
+  pm_fee_rate_history:
+    - from: '2026-08-11'
+      rate: 0.22
   owner_pays_supplies: true
   term: STR
   address: 9021 8th Ave S, Seattle, WA 98108, USA
@@ -1451,3 +1583,57 @@
   pm_fee_rate: 0.18
   term: STR
   address: 1 Yacinde Dr F5, Manson, WA, USA
+# ── Rollup parents ───────────────────────────────────────────────────────────
+# A Listing_contacts.csv "Property" that groups several units needs a property row
+# (and PM rate) of its own to hang the consolidated statement on. Most of each
+# statement's money comes from the member listings that
+# src/scope/listing_filter.statement_rollups folds in; rates mirror the members' MCR%.
+#
+# Two shapes, and picking the wrong one loses money:
+#   synthetic:<pid>  — the Property is NOT a QBO class. The key never matches a real
+#                      ClassRef, so qbo-sync posts nothing directly to the parent.
+#   a real class id  — the Property IS a QBO class and the bookkeeper posts to it.
+#                      Leaving it synthetic makes qbo-sync log every such line
+#                      CLASS_NOT_MAPPED and drop it (this cost yacinde_nugrowth
+#                      $3,218.18 in 2026-08 and $10,000.00 in 2026-07 before it was
+#                      caught 2026-09-02). Check QBO's Class list before choosing.
+- qbo_class_id: 'synthetic:seattle_10057'
+  qbo_class_name: null
+  property_id: seattle_10057
+  property_name: Seattle 10057
+  owner_id: owner_seattle_10057_whole
+  owner_name: Quinnlan Varcoe
+  owner_email: quinnlanvarcoe@gmail.com
+  pm_fee_rate: 0.22
+  term: STR
+  address: 10057 17th Avenue Southwest, Seattle, WA 98146, USA
+- qbo_class_id: 'synthetic:seattle_906'
+  qbo_class_name: null
+  property_id: seattle_906
+  property_name: Seattle 906
+  owner_id: owner_seattle_906_lower
+  owner_name: Arsham Mesbah Shoolami
+  owner_email: theseattlewhalehouse@gmail.com
+  pm_fee_rate: 0.16
+  term: STR
+  address: 906 N 78th St, Seattle, WA 98103, USA
+- qbo_class_id: '1000000034'
+  qbo_class_name: Listings:Yacinde NuGrowth
+  property_id: yacinde_nugrowth
+  property_name: Yacinde NuGrowth
+  owner_id: owner_yacinde_b1
+  owner_name: NuGrowth Chelan LLC
+  owner_email: ''
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr, Manson, WA, USA
+- qbo_class_id: '1000000035'
+  qbo_class_name: Listings:Yacinde Holdings
+  property_id: yacinde_holdings
+  property_name: Yacinde Holdings
+  owner_id: owner_yacinde_b3
+  owner_name: Brandon Shimizu
+  owner_email: brandon@meadinvestments.com
+  pm_fee_rate: 0.18
+  term: STR
+  address: 1 Yacinde Dr, Manson, WA, USA

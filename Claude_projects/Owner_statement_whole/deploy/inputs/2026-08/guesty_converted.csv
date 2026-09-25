@@ -1,0 +1,580 @@
+property_id,booking_id,channel,guest_name,checkin,checkout,guests,nights,accommodation_fee,pet_fee,cleaning_fee,channel_commission,total_fee,airbnb_resolution,refund,taxes,total_payout,status,service_fee,net_revenue,notes
+beachwood_1,HMHRH3MCEF,airbnb2,Kevin Stephens,2026-08-01,2026-08-31,2,30,4236.8,150.0,90.0,858.08,240.0,0.0,0.0,0.0,4677.92,confirmed,0.0,4587.92,Guests=2; Nights=30
+bellevue_2243,HM23D8KPR2,airbnb2,Sefwan Halabi,2026-08-01,2026-08-07,8,6,3454.55,0.0,225.0,682.78,225.0,0.0,0.0,0.0,3722.22,confirmed,0.0,3497.22,Guests=8; Nights=6
+elektra_1108,BC-nVxgWPPoP,Booking.com,claire NOEL,2026-08-01,2026-08-04,4,3,518.4,0.0,88.0,0.0,88.0,0.0,0.0,101.46,801.17,confirmed,0.0,713.17,Guests=4; Nights=3
+elektra_1115,HA-pwCch41,VRBO,Robyn Slaney,2026-08-01,2026-08-03,4,2,360.78,0.0,88.0,0.0,88.0,0.0,0.0,73.6,529.6,confirmed,0.0,368.0,Guests=4; Nights=2
+elektra_703,HA-q1UtmBD,VRBO,HERMAN NORWOOD JR,2026-08-01,2026-08-03,4,2,385.29,0.0,98.0,0.0,98.0,0.0,0.0,79.1,570.1,confirmed,0.0,393.0,Guests=4; Nights=2
+elektra_809,HM5HH9XMQD,airbnb2,Michael Ardito,2026-08-01,2026-08-03,4,2,529.2,0.0,98.0,117.72,98.0,0.0,0.0,0.0,641.78,confirmed,0.0,543.78,Guests=4; Nights=2
+kirkland_8017,HM2MJQ9SXB,airbnb2,Chuan Tao Zhang,2026-08-01,2026-08-31,4,30,10617.6,0.0,265.0,1892.52,265.0,0.0,0.0,0.0,10317.28,confirmed,0.0,10052.28,Guests=4; Nights=30
+lilliwaup_28610,HMXQ9PQ334,airbnb2,Adam Halsey,2026-08-01,2026-08-04,4,3,1300.0,0.0,170.0,278.23,170.0,0.0,0.0,0.0,1516.77,confirmed,0.0,1346.77,Guests=4; Nights=3
+osbr_3,EXP-rGkWVlNz,Expedia,Aaron Echols,2026-08-01,2026-08-02,2,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,canceled,0.0,200.0,Guests=2; Nights=1
+osbr_3,EXP-2518834321-07HS3,expedia,Deborah Spokely,2026-08-01,2026-08-02,2,1,142.81,0.0,45.0,31.1,45.0,0.0,0.0,16.86,203.56,confirmed,0.0,186.7,Guests=2; Nights=1
+osbr_7,BC-87r0DAnz3,Booking.com,Jason Schweiger,2026-08-01,2026-08-02,4,1,222.0,0.0,65.0,0.0,65.0,0.0,0.0,11.77,338.73,confirmed,0.0,273.73,Guests=4; Nights=1
+poulsbo_563,HA-DV3uK1T,VRBO,Alastair Moore,2026-08-01,2026-08-09,4,8,3127.45,0.0,160.0,0.0,160.0,0.0,0.0,339.48,3370.48,confirmed,0.0,2871.0,Guests=4; Nights=8
+redmond_14707,HMM5HCBPJ5,airbnb2,Laura Blum,2026-08-01,2026-08-03,9,2,1170.4,0.0,225.0,261.64,225.0,0.0,0.0,0.0,1426.36,confirmed,0.0,1201.36,Guests=9; Nights=2
+sammamish_2009,GY-df4w4pPW,owner,Ning Liaoyuan,2026-08-01,2026-08-16,4,15,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=15
+seattle_10057_lower,HM9KY3J9KB,airbnb2,Anne Bloomenthal,2026-08-01,2026-08-06,3,5,800.0,0.0,100.0,170.5,100.0,0.0,0.0,0.0,929.5,confirmed,0.0,829.5,Guests=3; Nights=5
+seattle_4201,BC-KrM7VvBXR,Booking.com,Kelly Jones,2026-08-01,2026-08-06,4,5,1030.0,0.0,179.0,0.0,258.0,0.0,0.0,190.82,1585.22,confirmed,0.0,1406.22,Guests=4; Nights=5
+seattle_710,HA-CISfjhb,VRBO,Danielle Kuntz,2026-08-01,2026-08-03,7,2,875.49,0.0,225.0,0.0,225.0,0.0,0.0,179.21,1297.21,confirmed,0.0,893.0,Guests=7; Nights=2
+elektra_1305,HM5PYEMSSE,airbnb2,Eva Crabajales,2026-08-02,2026-08-05,1,3,395.2,0.0,70.0,87.42,70.0,0.0,0.0,0.0,476.58,confirmed,0.0,406.58,Guests=1; Nights=3
+elektra_1413,HVBM-M1785363921378-VMWEH,homesVillasByMarriott,CATHERINE PHAN,2026-08-02,2026-08-04,2,2,312.5,0.0,89.0,90.38,89.0,0.0,0.0,78.78,477.4,confirmed,0.0,309.62,Guests=2; Nights=2
+hoodsport_26060,GY-4Uh4a4Jz,owner,Suki E,2026-08-02,2026-08-03,1,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=1; Nights=1
+kirkland_13070,HMTYZHSASB,airbnb2,Anja Wee,2026-08-02,2026-08-08,4,6,1680.0,0.0,225.0,360.38,225.0,0.0,0.0,0.0,1964.62,confirmed,0.0,1739.62,Guests=4; Nights=6
+mercer_3925,HMHJ4QDQCC,airbnb2,Wes Graham,2026-08-02,2026-08-07,1,5,708.0,0.0,50.0,144.93,50.0,0.0,0.0,0.0,790.07,confirmed,0.0,740.07,Guests=1; Nights=5
+osbr_11,EXP-2524018032-6QA31,expedia,Jason Lacey Wells,2026-08-02,2026-08-03,1,1,88.51,0.0,65.0,19.28,65.0,0.0,0.0,10.45,163.27,confirmed,0.0,152.82000000000002,Guests=1; Nights=1
+osbr_3,BC-QRG89N7Z0,Booking.com,Leanna Olive,2026-08-02,2026-08-06,2,4,520.0,0.0,45.0,0.0,84.88,0.0,0.0,65.03,723.63,confirmed,0.0,678.63,Guests=2; Nights=4
+osbr_4,HMNDTAKKHW,airbnb2,Imie Maras,2026-08-02,2026-08-03,5,1,134.4,0.0,65.0,36.12,65.0,0.0,0.0,0.0,196.88,confirmed,0.0,131.88,Guests=5; Nights=1
+osbr_6,HA-kuEtChX,VRBO,Samantha Cantu,2026-08-02,2026-08-04,4,2,198.04,0.0,65.0,0.0,65.0,0.0,0.0,26.97,293.97,confirmed,0.0,202.00000000000003,Guests=4; Nights=2
+osbr_9,HMZJNPN4Y2,airbnb2,Jennifer Charpentier,2026-08-02,2026-08-05,1,3,323.2,0.0,45.0,69.6,45.0,0.0,0.0,0.0,379.4,confirmed,0.0,334.4,Guests=1; Nights=3
+seattle_1623,HP-XGBV8MZ8DMRR-I6Y08,hopper,James Payton,2026-08-02,2026-08-04,6,2,533.33,0.0,153.0,104.3,153.0,0.0,0.0,120.09,760.79,confirmed,0.0,487.69999999999993,Guests=6; Nights=2
+seattle_206,HMYXYWWRPM,airbnb2,Priscilla Johnson,2026-08-02,2026-08-04,4,2,361.6,0.0,180.0,97.96,180.0,0.0,0.0,0.0,534.04,confirmed,0.0,354.03999999999996,Guests=4; Nights=2
+shelton_310,HMQEZENPK4,airbnb2,Vy Han,2026-08-02,2026-08-04,8,2,950.4,0.0,245.0,222.12,245.0,0.0,0.0,0.0,1210.88,confirmed,0.0,965.88,Guests=8; Nights=2
+yacinde_b4,GY-ne3c5Ffd,owner,Jenna Bates (NWV),2026-08-02,2026-08-05,8,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=3
+yacinde_f5,GY-ifF6zitP,owner,Dana Nielsen (NWV),2026-08-02,2026-08-06,4,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=4
+bellevue_10409,HM2CAM8NT4,airbnb2,Jessica Williams,2026-08-03,2026-08-12,2,9,2130.4,0.0,125.0,390.86,125.0,0.0,0.0,0.0,2130.84,confirmed,0.0,2005.84,Guests=2; Nights=9
+bellevue_1621,HMWYXHYXQD,airbnb2,Christine Brennan,2026-08-03,2026-08-07,4,4,856.8,0.0,155.0,190.03,155.0,0.0,0.0,0.0,1035.97,confirmed,0.0,880.97,Guests=4; Nights=4
+bellevue_514,HMPXDNWS5C,airbnb2,Hyejung Shin,2026-08-03,2026-08-06,4,3,485.6,0.0,125.0,113.46,125.0,0.0,0.0,0.0,618.54,confirmed,0.0,493.54,Guests=4; Nights=3
+burien_14407_middle,HMBYW2E4TY,airbnb2,Thuy Nguyen,2026-08-03,2026-08-10,4,7,1232.0,0.0,125.0,234.21,125.0,0.0,0.0,0.0,1276.79,confirmed,0.0,1151.79,Guests=4; Nights=7
+elektra_1115,BC-XX1xzV1VA,Booking.com,HE YAN,2026-08-03,2026-08-06,3,3,405.0,0.0,88.0,0.0,88.0,0.0,0.0,88.85,654.75,confirmed,0.0,566.75,Guests=3; Nights=3
+elektra_1203,HP-PZF55DDQPSB5-NX76I,hopper,Dori  Zavala,2026-08-03,2026-08-06,3,3,574.77,0.0,89.0,101.78,89.0,0.0,0.0,117.14,742.36,confirmed,0.0,536.22,Guests=3; Nights=3
+elektra_1212,BC-0yD9WOOjV,Booking.com,Staffan Lindberg,2026-08-03,2026-08-05,4,2,400.0,0.0,100.0,0.0,100.0,0.0,0.0,0.0,572.0,confirmed,0.0,472.0,Guests=4; Nights=2
+elektra_809,BC-jkmyA87MW,Booking.com,Sergio Passalacqua,2026-08-03,2026-08-06,4,3,963.0,0.0,98.0,0.0,98.0,0.0,0.0,197.26,1431.6,confirmed,0.0,1333.6,Guests=4; Nights=3
+hoodsport_26060,HMFD9MYXST,airbnb2,Rochele Petiet,2026-08-03,2026-08-07,2,4,921.6,0.0,135.0,199.49,135.0,0.0,0.0,0.0,1087.51,confirmed,0.0,952.51,Guests=2; Nights=4
+lynnwood_17506,HMQ2NDKE5T,airbnb2,Hasibur Rahman,2026-08-03,2026-08-15,6,12,4044.0,0.0,227.0,749.66,227.0,0.0,0.0,0.0,4086.84,confirmed,0.0,3859.84,Guests=6; Nights=12
+mercer_3627_lower,HME32HTQ4Q,airbnb2,Martin Mayer,2026-08-03,2026-08-08,2,5,1201.6,0.0,165.0,258.39,165.0,0.0,0.0,0.0,1408.61,confirmed,0.0,1243.61,Guests=2; Nights=5
+osbr_1,HA-Zai6NTi,VRBO,Amanda Olson,2026-08-03,2026-08-06,2,3,297.06,0.0,45.0,0.0,45.0,0.0,0.0,35.16,383.16,confirmed,0.0,303.0,Guests=2; Nights=3
+osbr_10,CT-1658113358878313-4DEOF,tripCom,Scott Rozell,2026-08-03,2026-08-05,2,2,185.85,0.0,0.0,0.0,45.0,0.0,0.0,26.06,290.36,confirmed,0.0,264.3,Guests=2; Nights=2
+osbr_12,HMPZZN5NSQ,airbnb2,Jennifer Melchor,2026-08-03,2026-08-05,4,2,225.6,0.0,85.0,56.89,85.0,0.0,0.0,0.0,310.11,confirmed,0.0,225.11,Guests=4; Nights=2
+osbr_4,HM2Z4M8EF9,airbnb2,Gabby Stubbs,2026-08-03,2026-08-04,2,1,119.2,0.0,65.0,33.17,65.0,0.0,0.0,0.0,180.83,confirmed,0.0,115.83,Guests=2; Nights=1
+poulsbo_3866,HMDAWY9WZK,airbnb2,Sara Betz,2026-08-03,2026-08-06,10,3,1280.8,0.0,250.0,286.91,250.0,0.0,0.0,0.0,1564.09,confirmed,0.0,1314.09,Guests=10; Nights=3
+poulsbo_3956,HA-nnQ43AR,VRBO,Elysia Ravenstar,2026-08-03,2026-08-06,2,3,841.18,0.0,200.0,0.0,200.0,0.0,0.0,118.5,1176.5,confirmed,0.0,858.0,Guests=2; Nights=3
+redmond_14707,HA-EYyQPWL,VRBO,Hunter Shapiro,2026-08-03,2026-08-05,6,2,403.92,0.0,225.0,0.0,225.0,0.0,0.0,79.62,716.62,confirmed,0.0,412.0,Guests=6; Nights=2
+redmond_7579,BC-vw1lQLzln,Booking.com,Kensuke Tokudome,2026-08-03,2026-08-09,3,6,1320.0,0.0,100.0,0.0,100.0,0.0,0.0,49.84,1707.44,confirmed,0.0,1607.44,Guests=3; Nights=6
+seattle_1502,HMAZXRCXQP,airbnb2,Meredith Meyer,2026-08-03,2026-08-06,4,3,660.0,123.0,150.0,170.19,273.0,0.0,0.0,0.0,927.81,confirmed,0.0,777.81,Guests=4; Nights=3
+seattle_906_lower,HMPYMZJNBW,airbnb2,Ming Xie,2026-08-03,2026-08-07,3,4,480.0,0.0,98.0,108.19,98.0,0.0,0.0,0.0,589.81,confirmed,0.0,491.80999999999995,Guests=3; Nights=4
+shoreline_15510,HMBK9KRPR2,airbnb2,Will Sizoo,2026-08-03,2026-09-03,2,31,6816.8,148.01,191.0,1241.22,339.01,0.0,0.0,0.0,6766.69,confirmed,0.0,6575.69,Guests=2; Nights=31
+yacinde_b6,GY-kYrQEvQg,owner,Sasha Tommervik (NWV),2026-08-03,2026-08-07,4,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=4
+yacinde_c1,HMCAQDE8HM,airbnb2,Livar Cunha,2026-08-03,2026-08-05,4,2,1420.0,0.0,145.0,297.6,145.0,0.0,0.0,0.0,1622.4,confirmed,0.0,1477.4,Guests=4; Nights=2
+burien_14407_top,HMHKCR8D8C,airbnb2,Jake Burlaga,2026-08-04,2026-08-06,3,2,245.6,0.0,75.0,59.21,75.0,0.0,0.0,0.0,322.79,confirmed,0.0,247.79,Guests=3; Nights=2
+elektra_1004,HA-TsfknrC,VRBO,Jessica Fisette,2026-08-04,2026-08-06,3,2,284.31,0.0,88.0,0.0,88.0,0.0,0.0,61.35,439.35,confirmed,0.0,290.0,Guests=3; Nights=2
+elektra_1108,HM3HZETRZW,airbnb2,Kankan Liu,2026-08-04,2026-08-06,2,2,280.0,0.0,88.0,67.89,88.0,0.0,0.0,0.0,370.11,confirmed,0.0,282.11,Guests=2; Nights=2
+elektra_1413,HA-KsZ9qjO,VRBO,Stacey Meinzen,2026-08-04,2026-08-07,3,3,664.71,0.0,89.0,0.0,89.0,0.0,0.0,123.44,890.44,confirmed,0.0,678.0,Guests=3; Nights=3
+elektra_703,HA-a71ES1q,VRBO,Beth Hudson,2026-08-04,2026-08-07,3,3,570.59,0.0,98.0,0.0,98.0,0.0,0.0,109.76,789.76,confirmed,0.0,582.0,Guests=3; Nights=3
+longbranch_6821,HMJ34HRKDM,airbnb2,David Braum,2026-08-04,2026-08-06,12,2,1104.0,0.0,230.0,249.55,230.0,0.0,0.0,0.0,1360.45,confirmed,0.0,1130.45,Guests=12; Nights=2
+osbr_11,HMKZ4DNHD8,airbnb2,Pat Regnart,2026-08-04,2026-08-06,1,2,179.2,50.0,65.0,52.55,115.0,0.0,0.0,0.0,286.45,confirmed,0.0,221.45,Guests=1; Nights=2
+osbr_2,HA-ckt9tt3,VRBO,SEAN SELLERS,2026-08-04,2026-08-05,2,1,91.18,0.0,45.0,0.0,45.0,0.0,0.0,13.95,151.95,confirmed,0.0,93.0,Guests=2; Nights=1
+osbr_4,HA-O5i80eN,VRBO,Dorothy Taylor,2026-08-04,2026-08-06,2,2,252.94,50.0,65.0,0.0,115.0,0.0,0.0,37.67,410.67,confirmed,0.0,308.0,Guests=2; Nights=2
+osbr_6,HMFBSP8RDC,airbnb2,Scott White,2026-08-04,2026-08-05,1,1,100.0,0.0,65.0,29.45,65.0,0.0,0.0,0.0,160.55,confirmed,0.0,95.55,Guests=1; Nights=1
+osbr_7,GY-kkunrZgm,BE-API,Felix Bröskamp,2026-08-04,2026-08-05,3,1,99.0,0.0,65.0,0.0,73.0,0.0,0.0,16.87,191.87,confirmed,8.0,102.0,Guests=3; Nights=1
+osbr_8,HMMHXEKZBX,airbnb2,Chase Sloat,2026-08-04,2026-08-06,1,2,205.6,0.0,65.0,49.91,65.0,0.0,0.0,0.0,272.09,confirmed,0.0,207.08999999999995,Guests=1; Nights=2
+seattle_10057_upper,HMZZSCRDB5,airbnb2,Jai Knight,2026-08-04,2026-08-11,3,7,884.8,0.0,100.0,169.79,100.0,0.0,0.0,0.0,925.61,confirmed,0.0,825.61,Guests=3; Nights=7
+seattle_9021,HMZ4E84ZY5,airbnb2,Aaron Reed,2026-08-04,2026-08-07,3,3,324.0,0.0,98.0,65.88,98.0,0.0,0.0,0.0,359.15,confirmed,0.0,261.15,Guests=3; Nights=3
+shelton_310,HMF8ZDKKKN,airbnb2,Tatiana Kiseleva,2026-08-04,2026-08-06,8,2,724.0,0.0,245.0,178.25,245.0,-90.5,0.0,0.0,881.25,confirmed,0.0,636.25,Guests=8; Nights=2
+yacinde_e1,GY-EmT2HSYn,owner,Ryan Clay (NWV),2026-08-04,2026-08-08,6,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=6; Nights=4
+bainbridge_11143,HMDJEMHP3J,airbnb2,Paryse Boal,2026-08-05,2026-08-09,5,4,2656.0,0.0,250.0,553.35,250.0,0.0,0.0,0.0,3016.65,confirmed,0.0,2766.65,Guests=5; Nights=4
+bellevue_1420,BC-DZ7YnwpX6,Booking.com,Nadine Jagerovic,2026-08-05,2026-08-12,3,7,1546.0,0.0,125.0,0.0,125.0,0.0,0.0,40.77,1990.05,confirmed,0.0,1865.05,Guests=3; Nights=7
+kirkland_11321,HMTSFNDRDY,airbnb2,Linda Cova,2026-08-05,2026-08-10,7,5,3152.0,0.0,265.0,651.78,265.0,0.0,0.0,0.0,3553.22,confirmed,0.0,3288.22,Guests=7; Nights=5
+lilliwaup_28610,HMDA848MWY,airbnb2,Ronak Shah,2026-08-05,2026-08-07,4,2,520.0,0.0,170.0,127.1,170.0,0.0,0.0,0.0,692.9,confirmed,0.0,522.9,Guests=4; Nights=2
+osbr_10,EXP-2525776563-SA2AY,expedia,Denise glassman,2026-08-05,2026-08-07,2,2,203.31,0.0,45.0,44.28,45.0,0.0,0.0,24.0,270.72,confirmed,0.0,246.72000000000003,Guests=2; Nights=2
+osbr_12,HMT3TAMDT8,airbnb2,Chandra Moon,2026-08-05,2026-08-06,2,1,107.2,0.0,85.0,33.95,85.0,0.0,0.0,0.0,185.05,confirmed,0.0,100.05,Guests=2; Nights=1
+osbr_2,GY-A7rAAMPr,BE-API,David R  Uptegrove,2026-08-05,2026-08-10,2,5,900.0,0.0,45.0,0.0,85.0,0.0,0.0,98.38,1112.38,confirmed,40.0,929.0,Guests=2; Nights=5
+osbr_6,HM8SAQ8B5J,airbnb2,Jerry Holcomb,2026-08-05,2026-08-06,2,1,99.2,0.0,65.0,29.3,65.0,0.0,0.0,0.0,159.7,confirmed,0.0,94.7,Guests=2; Nights=1
+osbr_7,EXP-2526421132-V2WUL,expedia,John Fiveash,2026-08-05,2026-08-07,2,2,218.18,0.0,65.0,47.52,65.0,0.0,0.0,25.78,307.26,confirmed,0.0,281.48,Guests=2; Nights=2
+osbr_9,HMJT5DZZHZ,airbnb2,Alfred Wheeler,2026-08-05,2026-08-06,2,1,89.6,0.0,45.0,24.34,45.0,0.0,0.0,0.0,132.66,confirmed,0.0,87.66,Guests=2; Nights=1
+redmond_14707,HMWFND89BE,airbnb2,Robert Jackson,2026-08-05,2026-08-06,11,1,300.0,0.0,225.0,93.0,225.0,0.0,0.0,0.0,507.0,confirmed,0.0,282.0,Guests=11; Nights=1
+seattle_1117,HMBS2455DD,airbnb2,Pablo Castro,2026-08-05,2026-08-11,4,6,1330.4,0.0,155.0,281.79,155.0,0.0,0.0,0.0,1536.21,confirmed,0.0,1381.21,Guests=4; Nights=6
+seattle_115,HVBM-M1781746269603-L64TA,homesVillasByMarriott,KEVIN LAU,2026-08-05,2026-08-07,6,2,911.86,0.0,215.0,238.58,215.0,0.0,0.0,206.63,1259.05,confirmed,0.0,837.42,Guests=6; Nights=2
+seattle_7434_lower,HMJB8D2SZT,airbnb2,Sarah Beller,2026-08-05,2026-08-07,4,2,320.0,0.0,103.0,77.97,103.0,0.0,0.0,0.0,425.03,confirmed,0.0,322.03,Guests=4; Nights=2
+shelton_250,HA-gSmqoY2,VRBO,Michael Dwyer,2026-08-05,2026-08-07,2,2,827.45,0.0,210.0,0.0,210.0,0.0,0.0,110.67,1164.67,confirmed,0.0,844.0000000000001,Guests=2; Nights=2
+yacinde_e3,HMP8PYB59T,airbnb2,Amanda Cuda,2026-08-05,2026-08-09,6,4,3260.8,0.0,145.0,534.1,145.0,0.0,0.0,0.0,2911.7,confirmed,0.0,2766.7,Guests=6; Nights=4
+bellevue_2323_main,GY-AsCscVjW,BE-API,Eclat Li,2026-08-06,2026-08-14,4,8,2027.0,0.0,146.0,0.0,146.0,0.0,0.0,294.04,2321.94,confirmed,0.0,1881.9,Guests=4; Nights=8
+bellevue_514,HMSBWNMKST,airbnb2,Akash Chitrey,2026-08-06,2026-08-09,4,3,631.2,0.0,125.0,141.67,125.0,0.0,0.0,0.0,772.33,confirmed,0.0,647.33,Guests=4; Nights=3
+burien_14407_top,HA-95tAekH,VRBO,Camilla Johnson,2026-08-06,2026-08-08,2,2,284.31,0.0,75.0,0.0,75.0,0.0,0.0,45.63,410.63,confirmed,0.0,290.0,Guests=2; Nights=2
+elektra_1004,BC-2AqYW09x1,Booking.com,laxmi Velankar,2026-08-06,2026-08-10,4,4,689.4,0.0,88.0,0.0,140.88,0.0,0.0,128.07,1029.56,confirmed,0.0,941.56,Guests=4; Nights=4
+elektra_1108,BC-ynp981D6g,Booking.com,Laxmi Velankar,2026-08-06,2026-08-09,3,3,540.0,0.0,88.0,0.0,88.0,0.0,0.0,105.15,830.35,confirmed,0.0,742.35,Guests=3; Nights=3
+elektra_1115,HM3D4BJQTT,airbnb2,Raj Gokhale,2026-08-06,2026-08-09,2,3,540.0,0.0,88.0,118.27,88.0,0.0,0.0,0.0,644.73,confirmed,0.0,556.73,Guests=2; Nights=3
+elektra_1212,HMSMXKZKHF,airbnb2,Kasey Cooke,2026-08-06,2026-08-10,3,4,994.4,0.0,100.0,208.17,100.0,0.0,0.0,0.0,1134.83,confirmed,0.0,1034.83,Guests=3; Nights=4
+elektra_1305,HA-m6sqiuF,VRBO,Sue Gebo,2026-08-06,2026-08-09,2,3,600.0,0.0,70.0,0.0,175.0,0.0,0.0,110.07,897.07,confirmed,0.0,717.0,Guests=2; Nights=3
+longbranch_6821,HMFFBC8K3F,airbnb2,Tia Pinzon,2026-08-06,2026-08-09,9,3,1612.0,0.0,230.0,347.98,230.0,0.0,0.0,0.0,1897.02,confirmed,0.0,1667.02,Guests=9; Nights=3
+osbr_1,HM5JMDX9QS,airbnb2,Jonas Killian,2026-08-06,2026-08-08,2,2,244.0,0.0,45.0,54.25,45.0,0.0,0.0,0.0,295.75,confirmed,0.0,250.75,Guests=2; Nights=2
+osbr_12,BC-77N6GN5oB,Booking.com,palmer melissa,2026-08-06,2026-08-09,2,3,533.0,50.0,85.0,0.0,175.88,0.0,0.0,67.3,831.24,confirmed,0.0,746.24,Guests=2; Nights=3
+osbr_4,BC-6jDkvmjYz,Booking.com,Chamonix Hansen,2026-08-06,2026-08-09,4,3,504.0,0.0,65.0,0.0,65.0,0.0,0.0,23.75,683.47,confirmed,0.0,618.47,Guests=4; Nights=3
+osbr_6,HA-NYCnq0n,VRBO,Jenn Maines,2026-08-06,2026-08-08,2,2,257.84,50.0,65.0,0.0,115.0,0.0,0.0,38.26,417.1,confirmed,0.0,313.84000000000003,Guests=2; Nights=2
+osbr_8,BC-0m5L76PZy,Booking.com,Jennifer Bunney,2026-08-06,2026-08-09,4,3,494.0,0.0,65.0,0.0,65.0,0.0,0.0,23.33,671.25,confirmed,0.0,606.25,Guests=4; Nights=3
+osbr_9,HA-JaBBKQd,VRBO,Heather Stewart,2026-08-06,2026-08-07,2,1,89.22,0.0,45.0,0.0,45.0,0.0,0.0,13.75,149.75,confirmed,0.0,91.0,Guests=2; Nights=1
+poulsbo_3866,BC-60LWZ77R,Booking.com,Emile Ancelet,2026-08-06,2026-08-09,6,3,1533.49,150.0,250.0,0.0,517.62,0.0,0.0,202.67,2412.19,confirmed,0.0,2162.19,Guests=6; Nights=3
+redmond_14707,HA-9mOzne7,VRBO,Justin Petz,2026-08-06,2026-08-07,10,1,308.82,0.0,225.0,0.0,225.0,0.0,0.0,67.51,607.51,confirmed,0.0,315.0,Guests=10; Nights=1
+seattle_1502,HA-E7D5B2M,VRBO,Eric Zeisloft,2026-08-06,2026-08-09,3,3,868.63,0.0,150.0,0.0,150.0,0.0,0.0,167.21,1203.21,confirmed,0.0,886.0,Guests=3; Nights=3
+seattle_206,HMSJWCYENN,airbnb2,Stefan Kuhl,2026-08-06,2026-08-09,4,3,660.0,0.0,180.0,155.78,180.0,0.0,0.0,0.0,849.22,confirmed,0.0,669.22,Guests=4; Nights=3
+seattle_4201,HP-JVN84XV6QZ7J-PH97S,hopper,Grace Woo,2026-08-06,2026-08-09,2,3,772.97,0.0,179.0,145.18,179.0,0.0,0.0,167.37,1059.19,confirmed,0.0,712.82,Guests=2; Nights=3
+seattle_710,HM5W3NKBQT,airbnb2,Alison C,2026-08-06,2026-08-08,5,2,840.0,0.0,225.0,197.63,225.0,0.0,0.0,0.0,1077.37,confirmed,0.0,852.3699999999999,Guests=5; Nights=2
+seattle_7434_upper,HMKXA2QYZY,airbnb2,Francesca Lo,2026-08-06,2026-08-09,4,3,551.2,0.0,103.0,122.76,103.0,81.5,0.0,0.0,750.74,confirmed,0.0,647.74,Guests=4; Nights=3
+shelton_310,HMXYB8N2FW,airbnb2,Andrea Ortega,2026-08-06,2026-08-09,12,3,2530.4,0.0,245.0,528.24,245.0,0.0,0.0,0.0,2879.76,confirmed,0.0,2634.76,Guests=12; Nights=3
+bellevue_2243,HA-LM8PfOK,VRBO,Kristine Jordan,2026-08-07,2026-08-10,6,3,1835.29,0.0,225.0,0.0,225.0,0.0,0.0,304.07,2401.07,confirmed,0.0,1872.0,Guests=6; Nights=3
+elektra_1203,BC-KrMZWZWpx,Booking.com,Simon Broadbent,2026-08-07,2026-08-10,4,3,658.0,0.0,89.0,0.0,89.0,0.0,0.0,0.0,865.44,confirmed,0.0,776.44,Guests=4; Nights=3
+elektra_703,HA-mcRwy7L,VRBO,Javier Favela,2026-08-07,2026-08-11,2,4,795.1,0.0,98.0,0.0,98.0,0.0,0.0,146.72,1055.72,confirmed,0.0,811.0,Guests=2; Nights=4
+elektra_809,HMTX8EF84W,airbnb2,Kyras Fort,2026-08-07,2026-08-09,4,2,544.32,0.0,98.0,120.65,98.0,0.0,0.0,0.0,657.75,confirmed,0.0,559.75,Guests=4; Nights=2
+hoodsport_26060,HMM3TXA9DP,airbnb2,Kouros Sassani,2026-08-07,2026-08-10,3,3,924.0,150.0,135.0,223.2,285.0,0.0,0.0,0.0,1216.8,confirmed,0.0,1081.8,Guests=3; Nights=3
+lilliwaup_28610,HM5Q92XXY5,airbnb2,Bryanna Schinina,2026-08-07,2026-08-11,4,4,1376.0,150.0,170.0,316.2,320.0,0.0,0.0,0.0,1723.8,confirmed,0.0,1553.8,Guests=4; Nights=4
+mercer_3925,HA-1cwAmdw,VRBO,Howard Forman,2026-08-07,2026-08-09,2,2,300.0,0.0,50.0,0.0,50.0,0.0,86.06,44.5,400.5,confirmed,0.0,219.94,Guests=2; Nights=2
+osbr_10,GY-sxvzBWhQ,manual,Pierre Mollinet,2026-08-07,2026-08-09,2,2,0.0,0.0,0.0,0.0,0.0,0.0,45.0,0.0,0.0,canceled,0.0,335.44,Guests=2; Nights=2
+osbr_10,GY-272LLbDJ,manual,DARCI ANDERSON,2026-08-07,2026-08-09,2,2,307.0,0.0,45.0,0.0,61.0,0.0,0.0,36.56,414.56,confirmed,16.0,317.0,Guests=2; Nights=2
+osbr_11,EXP-D1BeXYGv,Expedia,Ally Pardo,2026-08-07,2026-08-09,2,2,294.21,0.0,65.0,0.0,65.0,0.0,0.0,42.36,463.36,confirmed,0.0,421.0,Guests=2; Nights=2
+osbr_3,HA-xEaPSBW,VRBO,Stephanie Lyon,2026-08-07,2026-08-09,2,2,327.45,0.0,45.0,0.0,45.0,0.0,0.0,38.28,417.28,confirmed,0.0,334.0,Guests=2; Nights=2
+osbr_5,GY-PANswgRy,website,Steve Mincy,2026-08-07,2026-08-10,2,3,560.0,0.0,65.0,0.0,89.0,0.0,0.0,65.04,733.04,confirmed,24.0,579.0,Guests=2; Nights=3
+osbr_7,BC-qrzoqDJ0G,Booking.com,Karissa Palmer,2026-08-07,2026-08-09,3,2,348.0,0.0,65.0,0.0,65.0,0.0,0.0,17.12,492.76,confirmed,0.0,427.76,Guests=3; Nights=2
+osbr_9,GY-BnMCpCzD,BE-API,Lisa Bragg,2026-08-07,2026-08-09,1,2,286.0,0.0,45.0,0.0,61.0,0.0,0.0,34.45,391.45,confirmed,16.0,296.0,Guests=1; Nights=2
+poulsbo_3956,HMFPBHT8W8,airbnb2,Cameron Talley,2026-08-07,2026-08-09,8,2,960.0,150.0,200.0,240.25,350.0,0.0,0.0,0.0,1309.75,confirmed,0.0,1109.75,Guests=8; Nights=2
+redmond_14707,HMRY2DNJ3S,airbnb2,Sherry Huang,2026-08-07,2026-08-10,11,3,2172.0,0.0,225.0,455.7,225.0,0.0,0.0,0.0,2484.3,confirmed,0.0,2259.3,Guests=11; Nights=3
+seattle_10057_lower,HM5QR4CFJJ,airbnb2,Emily Kearney,2026-08-07,2026-08-09,1,2,254.4,0.0,100.0,64.79,100.0,0.0,0.0,0.0,353.21,confirmed,0.0,253.21,Guests=1; Nights=2
+seattle_115,HMC2JRTNYW,airbnb2,Ayaka Furue,2026-08-07,2026-08-10,4,3,764.0,0.0,215.0,181.35,215.0,0.0,0.0,0.0,988.65,confirmed,0.0,773.65,Guests=4; Nights=3
+seattle_1623,HMP5D3E3DE,airbnb2,Allen Joe,2026-08-07,2026-08-09,6,2,777.6,0.0,153.0,174.38,153.0,0.0,0.0,0.0,950.62,confirmed,0.0,797.62,Guests=6; Nights=2
+seattle_710_adu,HM85YFMYWT,airbnb2,Klara Deruyttere,2026-08-07,2026-08-13,1,6,940.8,0.0,90.0,196.23,90.0,0.0,0.0,0.0,1069.77,confirmed,0.0,979.77,Guests=1; Nights=6
+seattle_7434_lower,BC-Mm384Y7r1,Booking.com,Beth Robidoux,2026-08-07,2026-08-09,4,2,361.0,0.0,103.0,0.0,103.0,0.0,0.0,0.0,528.98,confirmed,0.0,425.98,Guests=4; Nights=2
+seattle_8415,HA-bSSdGIp,VRBO,ken hawthorne,2026-08-07,2026-08-11,4,4,964.71,0.0,180.0,0.0,180.0,0.0,0.0,188.49,1352.49,confirmed,0.0,984.0,Guests=4; Nights=4
+seattle_9021,HMD3Q434ME,airbnb2,Sandra Chang,2026-08-07,2026-08-09,4,2,270.72,0.0,98.0,67.64,98.0,0.0,0.0,0.0,368.76,confirmed,0.0,270.76,Guests=4; Nights=2
+seattle_906_lower,HMHBSB2TPX,airbnb2,Mythili Gubbi,2026-08-07,2026-08-09,3,2,280.0,0.0,98.0,69.44,98.0,0.0,0.0,0.0,378.56,confirmed,0.0,280.56,Guests=3; Nights=2
+shelton_250,HA-XBEgOTf,VRBO,Xitlalli Hernandez,2026-08-07,2026-08-11,13,4,3202.94,0.0,210.0,0.0,210.0,0.0,0.0,365.09,3842.09,confirmed,0.0,3267.0,Guests=13; Nights=4
+yacinde_b1,GY-6twALduv,owner,William & Loreta Lynn (NWV),2026-08-07,2026-08-14,4,7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=7
+yacinde_b3,GY-FBbXXfht,owner,Joshua Carl (NWV),2026-08-07,2026-08-14,8,7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=7
+yacinde_b4,GY-3QXvyJSm,owner,Maxwell T & Lucy M French (NWV),2026-08-07,2026-08-14,8,7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=7
+yacinde_b6,GY-wH9wejP7,owner,Kelly Murray (NWV),2026-08-07,2026-08-09,4,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=2
+yacinde_f1,GY-UC4BzTm7,owner,Teresa Yette (NWV),2026-08-07,2026-08-10,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+bellevue_1621,HA-ZHAJCIo,VRBO,Charlie DeZiel,2026-08-08,2026-08-11,5,3,844.12,0.0,155.0,0.0,155.0,0.0,0.0,156.62,1236.74,confirmed,0.0,925.12,Guests=5; Nights=3
+bellevue_2323_adu,HMHYTB3RYJ,airbnb2,Yuvanash Kasinathan,2026-08-08,2026-08-15,3,7,942.4,0.0,96.0,179.21,96.0,0.0,0.0,0.0,976.99,confirmed,0.0,880.99,Guests=3; Nights=7
+bellevue_321,HMRBTFHNCT,airbnb2,Erick Arcieri,2026-08-08,2026-08-16,3,8,1718.4,0.0,98.0,314.84,98.0,0.0,0.0,0.0,1716.36,confirmed,0.0,1618.36,Guests=3; Nights=8
+burien_14407_top,BC-xzzRZYLpB,Booking.com,srinivas tirupati,2026-08-08,2026-08-12,4,4,576.0,0.0,75.0,0.0,119.18,0.0,0.0,85.59,840.27,confirmed,0.0,765.27,Guests=4; Nights=4
+elektra_1413,BC-qxEx8W4MG,Booking.com,PEILING LAI,2026-08-08,2026-08-14,3,6,1289.03,0.0,89.0,0.0,89.0,0.0,0.0,0.0,1610.06,confirmed,0.0,1521.06,Guests=3; Nights=6
+kirkland_13070,HMF8JN3THB,airbnb2,Jimmy Nguyen,2026-08-08,2026-08-09,8,1,340.0,0.0,225.0,100.75,225.0,0.0,0.0,0.0,549.25,confirmed,0.0,324.25,Guests=8; Nights=1
+mercer_3627_lower,HA-rwGjd9V,VRBO,Kale Lents,2026-08-08,2026-08-10,6,2,531.37,0.0,165.0,0.0,165.0,0.0,0.0,88.38,795.38,confirmed,0.0,542.0,Guests=6; Nights=2
+osbr_1,BC-X0YzkRjOk,Booking.com,Cassandra Baker,2026-08-08,2026-08-09,2,1,151.0,0.0,45.0,0.0,56.58,0.0,0.0,20.03,243.21,confirmed,0.0,198.21,Guests=2; Nights=1
+osbr_6,HM2STFTY2D,airbnb2,Jacob Ferger,2026-08-08,2026-08-10,4,2,260.0,0.0,65.0,60.45,65.0,0.0,0.0,0.0,329.55,confirmed,0.0,264.55,Guests=4; Nights=2
+seattle_710,HA-4GK7Ov2,VRBO,Matt Strobl,2026-08-08,2026-08-10,5,2,841.18,0.0,225.0,0.0,225.0,0.0,0.0,173.67,1256.67,confirmed,0.0,858.0000000000001,Guests=5; Nights=2
+yacinde_e1,GY-kFKR64Tc,BE-API,Taylor Johnson,2026-08-08,2026-08-12,3,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,canceled,0.0,200.0,Guests=3; Nights=4
+yacinde_e1,GY-Eaz7YxLd,manual,Ryan Clay,2026-08-08,2026-08-09,6,1,600.0,0.0,180.0,0.0,8.0,0.0,0.0,81.18,749.18,confirmed,0.0,487.99999999999994,Guests=6; Nights=1
+bainbridge_11143,HM4D9N2Z9Z,airbnb2,Kristine Collins,2026-08-09,2026-08-12,6,3,2052.0,0.0,250.0,436.33,250.0,0.0,0.0,0.0,2378.67,confirmed,0.0,2128.67,Guests=6; Nights=3
+bellevue_514,HA-vv7uVgc,VRBO,Brenda Jow,2026-08-09,2026-08-16,2,7,1475.49,0.0,125.0,0.0,125.0,0.0,0.0,214.53,1694.03,confirmed,0.0,1354.5,Guests=2; Nights=7
+elektra_1305,HMDBRTTWED,airbnb2,Addi Miller,2026-08-09,2026-08-11,2,2,244.0,0.0,70.0,58.13,70.0,0.0,0.0,0.0,316.87,confirmed,0.0,246.87,Guests=2; Nights=2
+elektra_809,HA-GLo7L3o,VRBO,Andrea Maertens,2026-08-09,2026-08-11,4,2,533.33,0.0,98.0,0.0,98.0,0.0,0.0,102.8,744.8,confirmed,0.0,544.0,Guests=4; Nights=2
+kirkland_13070,HMDQJKJ9PJ,airbnb2,Donald Carter,2026-08-09,2026-08-12,2,3,480.0,0.0,225.0,127.88,225.0,0.0,0.0,0.0,697.12,confirmed,0.0,472.12,Guests=2; Nights=3
+longbranch_6821,HMCBHJ4BQY,airbnb2,Amy Patrick,2026-08-09,2026-08-13,6,4,1401.6,0.0,230.0,307.21,230.0,0.0,0.0,0.0,1674.79,confirmed,0.0,1444.79,Guests=6; Nights=4
+osbr_1,HA-DbTMs2I,VRBO,Priscilla Marlow,2026-08-09,2026-08-14,2,5,504.9,0.0,45.0,0.0,45.0,0.0,0.0,56.57,616.57,confirmed,0.0,515.0,Guests=2; Nights=5
+osbr_11,EXP-2528659147-YSD6H,expedia,Celeste White,2026-08-09,2026-08-11,2,2,177.02,0.0,65.0,38.56,65.0,0.0,0.0,20.9,261.54,confirmed,0.0,240.64,Guests=2; Nights=2
+osbr_12,BC-AonJqpOOB,Booking.com,Aizhan Kane,2026-08-09,2026-08-10,3,1,115.0,0.0,85.0,0.0,93.82,0.0,0.0,16.85,237.55,confirmed,0.0,152.55,Guests=3; Nights=1
+osbr_3,GY-TsYk4KDh,BE-API,Sally Hurlbert,2026-08-09,2026-08-10,2,1,89.0,0.0,45.0,0.0,53.0,0.0,0.0,13.83,158.83,confirmed,8.0,92.0,Guests=2; Nights=1
+osbr_4,GY-NsUKCKzY,BE-API,Denise Kelsey,2026-08-09,2026-08-11,3,2,284.0,0.0,65.0,0.0,81.0,0.0,0.0,36.26,411.26,confirmed,16.0,294.0,Guests=3; Nights=2
+osbr_7,HA-fzcewK5,VRBO,Sherrie McIntyre,2026-08-09,2026-08-14,2,5,689.22,0.0,65.0,0.0,65.0,0.0,0.0,77.58,845.58,confirmed,0.0,703.0,Guests=2; Nights=5
+osbr_8,GY-6J8i3zHG,manual,Dick  Sylwester,2026-08-09,2026-08-13,2,4,418.0,100.0,65.0,0.0,197.0,0.0,0.0,60.5,691.5,confirmed,32.0,534.0,Guests=2; Nights=4
+poulsbo_3866,GY-VYCAWp9B,manual,Emile Ancelet,2026-08-09,2026-08-10,6,1,320.0,0.0,0.0,0.0,0.0,0.0,0.0,41.66,413.66,confirmed,0.0,372.0,Guests=6; Nights=1
+redmond_7579,HA-POKK6jn,VRBO,Urmila Jagtap-Dhole,2026-08-09,2026-08-17,3,8,1290.2,0.0,100.0,0.0,100.0,0.0,0.0,160.55,1444.95,confirmed,0.0,1184.4,Guests=3; Nights=8
+seattle_4201,WHS-RES443803705-8GCSM,whimstay,Marcus Sweetser,2026-08-09,2026-08-16,2,7,1003.16,0.0,179.0,61.62,179.0,0.0,0.0,202.33,1373.03,confirmed,0.0,991.7,Guests=2; Nights=7
+seattle_906_lower,HMC3SYMB55,airbnb2,Autumn Nerdin,2026-08-09,2026-08-14,2,5,508.0,0.0,98.0,113.62,98.0,0.0,0.0,0.0,619.38,confirmed,0.0,521.38,Guests=2; Nights=5
+shelton_310,HMXRS3PEH2,airbnb2,Jeffrey Jansen,2026-08-09,2026-08-13,8,4,1991.2,0.0,245.0,423.77,245.0,120.0,0.0,0.0,2430.23,confirmed,0.0,2185.23,Guests=8; Nights=4
+bellevue_2243,HA-6YHAkSA,VRBO,Brett Contreras,2026-08-10,2026-08-14,4,4,1600.0,0.0,225.0,0.0,225.0,0.0,0.0,269.28,2126.28,confirmed,0.0,1632.0000000000002,Guests=4; Nights=4
+bellevue_701,BC-wxZzYjZwm,Booking.com,Pei-Hsin Ma,2026-08-10,2026-08-12,1,2,280.0,0.0,94.0,0.0,115.48,0.0,0.0,47.91,472.31,confirmed,0.0,378.31,Guests=1; Nights=2
+elektra_1004,HA-1MMvWkY,VRBO,John Underwood,2026-08-10,2026-08-13,3,3,541.18,0.0,88.0,0.0,88.0,0.0,0.0,103.48,743.48,confirmed,0.0,552.0,Guests=3; Nights=3
+elektra_1108,WHS-RES131434361-39UG3,whimstay,AMANDA Scott,2026-08-10,2026-08-12,2,2,235.29,0.0,88.0,16.75,88.0,0.0,0.0,54.61,372.91,confirmed,0.0,230.3,Guests=2; Nights=2
+elektra_1203,HA-8h5IIF8,VRBO,Turquoise Balderrama,2026-08-10,2026-08-17,3,7,1654.9,0.0,89.0,0.0,89.0,0.0,0.0,259.49,1867.69,confirmed,0.0,1519.2,Guests=3; Nights=7
+hoodsport_26060,HA-H6gcrVG,VRBO,Steve Robbins,2026-08-10,2026-08-12,2,2,422.55,0.0,135.0,0.0,135.0,0.0,0.0,59.44,625.44,confirmed,0.0,431.00000000000006,Guests=2; Nights=2
+mercer_3627_lower,HMJPK288FT,airbnb2,David Millard,2026-08-10,2026-08-13,2,3,691.2,0.0,165.0,159.5,165.0,0.0,0.0,0.0,869.5,confirmed,0.0,704.5,Guests=2; Nights=3
+mercer_3925,BC-3v9AlJO69,Booking.com,Darryl Thomas,2026-08-10,2026-08-12,1,2,300.0,0.0,50.0,0.0,73.01,0.0,0.0,45.42,449.42,confirmed,0.0,399.42,Guests=1; Nights=2
+osbr_10,EXP-2520126020-FRQHY,expedia,Carol Van Zant,2026-08-10,2026-08-12,2,2,218.18,0.0,45.0,47.52,45.0,0.0,0.0,25.78,287.26,confirmed,0.0,261.48,Guests=2; Nights=2
+osbr_12,HA-cjznR3m,VRBO,Alisha Johnson,2026-08-10,2026-08-17,4,7,1341.18,50.0,85.0,0.0,135.0,0.0,0.0,134.93,1501.13,confirmed,0.0,1281.2,Guests=4; Nights=7
+osbr_2,GY-weVkijDH,BE-API,Sally Hurlbert,2026-08-10,2026-08-13,1,3,344.0,0.0,45.0,0.0,69.0,0.0,0.0,40.51,465.51,confirmed,24.0,356.0,Guests=1; Nights=3
+osbr_3,BC-yDzqB22r6,Booking.com,Greg Lowry,2026-08-10,2026-08-12,2,2,260.0,0.0,45.0,0.0,64.94,0.0,0.0,33.32,385.12,confirmed,0.0,340.12,Guests=2; Nights=2
+osbr_6,HMQRQF8CR9,airbnb2,Harika Amineni,2026-08-10,2026-08-11,4,1,99.2,0.0,65.0,29.3,65.0,0.0,0.0,0.0,159.7,confirmed,0.0,94.7,Guests=4; Nights=1
+poulsbo_3956,HA-h5m8piN,VRBO,Shannon Lynch,2026-08-10,2026-08-15,8,5,3700.0,0.0,200.0,0.0,200.0,0.0,0.0,445.09,4419.09,confirmed,0.0,3774.0,Guests=8; Nights=5
+poulsbo_563,HA-1mhAFnn,VRBO,Diane Wunder,2026-08-10,2026-08-12,2,2,427.45,0.0,160.0,0.0,160.0,0.0,0.0,66.75,662.75,confirmed,0.0,436.0,Guests=2; Nights=2
+redmond_14707,HMP358PD9X,airbnb2,Nate Bosman,2026-08-10,2026-08-11,8,1,280.0,0.0,225.0,89.13,225.0,0.0,0.0,0.0,485.87,confirmed,0.0,260.87,Guests=8; Nights=1
+seattle_7434_lower,GY-FmZ9nZcV,owner-guest,Li Dai,2026-08-10,2026-08-11,1,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=1; Nights=1
+seattle_7434_upper,GY-ZYsEimtF,owner-guest,Li Dai,2026-08-10,2026-08-11,1,1,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=1; Nights=1
+seattle_9021,HM9MCBY4C5,airbnb2,Michelle Lawson,2026-08-10,2026-08-14,3,4,434.16,0.0,98.0,84.02,98.0,0.0,0.0,0.0,458.05,confirmed,0.0,360.05,Guests=3; Nights=4
+yacinde_f5,GY-waURQWYf,owner,Britt Donnelly (NWV),2026-08-10,2026-08-14,4,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=4
+bellevue_1326,GY-XuX8SMcC,manual,Cola Chen,2026-08-11,2026-08-13,4,2,290.57,0.0,125.0,0.0,125.0,0.0,0.0,0.0,425.57,confirmed,0.0,300.57,Guests=4; Nights=2
+bellevue_1621,HMHMC4Z9PA,airbnb2,Hailing Lin,2026-08-11,2026-08-14,3,3,780.0,0.0,155.0,175.15,155.0,0.0,0.0,0.0,954.85,confirmed,0.0,799.85,Guests=3; Nights=3
+burien_14407_middle,HMF8KHBP35,airbnb2,Angelo Carias,2026-08-11,2026-08-18,3,7,1103.2,0.0,125.0,211.75,125.0,0.0,0.0,0.0,1154.35,confirmed,0.0,1029.35,Guests=3; Nights=7
+elektra_1115,BC-nVwA5gKAE,Booking.com,Takanori Kitamura,2026-08-11,2026-08-15,3,4,562.5,0.0,88.0,0.0,88.0,0.0,0.0,118.02,869.77,confirmed,0.0,781.77,Guests=3; Nights=4
+lilliwaup_28610,BC-XRAxN4o28,Booking.com,Douglas Ron,2026-08-11,2026-08-15,5,4,1394.42,0.0,170.0,0.0,170.0,0.0,0.0,263.23,2078.64,confirmed,0.0,1908.64,Guests=5; Nights=4
+osbr_4,HMHHCAHBND,airbnb2,Cinthia Posadas,2026-08-11,2026-08-12,2,1,103.2,0.0,65.0,30.07,65.0,0.0,0.0,0.0,163.93,confirmed,0.0,98.93,Guests=2; Nights=1
+osbr_6,GY-BpB5dg29,manual,Celesta Henderson,2026-08-11,2026-08-13,2,2,224.0,0.0,65.0,0.0,81.0,0.0,0.0,30.0,343.0,confirmed,16.0,232.0,Guests=2; Nights=2
+osbr_8,HA-32Hy8dB,VRBO,Norm Pavlish,2026-08-11,2026-08-25,2,14,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,canceled,0.0,200.0,Guests=2; Nights=14
+osbr_9,BC-V2nVWQ4WW,Booking.com,Benjamin Doran,2026-08-11,2026-08-14,1,3,293.0,0.0,45.0,0.0,67.47,0.0,0.0,37.35,428.09,confirmed,0.0,383.09,Guests=1; Nights=3
+poulsbo_3866,HA-RB0p0G7,VRBO,sarina godin,2026-08-11,2026-08-15,5,4,1722.55,0.0,250.0,0.0,250.0,0.0,0.0,224.79,2231.79,confirmed,0.0,1757.0,Guests=5; Nights=4
+redmond_14707,HM5Q3K3YQ8,airbnb2,Xun Xu,2026-08-11,2026-08-12,1,1,200.0,0.0,225.0,73.63,225.0,0.0,0.0,0.0,401.37,confirmed,0.0,176.37,Guests=1; Nights=1
+seattle_1117,HA-90mYpTY,VRBO,Elizabeth Koford,2026-08-11,2026-08-16,4,5,1401.96,0.0,155.0,0.0,155.0,0.0,0.0,256.23,1841.23,confirmed,0.0,1430.0,Guests=4; Nights=5
+seattle_1502,BC-2AkQlgYYA,Booking.com,Dareus Robinson,2026-08-11,2026-08-13,2,2,344.0,0.0,150.0,0.0,150.0,0.0,0.0,63.73,619.65,confirmed,0.0,469.65,Guests=2; Nights=2
+seattle_1623,BC-p6gA524oQ,Booking.com,ilia kostov,2026-08-11,2026-08-16,3,5,1498.0,0.0,153.0,0.0,267.9,0.0,0.0,278.13,2198.77,confirmed,0.0,2045.77,Guests=3; Nights=5
+seattle_7434_upper,HM54EQW3ND,airbnb2,Thomas Rupp,2026-08-11,2026-08-14,2,3,480.0,0.0,103.0,108.97,103.0,0.0,0.0,0.0,594.03,confirmed,0.0,491.03,Guests=2; Nights=3
+bainbridge_11143,HA-7BKS2wq,VRBO,Adam DeBrosse,2026-08-12,2026-08-15,5,3,1994.12,0.0,250.0,0.0,250.0,0.0,0.0,239.83,2523.83,confirmed,0.0,2034.0,Guests=5; Nights=3
+bellevue_10409,HMMDRSFDXN,airbnb2,Anirudh Ramkumar,2026-08-12,2026-08-14,2,2,340.8,0.0,125.0,85.41,125.0,0.0,0.0,0.0,465.59,confirmed,0.0,340.59,Guests=2; Nights=2
+elektra_1212,HMKNSQ88AM,airbnb2,Isis Villalobos Avila,2026-08-12,2026-08-14,4,2,320.8,0.0,100.0,77.66,100.0,0.0,0.0,0.0,423.34,confirmed,0.0,323.34,Guests=4; Nights=2
+elektra_1305,HA-hWh6MAC,VRBO,CURTIS TODD,2026-08-12,2026-08-15,2,3,541.18,0.0,70.0,0.0,70.0,0.0,0.0,100.65,722.65,confirmed,0.0,552.0,Guests=2; Nights=3
+hoodsport_26060,HA-wOs4pey,VRBO,Cory Horton,2026-08-12,2026-08-16,4,4,1062.35,300.0,135.0,0.0,435.0,0.0,0.0,159.53,1678.88,confirmed,0.0,1384.35,Guests=4; Nights=4
+kirkland_13070,HMWQMTJHRH,airbnb2,Shabbir Darugar,2026-08-12,2026-08-17,10,5,3140.8,0.0,225.0,643.41,225.0,0.0,0.0,0.0,3507.59,confirmed,0.0,3282.59,Guests=10; Nights=5
+osbr_10,EXP-2519622255-6E2WE,expedia,Debra DavesSybertz,2026-08-12,2026-08-14,2,2,218.18,0.0,45.0,0.0,45.0,0.0,0.0,31.42,340.42,confirmed,0.0,309.0,Guests=2; Nights=2
+osbr_11,BC-E7LQoROVv,Booking.com,Greyson Zhang,2026-08-12,2026-08-13,4,1,89.0,0.0,65.0,0.0,65.0,0.0,0.0,0.0,170.02,confirmed,0.0,105.02,Guests=4; Nights=1
+osbr_3,EXP-2531399212-KBTGQ,expedia,Douglas Sanner,2026-08-12,2026-08-13,2,1,98.35,0.0,45.0,21.42,45.0,0.0,0.0,11.61,154.19,confirmed,0.0,142.57999999999998,Guests=2; Nights=1
+osbr_4,HMMJB4JWX3,airbnb2,Michael Klasen,2026-08-12,2026-08-13,3,1,121.6,0.0,65.0,33.64,65.0,0.0,0.0,0.0,183.36,confirmed,0.0,118.36,Guests=3; Nights=1
+osbr_5,BC-nP2MVo9vl,Booking.com,Veniamin Granchukoff,2026-08-12,2026-08-15,4,3,440.0,0.0,65.0,0.0,65.0,0.0,0.0,21.03,605.23,confirmed,0.0,540.23,Guests=4; Nights=3
+poulsbo_563,HM3J3HWESE,airbnb2,Cynara Pombo,2026-08-12,2026-08-17,4,5,1948.0,150.0,160.0,425.48,310.0,0.0,0.0,0.0,2319.52,confirmed,0.0,2159.52,Guests=4; Nights=5
+redmond_14707,HMKYKW9DSA,airbnb2,Tracey Sondgroth,2026-08-12,2026-08-15,11,3,1320.0,0.0,225.0,290.63,225.0,0.0,0.0,0.0,1584.37,confirmed,0.0,1359.37,Guests=11; Nights=3
+seattle_10057_lower,BC-A77l57ARO,Booking.com,Reyes Viviana,2026-08-12,2026-08-14,3,2,200.0,0.0,100.0,0.0,115.34,0.0,0.0,37.6,373.6,confirmed,0.0,273.6,Guests=3; Nights=2
+seattle_115,HA-O3se17v,VRBO,Steven Alexander,2026-08-12,2026-08-16,3,4,1429.41,0.0,215.0,0.0,215.0,0.0,0.0,269.17,1942.17,confirmed,0.0,1458.0,Guests=3; Nights=4
+seattle_710,HA-DXSKrd2,VRBO,Serena Saffarini,2026-08-12,2026-08-14,8,2,891.18,0.0,225.0,0.0,225.0,0.0,0.0,181.75,1315.75,confirmed,0.0,909.0,Guests=8; Nights=2
+bellevue_1420,HA-kbMlqPg,VRBO,Ingrid Ramirez,2026-08-13,2026-08-17,4,4,0.0,0.0,0.0,0.0,0.0,0.0,193.9,0.0,0.0,canceled,0.0,6.1,Guests=4; Nights=4
+bellevue_1420,BC-v72NZwL0X,Booking.com,SERGEI MOROZOV,2026-08-13,2026-08-19,4,6,1515.0,0.0,125.0,0.0,125.0,0.0,0.0,39.96,1952.66,confirmed,0.0,1827.66,Guests=4; Nights=6
+elektra_1108,BC-l026zQOvM,Booking.com,Marina Lorefice,2026-08-13,2026-08-16,4,3,465.3,0.0,88.0,0.0,88.0,0.0,0.0,92.37,729.42,confirmed,0.0,641.42,Guests=4; Nights=3
+elektra_703,HMESHFQFAZ,airbnb2,Isabelle W,2026-08-13,2026-08-16,3,3,600.0,0.0,98.0,131.44,98.0,0.0,0.0,0.0,716.56,confirmed,0.0,618.56,Guests=3; Nights=3
+elektra_809,HMNPDR3YMP,airbnb2,Bailey Noack,2026-08-13,2026-08-15,5,2,549.04,0.0,98.0,121.57,98.0,0.0,0.0,0.0,662.73,confirmed,0.0,564.73,Guests=5; Nights=2
+kirkland_11321,HA-PjLSxog,VRBO,Patricia Locke,2026-08-13,2026-08-16,10,3,2258.82,0.0,265.0,0.0,265.0,0.0,0.0,321.12,2890.12,confirmed,0.0,2304.0,Guests=10; Nights=3
+longbranch_6821,HA-tR1C7XS,VRBO,Zachary Pfriem,2026-08-13,2026-08-16,6,3,1460.78,0.0,230.0,0.0,230.0,0.0,0.0,172.0,1892.0,confirmed,0.0,1490.0,Guests=6; Nights=3
+osbr_11,HMH5WYQQ3Z,airbnb2,Rose Cole,2026-08-13,2026-08-16,2,3,422.31,0.0,65.0,89.28,65.0,60.14,0.0,0.0,546.86,confirmed,0.0,481.86,Guests=2; Nights=3
+osbr_2,GY-rGf44W9R,BE-API,Anita Johansen,2026-08-13,2026-08-18,1,5,877.0,50.0,45.0,0.0,135.0,0.0,0.0,101.11,1142.11,confirmed,40.0,956.0,Guests=1; Nights=5
+osbr_3,HM8KH29FBT,airbnb2,Rae Thompson,2026-08-13,2026-08-16,1,3,392.0,0.0,45.0,82.93,45.0,0.0,0.0,0.0,452.07,confirmed,0.0,407.07,Guests=1; Nights=3
+osbr_4,HM4KXAHEQ2,airbnb2,Alix Reeb,2026-08-13,2026-08-16,5,3,500.0,50.0,65.0,114.7,115.0,0.0,0.0,0.0,625.3,confirmed,0.0,560.3,Guests=5; Nights=3
+osbr_6,HM52P34A2F,airbnb2,Michelle Bearden,2026-08-13,2026-08-15,2,2,325.6,0.0,65.0,73.16,65.0,0.0,0.0,0.0,398.84,confirmed,0.0,333.84,Guests=2; Nights=2
+osbr_8,BC-zEGo635R7,Booking.com,Loren Bogart,2026-08-13,2026-08-15,4,2,261.0,0.0,65.0,0.0,65.0,0.0,0.0,13.43,386.41,confirmed,0.0,321.41,Guests=4; Nights=2
+seattle_1502,HMZFZJWJJM,airbnb2,Stephanie Nguyen,2026-08-13,2026-08-16,4,3,740.8,0.0,150.0,166.78,150.0,0.0,0.0,0.0,909.22,confirmed,0.0,759.22,Guests=4; Nights=3
+seattle_7434_lower,BC-306kZB8N4,Booking.com,Richard Bun,2026-08-13,2026-08-15,4,2,331.0,0.0,103.0,0.0,103.0,0.0,0.0,0.0,493.58,confirmed,0.0,390.58,Guests=4; Nights=2
+seattle_8415,HM43XZFKZW,airbnb2,Perry Ruiz,2026-08-13,2026-08-17,4,4,746.4,0.0,180.0,172.52,180.0,0.0,0.0,0.0,940.48,confirmed,0.0,760.48,Guests=4; Nights=4
+shelton_250,HA-vzVN5Ov,VRBO,Fran Scheel,2026-08-13,2026-08-17,10,4,2488.2,0.0,210.0,0.0,210.0,0.0,0.0,301.61,3174.01,confirmed,0.0,2662.4,Guests=10; Nights=4
+shelton_310,HA-u26FU4a,VRBO,Shelbey Davis,2026-08-13,2026-08-16,9,3,1721.57,0.0,245.0,0.0,245.0,0.0,0.0,210.12,2211.12,confirmed,0.0,1756.0,Guests=9; Nights=3
+bellevue_10409,HMBPN3RQWC,airbnb2,Amanda Mouradian-Darby,2026-08-14,2026-08-16,3,2,404.0,0.0,125.0,97.65,125.0,0.0,0.0,0.0,532.35,confirmed,0.0,407.35,Guests=3; Nights=2
+bellevue_1621,HMBT2TKZNQ,airbnb2,Neeru Narla,2026-08-14,2026-08-18,3,4,867.2,0.0,155.0,192.05,155.0,0.0,0.0,0.0,1046.95,confirmed,0.0,891.95,Guests=3; Nights=4
+bellevue_2243,HMBP9NZXFP,airbnb2,Ashley Lintner,2026-08-14,2026-08-17,6,3,1156.8,0.0,225.0,259.01,225.0,0.0,0.0,0.0,1411.99,confirmed,0.0,1186.99,Guests=6; Nights=3
+bellevue_2323_main,BC-M6qjyDp33,Booking.com,Anup Kanodia,2026-08-14,2026-08-20,4,6,1380.0,0.0,146.0,0.0,146.0,0.0,0.0,0.0,1774.4,confirmed,0.0,1628.4,Guests=4; Nights=6
+burien_14407_top,HA-7p6sUFJ,VRBO,Christine Reynolds,2026-08-14,2026-08-16,2,2,296.08,0.0,75.0,0.0,75.0,0.0,0.0,47.14,424.14,confirmed,0.0,302.0,Guests=2; Nights=2
+elektra_1004,HA-r54InMu,VRBO,Boris Lantsman,2026-08-14,2026-08-17,2,3,600.0,0.0,88.0,0.0,88.0,0.0,0.0,112.9,812.9,confirmed,0.0,612.0,Guests=2; Nights=3
+elektra_1413,HA-oh8HVHk,VRBO,DAWN STRAWSER,2026-08-14,2026-08-16,3,2,515.69,0.0,89.0,0.0,159.0,0.0,0.0,98.56,783.56,confirmed,0.0,596.0,Guests=3; Nights=2
+mercer_3627_lower,HMYQDPJM9P,airbnb2,Devin Edmunds,2026-08-14,2026-08-19,4,5,968.8,0.0,165.0,213.28,165.0,0.0,0.0,0.0,1162.72,confirmed,0.0,997.72,Guests=4; Nights=5
+mercer_3925,HA-ahydf2x,VRBO,Kristin Brzon,2026-08-14,2026-08-16,2,2,262.75,0.0,50.0,0.0,50.0,0.0,0.0,39.74,357.74,confirmed,0.0,268.0,Guests=2; Nights=2
+microsoft_14645_c19,BC-gDn5wJEGl,Booking.com,Hao Xu,2026-08-14,2026-08-17,3,3,330.0,0.0,98.0,0.0,98.0,0.0,0.0,8.99,496.39,confirmed,0.0,398.39,Guests=3; Nights=3
+osbr_1,HM5SMPNRQW,airbnb2,Victoria Reeb,2026-08-14,2026-08-16,2,2,289.6,0.0,45.0,63.09,45.0,0.0,0.0,0.0,343.91,confirmed,0.0,298.91,Guests=2; Nights=2
+osbr_10,HM4NAMA4CA,airbnb2,Carol Bodda,2026-08-14,2026-08-17,2,3,360.0,50.0,45.0,84.48,95.0,0.0,0.0,0.0,460.52,confirmed,0.0,415.52,Guests=2; Nights=3
+osbr_7,HA-TV9xPul,VRBO,Adam Kabel,2026-08-14,2026-08-16,4,2,198.04,100.0,65.0,0.0,165.0,0.0,0.0,37.07,404.11,confirmed,0.0,302.04,Guests=4; Nights=2
+osbr_9,EXP-2520392410-DHFOH,expedia,DOUGLAS HAYDAK,2026-08-14,2026-08-16,2,2,309.09,0.0,45.0,67.32,45.0,0.0,0.0,36.49,388.17,confirmed,0.0,351.68,Guests=2; Nights=2
+seattle_10057_lower,BC-ORo2ZGlAY,Booking.com,Paula Caldwell,2026-08-14,2026-08-16,3,2,285.0,0.0,100.0,0.0,121.86,0.0,0.0,53.4,489.7,confirmed,0.0,389.7,Guests=3; Nights=2
+seattle_10057_upper,HMMNR2Y3H5,airbnb2,Katalina Hruska,2026-08-14,2026-08-16,3,2,260.8,0.0,100.0,66.03,100.0,0.0,0.0,0.0,359.97,confirmed,0.0,259.97,Guests=3; Nights=2
+seattle_206,HM2CKS2HMX,airbnb2,Jamie Reece,2026-08-14,2026-08-17,4,3,709.6,0.0,180.0,165.39,180.0,0.0,0.0,0.0,901.61,confirmed,0.0,721.61,Guests=4; Nights=3
+seattle_710,HMWNY3ZZZF,airbnb2,Monica Beckett,2026-08-14,2026-08-17,5,3,802.4,0.0,225.0,190.34,225.0,0.0,0.0,0.0,1037.66,confirmed,0.0,812.6600000000001,Guests=5; Nights=3
+seattle_710_adu,HM38SP3AEA,airbnb2,Marcel Ledoux,2026-08-14,2026-08-17,2,3,314.4,0.0,90.0,74.87,90.0,0.0,0.0,0.0,408.13,confirmed,0.0,318.13,Guests=2; Nights=3
+seattle_7434_upper,HMYNZBANES,airbnb2,Ramon Calderer,2026-08-14,2026-08-22,4,8,1372.8,0.0,103.0,255.35,103.0,0.0,0.0,0.0,1392.05,confirmed,0.0,1289.05,Guests=4; Nights=8
+seattle_8415,HA-kGU7mlW,VRBO,Hannah Narbarte,2026-08-14,2026-08-17,5,3,0.0,0.0,0.0,0.0,0.0,0.0,193.9,0.0,0.0,canceled,0.0,6.1,Guests=5; Nights=3
+seattle_9021,HM9RFRKA49,airbnb2,May Le,2026-08-14,2026-08-16,3,2,270.72,0.0,98.0,59.77,98.0,0.0,0.0,0.0,325.87,confirmed,0.0,227.87,Guests=3; Nights=2
+seattle_906_lower,HA-5Y8D0mq,VRBO,Mary Caridi,2026-08-14,2026-08-17,2,3,395.1,0.0,98.0,0.0,98.0,0.0,0.0,82.41,583.41,confirmed,0.0,403.0,Guests=2; Nights=3
+yacinde_b1,GY-bxbSkvCY,owner,timothy Richmond (NWV),2026-08-14,2026-08-17,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+yacinde_b2,GY-gYYe955d,owner,George & Deena Robertson (NWV),2026-08-14,2026-08-21,4,7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=7
+yacinde_b3,GY-awKjpMXw,owner,Michelle Dotsch (NWV),2026-08-14,2026-08-17,8,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=3
+yacinde_b4,GY-dnyPcqHL,owner,Brian & Susan Fyall (NWV),2026-08-14,2026-08-21,8,7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=7
+yacinde_e1,GY-LP4jKrXc,owner,Beatrix Wise (NWV),2026-08-14,2026-08-18,6,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=6; Nights=4
+bellevue_1326,WHS-RES133683660-9TGAE,whimstay,Vandith Pamuru,2026-08-15,2026-08-19,4,4,487.54,0.0,125.0,31.85,125.0,0.0,0.0,92.35,697.42,confirmed,0.0,480.06999999999994,Guests=4; Nights=4
+bellevue_2243,HA-vJn6IDk,VRBO,RANDY VANDERHEIDEN,2026-08-15,2026-08-21,4,6,0.0,0.0,0.0,0.0,0.0,0.0,193.9,0.0,0.0,canceled,0.0,6.1,Guests=4; Nights=6
+bellevue_2323_adu,HMNCBHNJ44,airbnb2,Leah Paukovits,2026-08-15,2026-08-17,2,2,200.0,0.0,96.0,53.63,96.0,0.0,0.0,0.0,292.37,confirmed,0.0,196.37,Guests=2; Nights=2
+bellevue_701,GY-2aQX8dgZ,owner,Shufang Li,2026-08-15,2026-11-30,1,107,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=1; Nights=107
+elektra_1212,HMQSJXEBX2,airbnb2,Jim McEnaney,2026-08-15,2026-08-17,3,2,412.0,0.0,100.0,95.33,100.0,0.0,0.0,0.0,519.67,confirmed,0.0,419.67,Guests=3; Nights=2
+elektra_1305,HA-urhiTBR,VRBO,Eric Stephens,2026-08-15,2026-08-18,2,3,528.43,0.0,70.0,0.0,70.0,0.0,0.0,98.62,707.62,confirmed,0.0,539.0,Guests=2; Nights=3
+elektra_809,BC-Ax6j8XgyP,Booking.com,Rod Bryan,2026-08-15,2026-08-18,3,3,1123.0,0.0,98.0,0.0,98.0,0.0,0.0,226.9,1650.04,confirmed,0.0,1552.04,Guests=3; Nights=3
+osbr_5,BC-omzKAQ1x3,Booking.com,Steven Button,2026-08-15,2026-08-16,2,1,99.0,0.0,65.0,0.0,65.0,0.0,0.0,6.55,188.37,confirmed,0.0,123.37,Guests=2; Nights=1
+osbr_6,BC-W11yoVj4X,Booking.com,Miranda Morrow,2026-08-15,2026-08-19,2,4,484.0,0.0,65.0,0.0,102.12,0.0,0.0,61.36,697.48,confirmed,0.0,632.48,Guests=2; Nights=4
+osbr_8,BC-noBZzJZz4,Booking.com,Ingrid Sievers,2026-08-15,2026-08-17,2,2,267.0,0.0,65.0,0.0,65.0,0.0,0.0,13.68,393.74,confirmed,0.0,328.74,Guests=2; Nights=2
+poulsbo_3866,HA-2LH4B6A,VRBO,Sean Reagan,2026-08-15,2026-08-20,4,5,2103.92,300.0,250.0,0.0,550.0,0.0,0.0,301.95,2997.95,confirmed,0.0,2446.0,Guests=4; Nights=5
+redmond_14707,HM2JHJ2JDX,airbnb2,Wei Chen Chen,2026-08-15,2026-08-22,6,7,4026.4,0.0,225.0,742.4,225.0,0.0,0.0,0.0,4047.3,confirmed,0.0,3822.3,Guests=6; Nights=7
+seattle_7434_lower,HMBCBRM94J,airbnb2,Kristina Knight,2026-08-15,2026-08-17,2,2,272.8,0.0,103.0,68.82,103.0,0.0,0.0,0.0,375.18,confirmed,0.0,272.18,Guests=2; Nights=2
+bainbridge_11143,HMQY3XRDXJ,airbnb2,Jenny Mashek,2026-08-16,2026-08-21,3,5,3220.0,0.0,250.0,662.63,250.0,0.0,0.0,0.0,3612.37,confirmed,0.0,3362.37,Guests=3; Nights=5
+bellevue_10409,HMPAFR84XD,airbnb2,Kimberly Sjostrom,2026-08-16,2026-08-22,2,6,1142.4,0.0,125.0,240.72,125.0,0.0,0.0,0.0,1312.28,confirmed,0.0,1187.28,Guests=2; Nights=6
+bellevue_514,HMNZQYXTNZ,airbnb2,Elmira Karimi,2026-08-16,2026-08-21,2,5,771.2,0.0,125.0,168.8,125.0,0.0,0.0,0.0,920.2,confirmed,0.0,795.2,Guests=2; Nights=5
+burien_14407_top,HP-JLSCFQHVNBFQ-C99J4,Capital One,Krismon Sotiangco,2026-08-16,2026-08-18,4,2,222.52,0.0,75.0,45.08,75.0,0.0,0.0,40.27,317.19,confirmed,0.0,201.92,Guests=4; Nights=2
+elektra_1108,GY-sJ8p4HjF,BE-API,arath dominguez,2026-08-16,2026-08-23,4,7,1260.0,0.0,88.0,0.0,144.0,0.0,0.0,204.8,1520.6,confirmed,56.0,1171.8,Guests=4; Nights=7
+elektra_1115,BC-W6rE3wvvv,Booking.com,Pierre Marie Bouteille,2026-08-16,2026-08-18,4,2,261.0,0.0,88.0,0.0,88.0,0.0,0.0,62.17,458.15,confirmed,0.0,370.15,Guests=4; Nights=2
+elektra_1413,BC-P8xpGB70l,Booking.com,Bradley Garrett,2026-08-16,2026-08-24,2,8,1587.0,0.0,89.0,0.0,89.0,0.0,0.0,0.0,1961.66,confirmed,0.0,1872.66,Guests=2; Nights=8
+hoodsport_26060,BC-Drox5m2LK,Booking.com,BRANKO KALEZIC,2026-08-16,2026-08-18,4,2,346.0,0.0,135.0,0.0,135.0,0.0,0.0,0.0,543.28,confirmed,0.0,408.28,Guests=4; Nights=2
+kirkland_11321,HMM4WCDFZQ,airbnb2,⁨Melody(Yanjun)⁩ Chen,2026-08-16,2026-08-20,4,4,1126.4,0.0,265.0,259.32,265.0,0.0,0.0,0.0,1413.68,confirmed,0.0,1148.68,Guests=4; Nights=4
+lilliwaup_28610,HA-7ab7KVa,VRBO,Justin Maher,2026-08-16,2026-08-18,4,2,560.78,0.0,170.0,0.0,170.0,0.0,0.0,77.91,819.91,confirmed,0.0,572.0,Guests=4; Nights=2
+longbranch_6821,HA-i1CJI8P,VRBO,Tom Czerwinski,2026-08-16,2026-08-20,8,4,1529.41,0.0,230.0,0.0,230.0,0.0,0.0,179.0,1969.0,confirmed,0.0,1560.0,Guests=8; Nights=4
+osbr_11,HA-5pUL9vV,VRBO,Jeanna Thompson,2026-08-16,2026-08-21,2,5,488.24,50.0,65.0,0.0,115.0,0.0,0.0,60.68,674.92,confirmed,0.0,549.24,Guests=2; Nights=5
+osbr_3,BC-jPlGxAzB4,Booking.com,Marjorie Nordrum,2026-08-16,2026-08-20,2,4,405.01,0.0,45.0,0.0,76.06,0.0,0.0,51.0,573.91,confirmed,0.0,528.91,Guests=2; Nights=4
+osbr_4,GY-TQZsiay6,BE-API,Ronda Ollivier,2026-08-16,2026-08-18,5,2,267.0,0.0,65.0,0.0,81.0,0.0,0.0,38.69,437.69,confirmed,16.0,318.0,Guests=5; Nights=2
+osbr_5,HME5MFZEAN,airbnb2,Audrey Joan Donoghue,2026-08-16,2026-08-18,3,2,232.0,0.0,65.0,55.03,65.0,0.0,0.0,0.0,299.97,confirmed,0.0,234.97000000000003,Guests=3; Nights=2
+osbr_7,BC-1MBj1jWv3,Booking.com,ohana coffey,2026-08-16,2026-08-17,4,1,99.0,0.0,65.0,0.0,65.0,0.0,0.0,6.55,188.37,confirmed,0.0,123.37,Guests=4; Nights=1
+osbr_9,EXP-2516423433-TIEZN,expedia,Tim Martin,2026-08-16,2026-08-18,2,2,196.36,0.0,45.0,42.76,45.0,0.0,0.0,23.18,263.02,confirmed,0.0,239.83999999999995,Guests=2; Nights=2
+poulsbo_3956,HA-gquw3fL,VRBO,Maggie Heide,2026-08-16,2026-08-19,6,3,1026.47,0.0,200.0,0.0,200.0,0.0,0.0,139.67,1386.67,confirmed,0.0,1047.0,Guests=6; Nights=3
+seattle_10057_upper,WHS-RES215612226-EGXLU,whimstay,Daisuke Kudo,2026-08-16,2026-08-19,3,3,295.46,0.0,100.0,20.51,100.0,0.0,0.0,68.02,457.74,confirmed,0.0,289.72,Guests=3; Nights=3
+seattle_1117,HMY5PCJSKZ,airbnb2,Destinee Evers,2026-08-16,2026-08-20,1,4,587.2,0.0,155.0,137.8,155.0,0.0,0.0,0.0,751.2,confirmed,0.0,596.2,Guests=1; Nights=4
+seattle_4201,HA-cQK967Y,VRBO,Jennifer Faulkner,2026-08-16,2026-08-20,6,4,814.71,0.0,179.0,0.0,179.0,0.0,0.0,164.1,1174.1,confirmed,0.0,830.9999999999999,Guests=6; Nights=4
+shelton_310,HMZ5J239T3,airbnb2,Shawn Taylor,2026-08-16,2026-08-21,2,5,1140.0,0.0,245.0,258.85,245.0,0.0,0.0,0.0,1411.15,confirmed,0.0,1166.15,Guests=2; Nights=5
+lynnwood_17506,HMSFTMSZ89,airbnb2,Brian Plows,2026-08-17,2026-08-21,3,4,936.0,0.0,227.0,216.54,227.0,0.0,0.0,0.0,1180.46,confirmed,0.0,953.46,Guests=3; Nights=4
+microsoft_14645_c19,HMC55RS4D8,airbnb2,Vijay Khurana,2026-08-17,2026-08-21,1,4,441.6,0.0,98.0,100.75,98.0,0.0,0.0,0.0,549.25,confirmed,0.0,451.25,Guests=1; Nights=4
+osbr_1,EXP-2512331778-45QQ0,expedia,Kat Keen,2026-08-17,2026-08-19,2,2,223.97,0.0,45.0,48.78,45.0,0.0,0.0,26.45,293.67,confirmed,0.0,267.22,Guests=2; Nights=2
+osbr_12,HM3NPK3H92,airbnb2,Kelly Berry,2026-08-17,2026-08-18,4,1,116.0,0.0,85.0,35.65,85.0,0.0,0.0,0.0,194.35,confirmed,0.0,109.35,Guests=4; Nights=1
+osbr_7,BC-O2PZD16VB,Booking.com,Melissa Flores,2026-08-17,2026-08-19,6,2,277.67,0.0,65.0,0.0,65.0,0.0,0.0,14.13,406.78,confirmed,0.0,341.78,Guests=6; Nights=2
+sammamish_2009,HA-YsIDaS7,VRBO,Susan Greer,2026-08-17,2026-08-21,4,4,762.75,0.0,215.0,0.0,215.0,0.0,0.0,124.12,1117.12,confirmed,0.0,777.9999999999999,Guests=4; Nights=4
+sammamish_5124_1,BC-VyoXr35Q1,Booking.com,Anton Ganeshalingam,2026-08-17,2026-08-20,2,3,421.02,0.0,30.0,0.0,62.29,0.0,0.0,62.46,589.26,confirmed,0.0,559.26,Guests=2; Nights=3
+seattle_115,HM3NMHBW5R,airbnb2,Jason Braun,2026-08-17,2026-08-21,3,4,683.2,0.0,215.0,165.7,215.0,0.0,0.0,0.0,903.3,confirmed,0.0,688.3,Guests=3; Nights=4
+seattle_1502,BC-ORoJJByWY,Booking.com,HATICE GULSEN YAVUZ,2026-08-17,2026-08-21,4,4,655.0,0.0,150.0,0.0,150.0,0.0,0.0,121.35,1044.25,confirmed,0.0,894.25,Guests=4; Nights=4
+yacinde_b3,GY-q694D2Nh,owner,Patrick Kent (NWV),2026-08-17,2026-08-21,8,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=4
+yacinde_b6,GY-6KR8yTNs,owner,Kyle Keller (NWV),2026-08-17,2026-08-21,4,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=4
+yacinde_f1,GY-VHjPDdwa,owner,Jennifer Peterson (NWV),2026-08-17,2026-08-20,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+yacinde_f5,GY-t6wQn2ES,owner,Forrest E Fielder (NWV),2026-08-17,2026-08-22,4,5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=5
+bellevue_2323_adu,HMQFXBW5M8,airbnb2,Rodrigo Palacios Mendoza,2026-08-18,2026-08-20,3,2,200.0,0.0,96.0,53.63,96.0,0.0,0.0,0.0,292.37,confirmed,0.0,196.37,Guests=3; Nights=2
+burien_14407_middle,HP-TTNCSDVLPP2N-SE8FV,hopper,eleazar espinoza,2026-08-18,2026-08-23,4,5,790.09,0.0,125.0,140.28,125.0,0.0,0.0,125.26,986.98,confirmed,0.0,736.72,Guests=4; Nights=5
+elektra_1203,HP-QWSNJ7KX2BH5-I0SZ2,Capital One,Vince Panvini,2026-08-18,2026-08-21,4,3,748.65,0.0,89.0,128.8,89.0,0.0,0.0,85.57,876.77,confirmed,0.0,702.2,Guests=4; Nights=3
+elektra_1305,BC-omKWNv1ON,Booking.com,Jake Ronay,2026-08-18,2026-08-22,1,4,554.0,0.0,70.0,0.0,112.49,0.0,0.0,98.73,822.45,confirmed,0.0,752.45,Guests=1; Nights=4
+elektra_703,BC-XR22GKOro,Booking.com,Thorsten Hassel,2026-08-18,2026-08-21,5,3,491.02,0.0,98.0,0.0,135.66,0.0,0.0,91.36,768.76,confirmed,0.0,670.76,Guests=5; Nights=3
+elektra_809,BC-kVYlGNEDE,Booking.com,Nhung Tran,2026-08-18,2026-08-20,3,2,366.0,0.0,98.0,0.0,98.0,0.0,0.0,85.51,615.39,confirmed,0.0,517.39,Guests=3; Nights=2
+hoodsport_26060,HMBS9Q5A8B,airbnb2,Andrew Bowman,2026-08-18,2026-08-21,5,3,700.0,150.0,135.0,179.8,285.0,0.0,0.0,0.0,980.2,confirmed,0.0,845.2,Guests=5; Nights=3
+lilliwaup_28610,HMKM8SJZB4,airbnb2,Brandy Allen,2026-08-18,2026-08-20,7,2,915.2,0.0,170.0,203.67,170.0,0.0,0.0,0.0,1110.33,confirmed,0.0,940.33,Guests=7; Nights=2
+osbr_12,BC-vwP80mKRm,Booking.com,Janice Bauermeister,2026-08-18,2026-08-21,3,3,415.0,0.0,85.0,0.0,116.83,0.0,0.0,53.06,627.76,confirmed,0.0,542.76,Guests=3; Nights=3
+osbr_2,BC-noP4zB4Xp,Booking.com,Kellie Emerson,2026-08-18,2026-08-20,2,2,206.0,0.0,45.0,0.0,45.0,0.0,0.0,10.37,298.45,confirmed,0.0,253.45,Guests=2; Nights=2
+osbr_5,EXP-2515470293-4PE6P,expedia,Pam Catching,2026-08-18,2026-08-22,2,4,485.12,0.0,65.0,105.66,65.0,0.0,0.0,57.29,603.63,confirmed,0.0,546.34,Guests=2; Nights=4
+osbr_8,BC-qXZyZr640,Booking.com,Janeth Peraza,2026-08-18,2026-08-19,2,1,99.0,0.0,65.0,0.0,65.0,0.0,0.0,6.55,188.37,confirmed,0.0,123.37,Guests=2; Nights=1
+osbr_9,GY-DV54sNjz,BE-API,Leon  Robert ,2026-08-18,2026-08-21,2,3,267.0,0.0,45.0,0.0,69.0,0.0,0.0,32.43,377.43,confirmed,24.0,276.0,Guests=2; Nights=3
+yacinde_b1,GY-ShsxST5a,owner,Sandy Montgomery (NWV),2026-08-18,2026-08-21,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+bellevue_1326,BC-Wvj3jlVVQ,Booking.com,SERGEI MOROZOV,2026-08-19,2026-08-29,4,10,1627.0,0.0,125.0,0.0,125.0,0.0,0.0,42.88,2087.74,confirmed,0.0,1962.74,Guests=4; Nights=10
+bellevue_1420,HMB9Q29P88,airbnb2,David Alpert,2026-08-19,2026-08-23,5,4,1091.2,0.0,125.0,230.8,125.0,0.0,0.0,0.0,1258.2,confirmed,0.0,1133.2,Guests=5; Nights=4
+bellevue_321,HM4NY3SBBX,airbnb2,Natsuki Sacks,2026-08-19,2026-08-23,3,4,761.6,0.0,98.0,162.75,98.0,0.0,0.0,0.0,887.25,confirmed,0.0,789.25,Guests=3; Nights=4
+elektra_1115,BC-wAKD1P9Kz,Booking.com,Rasiel Jean Mijares Serna,2026-08-19,2026-08-22,3,3,432.9,0.0,88.0,0.0,88.0,0.0,0.0,94.01,692.83,confirmed,0.0,604.83,Guests=3; Nights=3
+mercer_3925,HA-TLrdx5g,VRBO,Annette Ryan,2026-08-19,2026-08-26,2,7,1544.12,0.0,50.0,0.0,50.0,0.0,285.85,183.44,1650.94,confirmed,0.0,1131.65,Guests=2; Nights=7
+osbr_10,EXP-2535045730-N06PB,expedia,Mike Stoedter,2026-08-19,2026-08-20,2,1,98.35,0.0,45.0,21.42,45.0,0.0,0.0,11.61,154.19,confirmed,0.0,142.57999999999998,Guests=2; Nights=1
+osbr_4,HA-LFypYQI,VRBO,Dia Camille Read,2026-08-19,2026-08-21,3,2,272.55,0.0,65.0,0.0,65.0,0.0,0.0,34.65,377.65,confirmed,0.0,278.0,Guests=3; Nights=2
+osbr_7,GY-zW5aRLHH,BE-API,Brittany Swanson,2026-08-19,2026-08-23,4,4,669.0,0.0,65.0,0.0,97.0,0.0,0.0,76.36,864.36,confirmed,32.0,691.0,Guests=4; Nights=4
+poulsbo_3956,HA-ZUiZHET,VRBO,Kerry Sloan,2026-08-19,2026-08-24,10,5,2764.71,150.0,200.0,0.0,350.0,0.0,0.0,355.04,3525.04,confirmed,0.0,2970.0,Guests=10; Nights=5
+poulsbo_563,HA-dHxkFyX,VRBO,Marc Verissimo,2026-08-19,2026-08-25,4,6,2400.0,150.0,160.0,0.0,310.0,0.0,0.0,308.9,3066.9,confirmed,0.0,2598.0,Guests=4; Nights=6
+redmond_7579,HA-2brriLP,VRBO,Randi Bulla,2026-08-19,2026-08-25,3,6,0.0,0.0,0.0,0.0,0.0,0.0,193.9,0.0,0.0,canceled,0.0,6.1,Guests=3; Nights=6
+seattle_206,HMKHJNPE9F,airbnb2,Mica Sundine,2026-08-19,2026-08-24,5,5,1344.63,0.0,180.0,280.09,180.0,0.0,0.0,0.0,1526.91,confirmed,0.0,1346.91,Guests=5; Nights=5
+shelton_250,HA-9RRKktS,VRBO,Kim Campbell,2026-08-19,2026-08-23,11,4,3263.73,0.0,210.0,0.0,210.0,0.0,250.0,371.6,3910.6,confirmed,0.0,3079.0,Guests=11; Nights=4
+bellevue_1621,HMJM2MPND2,airbnb2,Rosa Carrillo,2026-08-20,2026-08-23,2,3,619.83,0.0,155.0,140.28,155.0,0.0,0.0,0.0,764.72,confirmed,0.0,609.72,Guests=2; Nights=3
+bellevue_2243,HA-APm2zKP,VRBO,Evelyn Maruko,2026-08-20,2026-08-23,3,3,991.18,150.0,225.0,0.0,375.0,0.0,0.0,200.98,1586.98,confirmed,0.0,1161.0,Guests=3; Nights=3
+burien_14407_top,HMB93A8WF9,airbnb2,Bryan Jimenez,2026-08-20,2026-08-22,5,2,281.6,0.0,75.0,66.19,75.0,0.0,0.0,0.0,360.81,confirmed,0.0,285.81,Guests=5; Nights=2
+elektra_1004,HP-S23C32CW936K-9PJW9,hopper,James Galang ,2026-08-20,2026-08-23,2,3,498.2,0.0,88.0,89.74,88.0,0.0,0.0,103.64,654.9,confirmed,0.0,463.26,Guests=2; Nights=3
+elektra_1212,HMSASZJ3WP,airbnb2,Bailey Rodriguez,2026-08-20,2026-08-23,2,3,575.21,0.0,100.0,123.38,100.0,0.0,0.0,0.0,672.62,confirmed,0.0,572.62,Guests=2; Nights=3
+elektra_809,GY-DQDL2FFi,website,Kasey Siu,2026-08-20,2026-08-25,4,5,1302.0,0.0,98.0,0.0,138.0,0.0,0.0,231.39,1713.39,confirmed,40.0,1344.0,Guests=4; Nights=5
+lilliwaup_28610,HA-kzo65nF,VRBO,Tammy M Hulsey,2026-08-20,2026-08-24,6,4,1525.49,150.0,170.0,0.0,320.0,0.0,0.0,196.98,2072.98,confirmed,0.0,1706.0,Guests=6; Nights=4
+longbranch_6821,HMCYWN9XDC,airbnb2,Chad Pearson,2026-08-20,2026-08-23,8,3,1446.28,0.0,230.0,306.9,230.0,0.0,0.0,0.0,1673.1,confirmed,0.0,1443.1,Guests=8; Nights=3
+mercer_3627_lower,HA-xuEqTrT,VRBO,Jillayne Verich,2026-08-20,2026-08-24,6,4,1070.59,0.0,165.0,0.0,165.0,0.0,0.0,157.13,1414.13,confirmed,0.0,1092.0,Guests=6; Nights=4
+osbr_1,BC-K2Gnx8vLJ,Booking.com,Hubbard Tani,2026-08-20,2026-08-21,2,1,88.99,0.0,45.0,0.0,51.83,0.0,0.0,12.48,162.49,confirmed,0.0,117.49,Guests=2; Nights=1
+osbr_10,HA-DSR1YzX,VRBO,Ann Lemcke,2026-08-20,2026-08-21,2,1,89.81,0.0,45.0,0.0,45.0,0.0,0.0,14.35,156.35,confirmed,0.0,97.0,Guests=2; Nights=1
+osbr_2,HMMQTTAMTJ,airbnb2,Blake Nelson,2026-08-20,2026-08-21,2,1,96.69,0.0,45.0,25.11,45.0,0.0,0.0,0.0,136.89,confirmed,0.0,91.89,Guests=2; Nights=1
+osbr_3,HMPRRJNX5M,airbnb2,Laurinda Burch,2026-08-20,2026-08-21,1,1,102.48,0.0,45.0,26.2,45.0,0.0,0.0,0.0,142.8,confirmed,0.0,97.8,Guests=1; Nights=1
+osbr_6,HMNDA29DBW,airbnb2,Katelyn Schaffer,2026-08-20,2026-08-21,3,1,102.48,0.0,65.0,29.3,65.0,0.0,0.0,0.0,159.7,confirmed,0.0,94.7,Guests=3; Nights=1
+osbr_8,HA-A2YoUP4,VRBO,sally sagot,2026-08-20,2026-08-21,2,1,99.07,0.0,65.0,0.0,65.0,0.0,0.0,17.38,189.38,confirmed,0.0,107.0,Guests=2; Nights=1
+redmond_7579,HA-MrOyPr5,VRBO,Brent Tidwell,2026-08-20,2026-08-27,4,7,1094.71,0.0,100.0,0.0,100.0,0.0,0.0,138.7,1248.24,confirmed,0.0,1009.54,Guests=4; Nights=7
+seattle_10057_lower,HMR3B3C398,airbnb2,Nathalie Silva,2026-08-20,2026-08-23,3,3,371.9,0.0,100.0,85.25,100.0,0.0,0.0,0.0,464.75,confirmed,0.0,364.75,Guests=3; Nights=3
+seattle_10057_upper,BC-mk4x3GmGr,Booking.com,Juan Manuel Garay Bravo,2026-08-20,2026-08-23,3,3,375.0,0.0,100.0,0.0,128.76,0.0,0.0,69.87,612.37,confirmed,0.0,512.37,Guests=3; Nights=3
+seattle_1117,HMHXS3MT9J,airbnb2,Trevor Dyck,2026-08-20,2026-08-22,4,2,439.67,0.0,155.0,106.49,155.0,0.0,0.0,0.0,580.51,confirmed,0.0,425.51,Guests=4; Nights=2
+seattle_1623,HA-vd93wJX,VRBO,BONNIE Cleveland,2026-08-20,2026-08-24,4,4,1203.92,0.0,153.0,0.0,153.0,0.0,0.0,222.9,1603.9,confirmed,0.0,1228.0,Guests=4; Nights=4
+seattle_4201,HMBBDJHNZQ,airbnb2,Abdulkadir Musakira,2026-08-20,2026-08-24,4,4,752.8,0.0,179.0,173.6,179.0,0.0,0.0,0.0,946.4,confirmed,0.0,767.4,Guests=4; Nights=4
+seattle_710,HMXQD5EFM4,airbnb2,Scott Causey,2026-08-20,2026-08-24,6,4,2522.31,0.0,225.0,507.94,225.0,0.0,0.0,0.0,2769.06,confirmed,0.0,2544.06,Guests=6; Nights=4
+seattle_710_adu,GY-dpHZ7593,website,Lisa Quam,2026-08-20,2026-08-23,2,3,364.0,0.0,90.0,0.0,114.0,0.0,0.0,76.86,566.86,canceled,24.0,200.0,Guests=2; Nights=3
+seattle_8415,HA-tNeNsCe,VRBO,Karen Partridge,2026-08-20,2026-08-23,6,3,694.12,0.0,180.0,0.0,180.0,0.0,0.0,143.75,1031.75,confirmed,0.0,708.0,Guests=6; Nights=3
+seattle_9021,HA-1pkOnDe,VRBO,Sam Barber,2026-08-20,2026-08-24,2,4,600.0,200.0,98.0,0.0,298.0,0.0,0.0,148.24,1058.24,confirmed,0.0,812.0,Guests=2; Nights=4
+seattle_906_lower,HMZRKKK95K,airbnb2,Carlos Matamoros,2026-08-20,2026-08-24,3,4,557.85,0.0,98.0,119.82,98.0,0.0,0.0,0.0,653.18,confirmed,0.0,555.18,Guests=3; Nights=4
+shelton_310,HMDAPZQZFM,airbnb2,Brandon Brookshire,2026-08-20,2026-08-23,12,3,1317.77,0.0,122.5,266.14,122.5,0.0,0.0,0.0,1450.86,canceled,0.0,1450.86,Guests=12; Nights=3
+yacinde_c1,HMPNQFX2DP,airbnb2,Ameya Potadar,2026-08-20,2026-08-23,4,3,1353.72,0.0,180.0,281.79,180.0,0.0,0.0,0.0,1536.21,confirmed,0.0,1356.21,Guests=4; Nights=3
+yacinde_e1,GY-x3yfGyt7,owner,Sarah Elperin (NWV),2026-08-20,2026-08-23,6,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=6; Nights=3
+yacinde_f1,GY-H3YPLG3r,owner,Sarah Elperin (NWV),2026-08-20,2026-08-23,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+bainbridge_11143,HA-vCWfcZZ,VRBO,Jeremy Myrland,2026-08-21,2026-08-24,7,3,1399.02,0.0,250.0,0.0,250.0,0.0,0.0,176.09,1853.09,confirmed,0.0,1427.0,Guests=7; Nights=3
+bellevue_2323_adu,HM9BPD59BJ,airbnb2,Ben Wegodsky',2026-08-21,2026-08-23,1,2,238.02,0.0,96.0,59.52,96.0,0.0,0.0,0.0,324.48,confirmed,0.0,228.48,Guests=1; Nights=2
+bellevue_2323_main,HM5TPBX8R8,airbnb2,Susan Kopf,2026-08-21,2026-08-24,2,3,776.03,0.0,146.0,168.18,146.0,0.0,0.0,0.0,916.82,confirmed,0.0,770.82,Guests=2; Nights=3
+bellevue_514,HMYEEFBF4F,airbnb2,Jinzhu Deng,2026-08-21,2026-08-24,4,3,652.07,0.0,125.0,141.67,125.0,0.0,0.0,0.0,772.33,confirmed,0.0,647.33,Guests=4; Nights=3
+elektra_1203,BC-0BB5ZGqxV,Booking.com,Péter Hlavaj,2026-08-21,2026-08-24,4,3,747.0,0.0,89.0,0.0,89.0,0.0,0.0,0.0,970.46,confirmed,0.0,881.46,Guests=4; Nights=3
+elektra_703,HA-9YoJkzz,VRBO,Trent Makela,2026-08-21,2026-08-23,3,2,400.0,0.0,98.0,0.0,98.0,0.0,0.0,81.45,587.45,confirmed,0.0,408.00000000000006,Guests=3; Nights=2
+kirkland_11321,HM4FM8EXEA,airbnb2,Rumize Lowe,2026-08-21,2026-08-23,6,2,661.16,0.0,265.0,165.08,265.0,0.0,0.0,0.0,899.92,confirmed,0.0,634.92,Guests=6; Nights=2
+kirkland_13070,HMB9RE2FWM,airbnb2,James M,2026-08-21,2026-08-23,6,2,826.45,0.0,225.0,189.88,225.0,0.0,0.0,0.0,1035.12,confirmed,0.0,810.1199999999999,Guests=6; Nights=2
+lynnwood_17506,HA-OMmeG3K,VRBO,Timothy Miller,2026-08-21,2026-08-24,8,3,1259.8,0.0,227.0,0.0,227.0,0.0,0.0,192.03,1704.03,confirmed,0.0,1285.0,Guests=8; Nights=3
+microsoft_14645_c19,HMN2ENFXST,airbnb2,Jamie Ellis,2026-08-21,2026-08-24,3,3,342.15,0.0,98.0,79.36,98.0,0.0,0.0,0.0,432.64,confirmed,0.0,334.64,Guests=3; Nights=3
+osbr_1,GY-nUcq5dCh,manual,Tamaso  Johnson ,2026-08-21,2026-08-23,2,2,338.0,50.0,45.0,0.0,111.0,0.0,0.0,44.84,504.84,confirmed,16.0,399.0,Guests=2; Nights=2
+osbr_10,GY-kpBHaKz4,manual,Devin Owen,2026-08-21,2026-08-23,1,2,342.0,50.0,45.0,0.0,111.0,0.0,0.0,45.35,510.35,confirmed,16.0,404.0,Guests=1; Nights=2
+osbr_11,BC-q5YEN6qLr,Booking.com,Darren Neal,2026-08-21,2026-08-23,2,2,265.0,0.0,65.0,0.0,65.0,0.0,0.0,0.0,377.7,confirmed,0.0,312.7,Guests=2; Nights=2
+osbr_12,BC-DrJ1QQJ4K,Booking.com,Nir Tarcic,2026-08-21,2026-08-25,5,4,578.0,0.0,85.0,0.0,129.33,0.0,0.0,72.73,839.77,confirmed,0.0,754.77,Guests=5; Nights=4
+osbr_2,GY-HDi8qeXn,manual,Natalie  Dolci,2026-08-21,2026-08-23,2,2,0.0,50.0,0.0,0.0,50.0,0.0,0.0,5.05,55.05,canceled,0.0,200.0,Guests=2; Nights=2
+osbr_2,HM8SKCDA45,airbnb2,Storm Mathisen,2026-08-21,2026-08-23,2,2,357.85,0.0,45.0,74.09,45.0,0.0,0.0,0.0,403.91,confirmed,0.0,358.91,Guests=2; Nights=2
+osbr_3,GY-zuFN8FQU,manual,Maria  Pintar,2026-08-21,2026-08-23,2,2,346.0,0.0,45.0,0.0,61.0,0.0,0.0,40.71,459.71,confirmed,16.0,358.0,Guests=2; Nights=2
+osbr_4,BC-ynj5G2LAz,Booking.com,Joshua Munn,2026-08-21,2026-08-23,4,2,326.0,0.0,65.0,0.0,65.0,0.0,0.0,16.19,465.87,confirmed,0.0,400.87,Guests=4; Nights=2
+osbr_6,GY-Fg46SL9B,manual,Carlos  Ardila ,2026-08-21,2026-08-24,2,3,560.0,0.0,65.0,0.0,89.0,0.0,0.0,65.04,733.04,confirmed,24.0,579.0,Guests=2; Nights=3
+osbr_8,HMNXCHTSM2,airbnb2,Todd Cole,2026-08-21,2026-08-23,2,2,321.49,0.0,65.0,70.37,65.0,0.0,0.0,0.0,383.63,confirmed,0.0,318.63,Guests=2; Nights=2
+osbr_9,HA-SmhzPft,VRBO,Patrick Romero,2026-08-21,2026-08-24,1,3,390.2,0.0,45.0,0.0,45.0,0.0,0.0,44.75,487.75,confirmed,0.0,398.0,Guests=1; Nights=3
+poulsbo_3866,HA-ICjnEMX,VRBO,Brooke Napiwocki,2026-08-21,2026-08-24,4,3,1261.76,0.0,250.0,0.0,250.0,0.0,0.0,172.15,1709.15,confirmed,0.0,1287.0,Guests=4; Nights=3
+redmond_11641,HA-MARnm4l,VRBO,BOBBIE MCDOW,2026-08-21,2026-08-24,3,3,496.08,0.0,149.0,0.0,149.0,0.0,0.0,81.88,736.88,confirmed,0.0,506.0,Guests=3; Nights=3
+sammamish_2009,HMY4E9QRWX,airbnb2,Teresa Moore,2026-08-21,2026-08-25,3,4,766.12,0.0,215.0,177.01,215.0,0.0,0.0,0.0,964.99,confirmed,0.0,749.99,Guests=3; Nights=4
+seattle_115,HA-uhqXvlr,VRBO,Elizabeth Takamori,2026-08-21,2026-08-23,4,2,728.43,0.0,215.0,0.0,215.0,0.0,0.0,153.85,1111.85,confirmed,0.0,742.9999999999999,Guests=4; Nights=2
+seattle_1502,HMD5MBS4A8,airbnb2,James Harris,2026-08-21,2026-08-24,4,3,735.54,0.0,150.0,161.2,150.0,0.0,0.0,0.0,878.8,confirmed,0.0,728.8,Guests=4; Nights=3
+seattle_7434_lower,HP-CN2M7CVM3DTN-F7TLL,hopper,Tyler Spence,2026-08-21,2026-08-23,2,2,349.55,0.0,103.0,68.74,103.0,0.0,0.0,79.83,502.09,confirmed,0.0,319.26,Guests=2; Nights=2
+shelton_310,HMHP3ZKF3A,airbnb2,Akshay Rao,2026-08-21,2026-08-23,11,2,1013.22,0.0,245.0,228.01,245.0,0.0,0.0,0.0,1242.99,confirmed,0.0,997.99,Guests=11; Nights=2
+yacinde_b1,GY-m4ue53VH,owner,Silas & Heather Robertson (NWV),2026-08-21,2026-08-28,4,7,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=7
+yacinde_b2,GY-vHqgYugH,owner,Milena Kasianchyk (NWV),2026-08-21,2026-08-26,4,5,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=5
+yacinde_b3,GY-gGh7mtcY,owner,Aadhithya Arun (NWV),2026-08-21,2026-08-23,8,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=2
+yacinde_b4,GY-ryc3KB2d,owner,Adrie Aliño (NWV),2026-08-21,2026-08-23,8,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=2
+yacinde_b6,HMCKZFK5NT,airbnb2,Luz Arcuri,2026-08-21,2026-08-23,2,2,826.45,0.0,145.0,146.48,145.0,0.0,0.0,0.0,798.52,confirmed,0.0,653.52,Guests=2; Nights=2
+yacinde_e3,HMSMX8QYHB,airbnb2,Suraj Nakka,2026-08-21,2026-08-23,5,2,1280.99,0.0,180.0,268.15,180.0,0.0,0.0,0.0,1461.85,confirmed,0.0,1281.85,Guests=5; Nights=2
+bellevue_10409,HM3C9N9WKE,airbnb2,Julian Griesbeck,2026-08-22,2026-08-24,1,2,352.07,0.0,125.0,85.41,125.0,0.0,0.0,0.0,465.59,confirmed,0.0,340.59,Guests=1; Nights=2
+burien_14407_top,HMNP8RKPJN,airbnb2,Carolyn Kim,2026-08-22,2026-08-25,3,3,372.73,0.0,75.0,81.53,75.0,60.0,0.0,0.0,504.47,confirmed,0.0,429.47,Guests=3; Nights=3
+elektra_1115,HMJ95J2MZ3,airbnb2,Robby Manj,2026-08-22,2026-08-26,2,4,635.54,0.0,88.0,132.84,88.0,0.0,0.0,0.0,724.16,confirmed,0.0,636.16,Guests=2; Nights=4
+elektra_1305,BC-mPNjB29NA,Booking.com,Maria F Cruz Rafin,2026-08-22,2026-08-26,2,4,541.0,0.0,70.0,0.0,111.49,0.0,0.0,96.59,804.97,confirmed,0.0,734.97,Guests=2; Nights=4
+hoodsport_26060,HMEWSRNRZ9,airbnb2,Chelsea Erickson,2026-08-22,2026-08-25,5,3,862.4,0.0,135.0,188.02,135.0,0.0,0.0,0.0,1024.98,confirmed,0.0,889.98,Guests=5; Nights=3
+osbr_5,BC-wx1grDj68,Booking.com,Westbrook Danielle,2026-08-22,2026-08-23,2,1,99.0,0.0,65.0,0.0,65.0,0.0,0.0,6.55,188.37,confirmed,0.0,123.37,Guests=2; Nights=1
+redmond_14707,HMC2JRXCWD,airbnb2,Tanja Ivkovic,2026-08-22,2026-08-23,6,1,289.26,0.0,225.0,89.13,225.0,0.0,0.0,0.0,485.87,confirmed,0.0,260.87,Guests=6; Nights=1
+seattle_1117,HP-F5C7GPH4V93Q-QI2L3,hopper,Paul Dooley,2026-08-22,2026-08-24,4,2,469.37,0.0,155.0,94.64,155.0,0.0,0.0,109.15,690.51,confirmed,0.0,426.36,Guests=4; Nights=2
+yacinde_f5,GY-A9pM3Lwu,owner,Olesya Ivanov (NWV),2026-08-22,2026-08-24,4,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=2
+bellevue_1420,HMYY9Q4RMZ,airbnb2,Harold Han,2026-08-23,2026-08-26,3,3,600.0,0.0,125.0,135.63,125.0,0.0,0.0,0.0,739.37,confirmed,0.0,614.37,Guests=3; Nights=3
+bellevue_2323_adu,HMPQ43BKFB,airbnb2,Han Thuy Ngọc Do,2026-08-23,2026-08-28,2,5,516.53,0.0,96.0,111.76,96.0,0.0,0.0,0.0,609.24,confirmed,0.0,513.24,Guests=2; Nights=5
+elektra_703,BC-qX5Mv8Lg7,Booking.com,Niamh O’Malley,2026-08-23,2026-08-25,5,2,325.68,0.0,98.0,0.0,122.98,0.0,0.0,60.73,543.03,confirmed,0.0,445.03,Guests=5; Nights=2
+osbr_1,HM985NFENN,airbnb2,Sonja Hilleary,2026-08-23,2026-08-24,2,1,92.56,0.0,45.0,24.34,45.0,0.0,0.0,0.0,132.66,confirmed,0.0,87.66,Guests=2; Nights=1
+osbr_2,HA-AMIV03u,VRBO,Ravyn Beutler,2026-08-23,2026-08-25,2,2,213.73,50.0,45.0,0.0,95.0,0.0,0.0,31.62,344.62,confirmed,0.0,268.0,Guests=2; Nights=2
+osbr_3,BC-Kkrxlv90M,Booking.com,John Gee,2026-08-23,2026-08-25,2,2,197.99,0.0,45.0,0.0,60.19,0.0,0.0,25.77,304.4,confirmed,0.0,259.4,Guests=2; Nights=2
+osbr_4,BC-7JjOq7O4r,Booking.com,Ann Smith,2026-08-23,2026-08-28,3,5,624.0,0.0,65.0,0.0,65.0,0.0,0.0,28.85,830.17,confirmed,0.0,765.17,Guests=3; Nights=5
+osbr_5,GY-ytMpJV9h,BE-API,Rebecca Mares,2026-08-23,2026-08-25,4,2,230.0,0.0,65.0,0.0,81.0,0.0,0.0,30.61,349.61,confirmed,16.0,238.0,Guests=4; Nights=2
+osbr_7,HA-d3wADQn,homeaway2,Tiffany chapin,2026-08-23,2026-08-24,6,1,139.81,0.0,65.0,0.0,65.0,0.0,0.0,21.82,237.82,confirmed,0.0,151.0,Guests=6; Nights=1
+osbr_8,HMHJPXPWC8,airbnb2,Hiroko Cassidy,2026-08-23,2026-08-24,3,1,102.48,0.0,65.0,29.3,65.0,100.0,0.0,0.0,259.7,confirmed,0.0,194.7,Guests=3; Nights=1
+seattle_10057_lower,HMZWZNHTQW,airbnb2,Symonia Montgomery,2026-08-23,2026-08-28,2,5,516.53,0.0,100.0,112.38,100.0,0.0,0.0,0.0,612.62,confirmed,0.0,512.62,Guests=2; Nights=5
+seattle_710_adu,HMMB9B43MS,airbnb2,Jason Long,2026-08-23,2026-08-25,2,2,206.61,0.0,90.0,52.7,90.0,0.0,0.0,0.0,287.3,confirmed,0.0,197.3,Guests=2; Nights=2
+yacinde_b3,GY-jeuapqQ8,owner,Lorena Lopez (NWV),2026-08-23,2026-08-27,8,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=4
+yacinde_b4,GY-uSxSr5vn,owner,Krystal Ruvalcaba (NWV),2026-08-23,2026-08-27,8,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=4
+yacinde_e1,GY-s4xMTm3u,manual,Jing Zhou,2026-08-23,2026-08-25,4,2,0.0,0.0,180.0,0.0,180.0,0.0,0.0,0.0,180.0,confirmed,0.0,0.0,Guests=4; Nights=2
+yacinde_e3,GY-d9tzGQvw,manual,Xu Wang,2026-08-23,2026-08-25,5,2,0.0,0.0,180.0,0.0,180.0,0.0,0.0,0.0,180.0,confirmed,0.0,0.0,Guests=5; Nights=2
+bellevue_514,HMMEMZX4JT,airbnb2,Scott Sikorski,2026-08-24,2026-09-02,3,9,1642.15,0.0,125.0,296.56,125.0,0.0,0.0,0.0,1616.74,confirmed,0.0,1491.74,Guests=3; Nights=9
+elektra_1212,HMEYRXJE8N,airbnb2,Sunny Li,2026-08-24,2026-08-26,4,2,303.31,0.0,100.0,72.39,100.0,0.0,0.0,0.0,394.61,confirmed,0.0,294.61,Guests=4; Nights=2
+kirkland_13070,HMRW8TEAC5,airbnb2,Jason Jang,2026-08-24,2026-08-26,4,2,383.47,0.0,225.0,106.8,225.0,0.0,0.0,0.0,582.2,confirmed,0.0,357.20000000000005,Guests=4; Nights=2
+longbranch_6821,HA-8en9Vue,VRBO,danae lyons,2026-08-24,2026-08-27,4,3,1141.18,0.0,230.0,0.0,230.0,0.0,0.0,139.4,1533.4,confirmed,0.0,1164.0,Guests=4; Nights=3
+microsoft_14645_c19,BC-nXyqpnQX4,Booking.com,Ning Liu,2026-08-24,2026-08-30,3,6,680.0,0.0,98.0,0.0,98.0,0.0,0.0,18.1,918.5,confirmed,0.0,820.5,Guests=3; Nights=6
+osbr_6,BC-6vvAZq2oV,Booking.com,Christopher Boscawen,2026-08-24,2026-08-25,2,1,99.0,0.0,65.0,0.0,72.59,0.0,0.0,14.41,196.23,confirmed,0.0,131.23,Guests=2; Nights=1
+osbr_8,GY-BFuHDLcQ,manual,DAWN Evans,2026-08-24,2026-08-27,2,3,327.0,50.0,65.0,0.0,139.0,0.0,0.0,45.85,523.85,confirmed,24.0,389.0,Guests=2; Nights=3
+seattle_1623,HA-DciU9cS,VRBO,Rod Quinones,2026-08-24,2026-08-27,4,3,1074.51,0.0,153.0,0.0,153.0,0.0,0.0,200.98,1449.98,confirmed,0.0,1096.0,Guests=4; Nights=3
+seattle_8415,HMHSYTDB8F,airbnb2,Jiayang Ren,2026-08-24,2026-08-26,2,2,192.56,0.0,103.0,52.08,103.0,0.0,0.0,0.0,283.92,confirmed,0.0,180.92,Guests=2; Nights=2
+seattle_9021,HM2MQDB8MZ,airbnb2,Michelle Lawson,2026-08-24,2026-08-28,3,4,446.28,0.0,98.0,89.47,98.0,0.0,0.0,0.0,487.78,confirmed,0.0,389.78,Guests=3; Nights=4
+yacinde_f1,GY-PtPjZZS6,owner,Hannah Weitz (NWV),2026-08-24,2026-08-27,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+bainbridge_11143,BC-1nGlxRPjo,Booking.com,Ronald Asai,2026-08-25,2026-08-28,4,3,904.0,0.0,250.0,0.0,319.34,0.0,0.0,112.01,1428.73,confirmed,0.0,1178.73,Guests=4; Nights=3
+bellevue_10409,HMHKKC8BYC,airbnb2,Breann Piccini,2026-08-25,2026-08-27,2,2,371.9,0.0,125.0,89.13,125.0,0.0,0.0,0.0,485.87,confirmed,0.0,360.87,Guests=2; Nights=2
+bellevue_2323_main,HMW34FKHJD,airbnb2,Yuan Zhuang,2026-08-25,2026-09-10,2,16,3614.05,0.0,146.0,632.66,146.0,0.0,0.0,0.0,3449.04,confirmed,0.0,3303.04,Guests=2; Nights=16
+elektra_1108,BC-XAV4EJvjv,Booking.com,Lester Koby,2026-08-25,2026-08-27,2,2,241.0,0.0,88.0,0.0,88.0,0.0,0.0,54.0,426.38,confirmed,0.0,338.38,Guests=2; Nights=2
+elektra_703,HMFY2XYQS2,airbnb2,Jasmin Gonzalez Vazquez,2026-08-25,2026-08-27,4,2,362.81,0.0,98.0,83.24,98.0,0.0,0.0,0.0,453.76,confirmed,0.0,355.76,Guests=4; Nights=2
+elektra_809,HMQMW5PB5X,airbnb2,Erin Lillie,2026-08-25,2026-09-01,2,7,1585.04,0.0,98.0,282.74,98.0,0.0,0.0,0.0,1541.37,confirmed,0.0,1443.37,Guests=2; Nights=7
+hoodsport_26060,BC-qpGzwOVDy,Booking.com,Ming Chih Wong,2026-08-25,2026-08-27,3,2,351.0,0.0,135.0,0.0,135.0,0.0,0.0,0.0,549.18,confirmed,0.0,414.1799999999999,Guests=3; Nights=2
+lilliwaup_28610,HMRKFQYCFK,airbnb2,Anne Shackelford,2026-08-25,2026-08-27,5,2,558.68,0.0,170.0,131.13,170.0,0.0,0.0,0.0,714.87,confirmed,0.0,544.87,Guests=5; Nights=2
+lynnwood_17506,HA-nVLv9dE,VRBO,Kaleb Chaka,2026-08-25,2026-08-27,4,2,498.15,0.0,227.0,0.0,727.0,0.0,0.0,97.06,1362.16,canceled,0.0,1362.16,Guests=4; Nights=2
+osbr_1,HM5AJKZWNA,airbnb2,Sandra Abbott,2026-08-25,2026-08-25,2,1,89.26,0.0,45.0,23.72,45.0,0.0,0.0,0.0,129.28,confirmed,0.0,84.28,Guests=2; Nights=1
+osbr_1,HP-36M6F5N6SSPR-4BCXE,hopper,Melanie Chen,2026-08-25,2026-08-26,2,1,89.19,0.0,45.0,17.39,45.0,0.0,0.0,14.54,141.15,confirmed,0.0,81.61000000000001,Guests=2; Nights=1
+osbr_12,GY-vmMXcJYP,BE-API,Brenton Stavig,2026-08-25,2026-08-27,1,2,217.0,0.0,85.0,0.0,85.0,0.0,0.0,28.26,338.26,confirmed,0.0,225.0,Guests=1; Nights=2
+osbr_2,HMS4QB4YQX,airbnb2,Sierra Maddox,2026-08-25,2026-08-27,2,2,178.51,0.0,45.0,40.46,45.0,0.0,0.0,0.0,220.54,confirmed,0.0,175.54,Guests=2; Nights=2
+osbr_3,HMS4ZPSMAP,airbnb2,Sandra Abbott,2026-08-25,2026-08-26,2,1,89.26,0.0,45.0,23.72,45.0,0.0,0.0,0.0,129.28,confirmed,0.0,84.28,Guests=2; Nights=1
+osbr_5,BC-50G4A6P0R,Booking.com,Heather Guthrie,2026-08-25,2026-08-26,3,1,99.0,0.0,65.0,0.0,65.0,0.0,0.0,6.55,188.37,confirmed,0.0,123.37,Guests=3; Nights=1
+osbr_6,HA-FgawmZl,VRBO,Mark Tanner,2026-08-25,2026-08-27,2,2,222.55,0.0,65.0,0.0,65.0,0.0,0.0,29.5,321.5,confirmed,0.0,227.0,Guests=2; Nights=2
+osbr_9,EXP-2538870881-GCGPC,expedia,Marcus Castro,2026-08-25,2026-08-30,2,5,513.22,0.0,45.0,111.78,45.0,0.0,0.0,60.6,614.82,confirmed,0.0,554.22,Guests=2; Nights=5
+poulsbo_3956,HA-nX9ZIuj,VRBO,Deborah Phillips,2026-08-25,2026-09-01,5,7,2454.9,0.0,200.0,0.0,200.0,0.0,0.0,290.11,2880.42,confirmed,0.0,2390.31,Guests=5; Nights=7
+seattle_115,BC-Rn53M58Rw,Booking.com,Glynnis Fawkes,2026-08-25,2026-08-28,4,3,848.0,0.0,215.0,0.0,215.0,0.0,0.0,31.64,1247.28,confirmed,0.0,1032.28,Guests=4; Nights=3
+seattle_1502,HA-Zo58h1V,VRBO,Abie Velazquez,2026-08-25,2026-08-27,5,2,440.74,0.0,150.0,0.0,150.0,0.0,0.0,101.22,727.22,confirmed,0.0,476.0,Guests=5; Nights=2
+seattle_710_adu,HMDM9WSDJT,airbnb2,Julia Lawson,2026-08-25,2026-09-01,2,7,823.97,0.0,90.0,153.03,90.0,0.0,0.0,0.0,834.27,confirmed,0.0,744.27,Guests=2; Nights=7
+seattle_7434_upper,BC-pnoKx9w82,Booking.com,Camelia Bui,2026-08-25,2026-08-29,2,4,726.0,0.0,103.0,0.0,103.0,0.0,0.0,0.0,959.68,confirmed,0.0,856.68,Guests=2; Nights=4
+seattle_906_lower,HM4FAA3DRZ,airbnb2,韵嬿 何,2026-08-25,2026-08-27,4,2,236.36,0.0,98.0,59.52,98.0,0.0,0.0,0.0,324.48,confirmed,0.0,226.48,Guests=4; Nights=2
+yacinde_b6,GY-HZF6TuHL,website,Karen Mangold,2026-08-25,2026-08-28,3,3,1800.0,0.0,145.0,0.0,169.0,0.0,0.0,245.88,2268.88,confirmed,24.0,1854.0,Guests=3; Nights=3
+bellevue_1420,HA-FRmvAaC,VRBO,Yuli Chen,2026-08-26,2026-08-29,5,3,661.76,0.0,125.0,0.0,125.0,0.0,0.0,110.4,910.4,confirmed,0.0,675.0,Guests=5; Nights=3
+bellevue_1621,HMJQFFRNCT,airbnb2,Nico Kicillof,2026-08-26,2026-09-04,4,9,1770.25,0.0,155.0,322.83,155.0,0.0,0.0,0.0,1759.97,confirmed,0.0,1604.97,Guests=4; Nights=9
+bellevue_2243,HA-8K6mQ3q,VRBO,MOIRA KILTIE,2026-08-26,2026-08-31,3,5,2852.94,0.0,225.0,0.0,225.0,0.0,0.0,454.58,3589.58,confirmed,0.0,2910.0,Guests=3; Nights=5
+burien_14407_middle,HP-RW9NX2DVWV2D-Z0TRI,hopper,Stephen Crowley,2026-08-26,2026-08-28,5,2,259.65,0.0,125.0,58.94,125.0,0.0,0.0,52.63,414.69,confirmed,0.0,237.06,Guests=5; Nights=2
+burien_14407_top,BC-zNDX2rx18,Booking.com,Angel Cordero,2026-08-26,2026-08-30,4,4,509.0,0.0,75.0,0.0,114.04,0.0,0.0,75.67,751.29,confirmed,0.0,676.29,Guests=4; Nights=4
+elektra_1004,HP-9H9KKQG4SFV5-AG382,hopper,Lydia Liu,2026-08-26,2026-08-31,4,5,797.3,0.0,88.0,136.22,88.0,0.0,0.0,157.77,994.55,confirmed,0.0,748.78,Guests=4; Nights=5
+elektra_1115,HMPKSSHMXF,airbnb2,Carrie Collins,2026-08-26,2026-08-28,2,2,287.6,0.0,88.0,67.58,88.0,0.0,0.0,0.0,368.42,confirmed,0.0,280.42,Guests=2; Nights=2
+elektra_1203,HMNHESQHNZ,airbnb2,Imad Khokher,2026-08-26,2026-08-30,1,4,826.45,0.0,89.0,168.8,89.0,0.0,0.0,0.0,920.2,confirmed,0.0,831.2,Guests=1; Nights=4
+elektra_1212,HA-OU3TZIF,homeaway2,Ekaterina Mikhaylova,2026-08-26,2026-08-29,3,3,485.19,0.0,100.0,0.0,100.0,0.0,0.0,100.97,724.97,confirmed,0.0,524.0,Guests=3; Nights=3
+elektra_1305,BC-gPlWEXqv3,Booking.com,David Milligan,2026-08-26,2026-08-28,2,2,263.99,0.0,70.0,0.0,90.25,0.0,0.0,47.37,428.88,confirmed,0.0,358.88,Guests=2; Nights=2
+elektra_1413,HVBM-M1785700327260-SLF8U,homesVillasByMarriott,Jemma Mallia,2026-08-26,2026-08-29,1,3,679.69,0.0,89.0,177.23,89.0,0.0,0.0,153.57,935.34,confirmed,0.0,692.77,Guests=1; Nights=3
+mercer_3925,BC-mn2pZyplE,Booking.com,MEIYI LIU,2026-08-26,2026-08-30,2,4,485.01,0.0,50.0,0.0,87.2,0.0,0.0,73.01,695.32,confirmed,0.0,645.32,Guests=2; Nights=4
+osbr_3,HMYJJXPKMN,airbnb2,Eric DeMars,2026-08-26,2026-08-28,2,2,178.51,50.0,45.0,48.21,95.0,0.0,0.0,0.0,262.79,confirmed,0.0,217.79,Guests=2; Nights=2
+osbr_7,BC-w5OW6GAQ8,Booking.com,Aleksandr Khanin,2026-08-26,2026-08-27,3,1,99.0,0.0,65.0,0.0,65.0,0.0,0.0,6.55,188.37,confirmed,0.0,123.37,Guests=3; Nights=1
+poulsbo_3866,HA-A3beUEh,VRBO,Mark Watterson,2026-08-26,2026-08-31,8,5,2428.43,150.0,250.0,0.0,400.0,0.0,0.0,322.23,3199.23,confirmed,0.0,2627.0,Guests=8; Nights=5
+redmond_11641,HMWKTSK4JA,airbnb2,Daniel Oey,2026-08-26,2026-08-31,3,5,826.45,0.0,149.0,178.1,149.0,0.0,0.0,0.0,970.9,confirmed,0.0,821.9,Guests=3; Nights=5
+renton_18823,HMYS229ZJ5,airbnb2,Lee Sorm,2026-08-26,2026-08-31,3,5,533.88,0.0,108.5,96.92,108.5,0.0,0.0,0.0,528.38,canceled,0.0,528.38,Guests=3; Nights=5
+seattle_1117,BC-YROOypopA,Booking.com,Kayla Costigan,2026-08-26,2026-08-30,3,4,846.0,0.0,155.0,0.0,155.0,0.0,0.0,31.2,1184.48,confirmed,0.0,1029.48,Guests=3; Nights=4
+yacinde_c1,GY-VkWJHwA6,manual,Sabrina Tan,2026-08-26,2026-08-31,4,5,3400.0,0.0,145.0,0.0,185.0,0.0,0.0,448.7,4136.7,confirmed,40.0,3503.0,Guests=4; Nights=5
+elektra_703,HMX9ZW9PFR,airbnb2,David Salazar,2026-08-27,2026-08-30,2,3,632.23,0.0,98.0,133.76,98.0,0.0,0.0,0.0,729.24,confirmed,0.0,631.24,Guests=2; Nights=3
+keaau_15_1542,HA-URELw0i,VRBO,Poh Tan PhD PhD,2026-08-27,2026-08-31,4,5,683.33,0.0,200.0,0.0,200.0,0.0,0.0,128.95,1025.95,confirmed,0.0,697.0,Guests=4; Nights=5
+kirkland_11321,HMT524SJWH,airbnb2,Matthew Amatori,2026-08-27,2026-08-30,1,3,905.79,0.0,265.0,210.96,265.0,0.0,0.0,0.0,1150.04,confirmed,0.0,885.04,Guests=1; Nights=3
+kirkland_13070,BNF-EXT-JKO2EJHBK6-TYGH5,bnbFinder,Nataly Badrak,2026-08-27,2026-08-31,2,4,1020.0,0.0,225.0,0.0,225.0,0.0,0.0,155.63,1400.63,confirmed,0.0,1020.0,Guests=2; Nights=4
+mercer_3627_lower,HMSKE4AQXM,airbnb2,Cathryn Timmons,2026-08-27,2026-09-04,1,8,1442.15,0.0,165.0,269.0,165.0,0.0,0.0,0.0,1466.5,confirmed,0.0,1301.5,Guests=1; Nights=8
+osbr_1,BC-qoKXAElLp,Booking.com,Corey Jensen,2026-08-27,2026-08-28,2,1,99.0,0.0,45.0,0.0,52.59,0.0,0.0,13.69,175.51,confirmed,0.0,130.51,Guests=2; Nights=1
+osbr_12,GY-khtGSHSp,BE-API,Benjamin Baker,2026-08-27,2026-08-30,4,3,460.0,0.0,85.0,0.0,85.0,0.0,0.0,53.61,614.61,confirmed,0.0,476.0,Guests=4; Nights=3
+osbr_6,GY-yMHKniEg,BE-API,Gregory Fillmore,2026-08-27,2026-08-28,3,1,109.0,0.0,65.0,0.0,73.0,0.0,0.0,21.55,210.55,confirmed,8.0,116.0,Guests=3; Nights=1
+poulsbo_563,BC-YxPZZvnGO,Booking.com,robin mcclean,2026-08-27,2026-08-30,4,3,855.0,0.0,160.0,0.0,225.58,0.0,0.0,113.0,1281.9,confirmed,0.0,1121.9,Guests=4; Nights=3
+redmond_14707,HMBAKXQ2HT,airbnb2,Vijay Makineni,2026-08-27,2026-09-02,6,6,1859.5,0.0,225.0,383.63,225.0,0.0,0.0,0.0,2091.37,confirmed,0.0,1866.37,Guests=6; Nights=6
+renton_18823,HMSHJ8PSR9,airbnb2,M Niparas,2026-08-27,2026-08-31,3,4,748.76,0.0,155.0,136.37,155.0,0.0,0.0,0.0,743.43,confirmed,0.0,588.43,Guests=3; Nights=4
+seattle_10057_upper,HMP2BC49YE,airbnb2,Kya Greer,2026-08-27,2026-09-01,4,5,729.75,0.0,100.0,152.37,100.0,0.0,0.0,0.0,830.63,confirmed,0.0,730.63,Guests=4; Nights=5
+seattle_1502,HA-JgsMinF,homeaway2,Rachel Clennon,2026-08-27,2026-08-29,3,2,350.0,0.0,150.0,0.0,150.0,0.0,0.0,85.69,613.69,confirmed,0.0,378.00000000000006,Guests=3; Nights=2
+seattle_206,HA-15JTyUe,VRBO,Andres Lopez,2026-08-27,2026-08-31,6,4,1078.43,0.0,180.0,0.0,180.0,0.0,0.0,206.88,1486.88,confirmed,0.0,1100.0,Guests=6; Nights=4
+seattle_8415,HMCD9E9554,airbnb2,Julie Thompson,2026-08-27,2026-08-31,6,4,883.47,0.0,180.0,193.6,180.0,0.0,0.0,0.0,1055.4,confirmed,0.0,875.4000000000001,Guests=6; Nights=4
+yacinde_b2,GY-VKeL5RyT,owner,Sarah Corrigan (NWV),2026-08-27,2026-08-30,4,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=3
+yacinde_b4,GY-5jEmpzzK,owner,Michael Halter (NWV),2026-08-27,2026-08-30,8,3,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=3
+yacinde_e3,HMPBN9NCCN,airbnb2,Adan Zarate,2026-08-27,2026-08-29,4,2,1000.0,0.0,180.0,215.45,180.0,0.0,0.0,0.0,1174.55,confirmed,0.0,994.55,Guests=4; Nights=2
+bainbridge_11143,HA-9D69F3p,VRBO,William Pineda,2026-08-28,2026-08-31,7,3,1307.84,0.0,250.0,0.0,250.0,0.0,0.0,166.33,1750.33,confirmed,0.0,1334.0,Guests=7; Nights=3
+bellevue_10409,HMNB824B4P,airbnb2,Ronalyn Ocumin,2026-08-28,2026-08-30,2,2,371.9,0.0,125.0,89.13,125.0,0.0,0.0,0.0,485.87,confirmed,0.0,360.87,Guests=2; Nights=2
+bellevue_2323_adu,HMPDPHY94T,airbnb2,Marisol Enriquez,2026-08-28,2026-08-30,3,2,209.92,0.0,96.0,54.25,96.0,0.0,0.0,0.0,295.75,confirmed,0.0,199.75,Guests=3; Nights=2
+bellevue_321,HMZAMKQ3ZD,airbnb2,Sage Garcia,2026-08-28,2026-09-05,4,8,1408.26,0.0,98.0,252.9,98.0,0.0,0.0,0.0,1378.7,confirmed,0.0,1280.7,Guests=4; Nights=8
+burien_14407_middle,HA-ghioper,VRBO,John Mason,2026-08-28,2026-08-31,4,3,527.45,150.0,125.0,0.0,275.0,0.0,0.0,101.62,914.62,confirmed,0.0,688.0,Guests=4; Nights=3
+elektra_1305,HM4R8R483W,airbnb2,Pedro Leon,2026-08-28,2026-08-31,2,3,470.25,0.0,70.0,99.05,70.0,0.0,0.0,0.0,539.95,confirmed,0.0,469.9500000000001,Guests=2; Nights=3
+hoodsport_26060,HA-Ck6Ugz4,VRBO,Danelle Casey,2026-08-28,2026-08-30,2,2,560.78,0.0,135.0,0.0,135.0,0.0,0.0,74.24,781.24,confirmed,0.0,572.0,Guests=2; Nights=2
+lilliwaup_28610,HMNJZ98R3K,airbnb2,Samuel Hansen,2026-08-28,2026-08-30,9,2,887.6,0.0,170.0,192.82,170.0,0.0,0.0,0.0,1051.18,confirmed,0.0,881.1800000000001,Guests=9; Nights=2
+longbranch_6821,HA-BrrWrtq,homeaway2,Kyler Girard,2026-08-28,2026-08-30,2,2,800.0,400.0,230.0,0.0,630.0,0.0,0.0,149.4,1643.4,confirmed,0.0,1264.0,Guests=2; Nights=2
+lynnwood_17506,HMN5N4RK34,airbnb2,Inna Solomakhina,2026-08-28,2026-08-30,10,2,899.5,0.0,227.0,203.89,227.0,0.0,0.0,0.0,1111.51,confirmed,0.0,884.51,Guests=10; Nights=2
+osbr_1,HME3MH4T2E,airbnb2,Christopher Sheldon House,2026-08-28,2026-08-30,2,2,269.42,50.0,45.0,65.25,95.0,0.0,0.0,0.0,355.75,confirmed,0.0,310.75,Guests=2; Nights=2
+osbr_10,BC-YnZGxRpQn,Booking.com,Meagan Ziesmer,2026-08-28,2026-08-30,2,2,232.0,0.0,45.0,0.0,62.79,0.0,0.0,27.65,346.41,confirmed,0.0,301.41,Guests=2; Nights=2
+osbr_11,GY-jDc6RzCK,manual,Kenneth  Huotari,2026-08-28,2026-08-30,1,2,240.0,0.0,65.0,0.0,81.0,0.0,0.0,31.62,360.62,confirmed,16.0,248.0,Guests=1; Nights=2
+osbr_2,GY-gp9eLipB,BE-API,Ed Labanara,2026-08-28,2026-08-31,1,3,481.0,0.0,45.0,0.0,69.0,0.0,0.0,54.74,620.74,confirmed,24.0,497.0,Guests=1; Nights=3
+osbr_3,HMJ328SPMK,airbnb2,Jenny Nichols,2026-08-28,2026-08-30,2,2,269.42,0.0,45.0,57.51,45.0,0.0,0.0,0.0,313.49,confirmed,0.0,268.49,Guests=2; Nights=2
+osbr_4,HMZAAKWR8W,airbnb2,Shilpa Sehgal,2026-08-28,2026-08-30,4,2,366.12,0.0,65.0,78.74,65.0,0.0,0.0,0.0,429.26,confirmed,0.0,364.26,Guests=4; Nights=2
+osbr_5,HMDABBSRDB,airbnb2,Nicholas Kuespert,2026-08-28,2026-08-31,5,3,405.79,0.0,65.0,86.18,65.0,0.0,0.0,0.0,469.82,confirmed,0.0,404.82,Guests=5; Nights=3
+osbr_6,GY-PXBrHiKn,manual,Tina  Mcclurg,2026-08-28,2026-08-30,4,2,304.0,0.0,65.0,0.0,81.0,0.0,0.0,38.28,433.28,confirmed,16.0,314.0,Guests=4; Nights=2
+osbr_7,GY-HPEH8QJ4,manual,Tina  Mcclurg,2026-08-28,2026-08-31,6,3,487.0,0.0,65.0,0.0,89.0,0.0,0.0,70.2,789.2,confirmed,24.0,630.0,Guests=6; Nights=3
+osbr_8,HMNA2NX598,airbnb2,Sarah Banducci,2026-08-28,2026-08-30,4,2,291.74,50.0,65.0,72.54,115.0,0.0,0.0,0.0,395.46,confirmed,0.0,330.46,Guests=4; Nights=2
+redmond_7579,BC-7MkrvN64Q,Booking.com,Horacio De Freitas,2026-08-28,2026-08-31,4,3,479.99,0.0,100.0,0.0,100.0,0.0,0.0,18.13,684.52,confirmed,0.0,584.52,Guests=4; Nights=3
+sammamish_2009,HMPWA9X5SX,airbnb2,Deryl Eastman,2026-08-28,2026-08-31,4,3,624.79,0.0,215.0,150.51,215.0,0.0,0.0,0.0,820.49,confirmed,0.0,605.49,Guests=4; Nights=3
+seattle_115,HA-MmMEUSZ,VRBO,Elizabeth Bogdon,2026-08-28,2026-08-30,6,2,666.67,0.0,215.0,0.0,215.0,0.0,0.0,150.2,1085.2,confirmed,0.0,720.0,Guests=6; Nights=2
+seattle_1623,HMEB5TFD2F,airbnb2,Amy Wilson,2026-08-28,2026-09-01,5,4,1455.37,0.0,153.0,296.67,153.0,0.0,0.0,0.0,1617.33,confirmed,0.0,1464.33,Guests=5; Nights=4
+seattle_4201,HMQFRKFHCQ,airbnb2,Patricia Baker,2026-08-28,2026-09-01,2,4,733.6,0.0,179.0,169.88,179.0,0.0,0.0,0.0,926.12,confirmed,0.0,747.12,Guests=2; Nights=4
+seattle_710,HMZTPASQX4,airbnb2,Karolina Soriano,2026-08-28,2026-08-30,4,2,793.39,0.0,225.0,183.68,225.0,0.0,0.0,0.0,1001.32,confirmed,0.0,776.32,Guests=4; Nights=2
+seattle_7434_lower,HMYDNJPN8T,airbnb2,Jazlyn Mae,2026-08-28,2026-08-31,3,3,466.12,0.0,103.0,103.39,103.0,0.0,0.0,0.0,563.61,confirmed,0.0,460.61,Guests=3; Nights=3
+seattle_906_lower,HMJ2CCCHME,airbnb2,Sadie Christensen,2026-08-28,2026-08-30,4,2,279.34,0.0,98.0,67.58,98.0,0.0,0.0,0.0,368.42,confirmed,0.0,270.42,Guests=4; Nights=2
+shelton_250,HA-bUPEXwK,VRBO,Katy Dixon,2026-08-28,2026-08-31,8,3,2123.53,0.0,210.0,0.0,210.0,0.0,0.0,249.48,2625.48,confirmed,0.0,2166.0,Guests=8; Nights=3
+shelton_310,HMFBYQMXFW,airbnb2,Grace Kim,2026-08-28,2026-08-30,8,2,826.45,0.0,245.0,192.98,245.0,0.0,0.0,0.0,1052.02,confirmed,0.0,807.02,Guests=8; Nights=2
+yacinde_b3,GY-p2K3YYh7,owner,Chandra Barker (NWV),2026-08-28,2026-08-30,8,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=2
+yacinde_b6,GY-Y6WsPC9r,owner,Graham Kays (NWV),2026-08-28,2026-08-30,4,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=2
+yacinde_e1,GY-zVh9iick,owner,Hope Richards (NWV),2026-08-28,2026-08-30,6,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=6; Nights=2
+yacinde_f5,GY-esiCE28t,owner,Susan Gross (NWV),2026-08-28,2026-08-30,4,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=2
+bellevue_1326,HMEP2FEPK4,airbnb2,Krishna Krovi,2026-08-29,2026-09-01,5,3,528.1,0.0,125.0,118.42,125.0,0.0,0.0,0.0,645.58,confirmed,0.0,520.58,Guests=5; Nights=3
+elektra_1108,HA-RxHdfAD,homeaway2,Timothy Bobosky,2026-08-29,2026-08-31,2,2,351.85,0.0,88.0,0.0,88.0,0.0,0.0,75.48,543.48,confirmed,0.0,380.0,Guests=2; Nights=2
+elektra_1115,HMQ4J4ZA4J,airbnb2,Kacie Turner,2026-08-29,2026-08-31,2,2,360.33,0.0,88.0,81.22,88.0,0.0,0.0,0.0,442.78,confirmed,0.0,354.78,Guests=2; Nights=2
+elektra_1212,HMTE4YM3WE,airbnb2,Delis Mercado,2026-08-29,2026-08-31,4,2,300.83,0.0,100.0,71.92,100.0,0.0,0.0,0.0,392.08,confirmed,0.0,292.08,Guests=4; Nights=2
+elektra_1413,HMX5TET9AZ,airbnb2,Teri Martin,2026-08-29,2026-09-01,2,3,604.13,0.0,89.0,127.1,89.0,0.0,0.0,0.0,692.9,confirmed,0.0,603.9,Guests=2; Nights=3
+seattle_10057_lower,HA-jdW9pXk,VRBO,Amy Eggleston,2026-08-29,2026-09-05,2,7,913.73,0.0,100.0,0.0,100.0,0.0,0.0,155.8,1094.6,confirmed,0.0,838.8,Guests=2; Nights=7
+seattle_1502,HA-prjdHDZ,VRBO,Lisa Faias,2026-08-29,2026-08-31,2,2,470.59,0.0,150.0,0.0,150.0,0.0,0.0,101.86,731.86,confirmed,0.0,480.0,Guests=2; Nights=2
+seattle_9021,HMRRRDH9WD,airbnb2,Casey-Erin Alcock,2026-08-29,2026-09-01,3,3,390.5,0.0,98.0,88.43,98.0,0.0,0.0,0.0,482.07,confirmed,0.0,384.07,Guests=3; Nights=3
+yacinde_e3,HM39WRMFE8,airbnb2,Petro Tomiev,2026-08-29,2026-08-31,5,2,1041.32,0.0,180.0,223.2,180.0,0.0,0.0,0.0,1216.8,confirmed,0.0,1036.8,Guests=5; Nights=2
+bellevue_10409,HMKJRBZ34T,airbnb2,Lokesh Kumar Reddy Desireddy,2026-08-30,2026-09-01,4,2,340.5,0.0,125.0,83.24,125.0,0.0,0.0,0.0,453.76,confirmed,0.0,328.76,Guests=4; Nights=2
+elektra_1203,BC-wlz3KpqvX,Booking.com,Stacy Herron,2026-08-30,2026-09-01,2,2,389.0,0.0,89.0,0.0,89.0,0.0,0.0,0.0,548.02,confirmed,0.0,459.02,Guests=2; Nights=2
+elektra_703,HA-DgbpyZR,VRBO,Connie Callaway,2026-08-30,2026-09-02,5,3,723.53,0.0,98.0,0.0,98.0,0.0,0.0,134.27,970.27,confirmed,0.0,738.0,Guests=5; Nights=3
+kirkland_11321,HMDBAQJT5J,airbnb2,Omar Alnakib,2026-08-30,2026-09-04,5,5,1157.02,0.0,265.0,258.08,265.0,0.0,0.0,0.0,1406.92,confirmed,0.0,1141.92,Guests=5; Nights=5
+microsoft_14645_c19,HM94EA8T4E,airbnb2,Ryan Ling,2026-08-30,2026-09-05,2,6,600.0,0.0,98.0,127.72,98.0,0.0,0.0,0.0,696.28,confirmed,0.0,598.28,Guests=2; Nights=6
+osbr_10,BC-xy2MK85jl,Booking.com,James Henry,2026-08-30,2026-08-31,2,1,89.0,0.0,45.0,0.0,51.83,0.0,0.0,10.61,160.63,confirmed,0.0,115.63,Guests=2; Nights=1
+osbr_11,EXP-2541774912-Q99YB,expedia,Bianca Malmstrom,2026-08-30,2026-09-03,2,4,354.05,0.0,65.0,77.12,65.0,0.0,0.0,41.8,458.08,confirmed,0.0,416.28,Guests=2; Nights=4
+osbr_3,GY-snGK3P85,BE-API,Oscar  Pale ,2026-08-30,2026-09-02,2,3,297.0,0.0,45.0,0.0,154.0,0.0,0.0,35.46,495.46,confirmed,109.0,306.0,Guests=2; Nights=3
+osbr_9,EXP-2538502574-1J2Q5,expedia,Nicole Searcey,2026-08-30,2026-09-02,2,3,265.54,0.0,45.0,57.84,45.0,0.0,0.0,31.35,339.81,confirmed,0.0,308.46,Guests=2; Nights=3
+seattle_1117,HP-JMF9DKPLZLX8-IIN3X,hopper,Julia Marsh,2026-08-30,2026-09-02,2,3,411.4,0.0,155.0,87.36,155.0,0.0,0.0,101.91,638.55,confirmed,0.0,381.64,Guests=2; Nights=3
+seattle_7434_upper,HM4N9PKPX5,airbnb2,Andrew Goldberg,2026-08-30,2026-09-01,2,2,366.12,0.0,103.0,84.63,103.0,0.0,0.0,0.0,461.37,confirmed,0.0,358.37,Guests=2; Nights=2
+seattle_906_lower,HM2KYTTMBF,airbnb2,Peyton Durning,2026-08-30,2026-09-02,3,3,384.3,0.0,98.0,87.27,98.0,0.0,0.0,0.0,475.73,confirmed,0.0,377.73,Guests=3; Nights=3
+yacinde_b1,GY-f5gHKbua,owner,ANNA MAIR (NWV),2026-08-30,2026-09-01,4,2,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=2
+yacinde_b2,GY-jauSFFTa,owner,Alyssa Ingham (NWV),2026-08-30,2026-09-03,4,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=4
+yacinde_b3,GY-PPKUmfns,owner,Pamela Jones-Seery (NWV),2026-08-30,2026-09-03,8,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=8; Nights=4
+yacinde_b6,HM3KB3NWAD,airbnb2,Patrick Hutchinson,2026-08-30,2026-09-01,2,2,660.33,0.0,0.0,123.85,0.0,0.0,0.0,0.0,675.15,confirmed,0.0,675.15,Guests=2; Nights=2
+yacinde_f1,GY-ZAEsUi6q,owner,Susan Ingham (NWV),2026-08-30,2026-09-03,4,4,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,0.0,confirmed,0.0,0.0,Guests=4; Nights=4
+bainbridge_11143,HMNDJXFZFA,airbnb2,Jalen Sundell,2026-08-31,2026-09-02,3,2,423.97,0.0,250.0,118.27,250.0,0.0,0.0,0.0,644.73,confirmed,0.0,394.73,Guests=3; Nights=2
+bellevue_2323_adu,HMDB2EPR5H,airbnb2,Troy Whitney,2026-08-31,2026-09-03,1,3,282.64,0.0,96.0,67.89,96.0,0.0,0.0,0.0,370.11,confirmed,0.0,274.11,Guests=1; Nights=3
+burien_14407_top,HMCWY3TJ2A,airbnb2,Valerie Maldonado,2026-08-31,2026-09-02,4,2,232.23,0.0,75.0,55.18,75.0,0.0,0.0,0.0,300.82,confirmed,0.0,225.82,Guests=4; Nights=2
+elektra_1004,HMARX4QZ25,airbnb2,Amelia Paz,2026-08-31,2026-09-03,2,3,376.86,0.0,88.0,84.32,88.0,0.0,0.0,0.0,459.68,confirmed,0.0,371.68,Guests=2; Nights=3
+elektra_1108,BC-X6LrnWZqA,Booking.com,Sara Frangoul,2026-08-31,2026-09-03,3,3,423.9,0.0,88.0,0.0,88.0,0.0,0.0,85.29,673.49,confirmed,0.0,585.49,Guests=3; Nights=3
+elektra_1115,BC-Eyk8EW9Pg,Booking.com,SHILADITYA DUTTA,2026-08-31,2026-09-03,2,3,333.9,0.0,88.0,0.0,88.0,0.0,0.0,75.67,557.67,confirmed,0.0,469.67,Guests=2; Nights=3
+elektra_1212,HMMSNEZTCE,airbnb2,Spencer McKenna,2026-08-31,2026-09-02,5,2,414.05,0.0,100.0,93.16,100.0,0.0,0.0,0.0,507.84,confirmed,0.0,407.84,Guests=5; Nights=2
+hoodsport_26060,HA-6Ioqtuc,VRBO,Lloyd Kirry,2026-08-31,2026-09-02,3,2,446.08,0.0,135.0,0.0,135.0,0.0,0.0,61.96,651.96,confirmed,0.0,455.00000000000006,Guests=3; Nights=2
+mercer_3925,BC-qXAXOXxER,Booking.com,Norman Fischer,2026-08-31,2026-09-04,2,4,530.01,0.0,50.0,0.0,90.65,0.0,0.0,79.73,755.14,confirmed,0.0,705.14,Guests=2; Nights=4
+poulsbo_563,HMQKF4C3JH,airbnb2,Rebecca Bulleri,2026-08-31,2026-09-02,4,2,371.9,0.0,160.0,94.55,160.0,0.0,0.0,0.0,515.45,confirmed,0.0,355.45000000000005,Guests=4; Nights=2
+redmond_11641,HMQJPQZNCP,airbnb2,Jaylen Jackman,2026-08-31,2026-09-04,1,4,442.98,0.0,149.0,106.18,149.0,0.0,0.0,0.0,578.82,confirmed,0.0,429.8200000000001,Guests=1; Nights=4
+seattle_1502,HMXXFBTENA,airbnb2,Erin Walsh,2026-08-31,2026-09-02,4,2,371.9,0.0,150.0,93.0,150.0,0.0,0.0,0.0,507.0,confirmed,0.0,357.0,Guests=4; Nights=2
+shelton_310,BC-jBv2R2np5,Booking.com,Marita Hickman,2026-08-31,2026-09-02,4,2,400.0,0.0,245.0,0.0,245.0,0.0,0.0,0.0,717.0,confirmed,0.0,472.0,Guests=4; Nights=2
+yacinde_e1,HMBDMTXYD2,airbnb2,Samantha Mejia,2026-08-31,2026-09-03,6,3,1203.97,0.0,180.0,253.7,180.0,0.0,0.0,0.0,1383.1,confirmed,0.0,1203.1,Guests=6; Nights=3
+yacinde_e3,HA-h5BgidZ,VRBO,Cade Mossman,2026-08-31,2026-09-03,3,3,0.0,0.0,0.0,0.0,0.0,0.0,193.9,0.0,0.0,canceled,0.0,6.1,Guests=3; Nights=3
