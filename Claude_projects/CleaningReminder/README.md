@@ -39,13 +39,13 @@ covers **that cleaner's own `daysCovered`**, set on their row in `Cleaners.gs`:
 | Cleaner | `daysCovered` | Gets |
 |---------|---------------|------|
 | Maria | `1` | tomorrow only |
-| Angelina | `2` | tomorrow **and** the day after |
+| Angelina | `1` | tomorrow only |
 | Anna, Camilla, Crystal | *(unset)* | falls back to `CONFIG.DAYS_COVERED` (currently `2`) |
 
 To change someone, edit that one number:
 
 ```javascript
-{ name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [], daysCovered: 2 },
+{ name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [], daysCovered: 1 },
 ```
 
 `CONFIG.DAYS_COVERED` is only the **default** for cleaners with no `daysCovered`

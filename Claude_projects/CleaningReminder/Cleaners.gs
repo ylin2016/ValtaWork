@@ -24,7 +24,7 @@
  */
 
 const CLEANERS = [
-  { name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [], daysCovered: 2 },
+  { name: 'Angelina', calendar: 'ValtaAuto_Angelina', phones: [], daysCovered: 1 },
   { name: 'Anna',     calendar: 'ValtaAuto_Anna',     phones: [] },
   { name: 'Camilla',  calendar: 'ValtaAuto_Camilla',  phones: [] },
   { name: 'Crystal',  calendar: 'ValtaAuto_Crystal',  phones: [] },

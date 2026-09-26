@@ -12,7 +12,7 @@ const CONFIG = {
   // DEFAULT number of consecutive days one reminder covers, starting at
   // DAYS_AHEAD. 2 = tomorrow AND the day after (each day gets its own section in
   // the same text); 1 = tomorrow only. Per-cleaner override: put `daysCovered: 1`
-  // (or 2) on that cleaner's row in Cleaners.gs — Maria is 1, Angelina is 2.
+  // (or 2) on that cleaner's row in Cleaners.gs — Maria and Angelina are 1.
   DAYS_COVERED: 2,
 
   // First date used by previewDate() when you Run it from the editor (the Run
