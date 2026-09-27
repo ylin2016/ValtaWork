@@ -75,10 +75,19 @@ def build_payload(rows: list[dict], res: Resolver) -> tuple[dict, list[str]]:
                 errs.append(f"line {r['LineNum']}: location not found: {r['Location']!r}")
             detail["DepartmentRef"] = {"value": did}
         if r["Name"]:
-            cust = res.customer(r["Name"])
-            if cust is None:
-                errs.append(f"line {r['LineNum']}: customer not found: {r['Name']!r}")
-            detail["Entity"] = {"Type": "Customer", "EntityRef": {"value": cust}}
+            # `EntityType` is an OPTIONAL column defaulting to Customer, so every CSV written
+            # before it existed keeps working.  A JE line can name a Vendor as readily as a
+            # Customer -- Siren's cohost-wage lines name the crew being paid -- and resolving
+            # a vendor through res.customer() simply reports "customer not found".
+            kind = (r.get("EntityType") or "Customer").strip() or "Customer"
+            lookup = {"Customer": res.customer, "Vendor": res.vendor}.get(kind)
+            if lookup is None:
+                errs.append(f"line {r['LineNum']}: EntityType {kind!r} is not Customer or Vendor")
+            else:
+                ent = lookup(r["Name"])
+                if ent is None:
+                    errs.append(f"line {r['LineNum']}: {kind.lower()} not found: {r['Name']!r}")
+                detail["Entity"] = {"Type": kind, "EntityRef": {"value": ent}}
 
         lines.append({
             "DetailType": "JournalEntryLineDetail",

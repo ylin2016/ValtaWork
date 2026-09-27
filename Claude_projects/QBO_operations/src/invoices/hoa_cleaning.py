@@ -47,7 +47,10 @@ from ..resolver import Resolver
 
 CUSTOMER = "Yacinde HOA"
 HOA_CLASS = "Yacinde HOA"
-ITEM = "HOA Reimbursement - Cleaning"
+# Renamed from `HOA Reimbursement - Cleaning` after the first invoices posted (Id 182,
+# still crediting the receivable).  The old name resolves to nothing, and `--create-missing`
+# would then raise a SECOND item pointing at the same account.
+ITEM = "Owner Charges:HOA - Cleaning Fee"
 
 HOA_SHEET = "Invoice - HOA"
 WORKBOOK_DIR = Path(__file__).resolve().parents[3] / "yacinde_expense" / "output"

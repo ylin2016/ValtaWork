@@ -32,6 +32,21 @@ accounts:
     id: "1600"
     name: "PMS Clearing \u2013 A/P"      # EN DASH, not a hyphen -- an exact-name lookup fails on '-'
 
+  # Maria Rangel's cleaning team.  Her lump Zelle payments are booked to Destiny's
+  # cleaning, class Valta Realty; je/build_maria_cleaning moves each month onto the
+  # parent Cleaning Payout per listing class, from the per-listing sheet in her workbook.
+  cleaning_payout:
+    id: "1534"
+    name: "Cleaning Fee Revenue:Cleaning Payout"
+  destiny_cleaning:
+    id: "1588"
+    name: "Cleaning Fee Revenue:Cleaning Payout:Destiny's cleaning"
+  # Maria's `Residential cleaning` is not a listing and is not Valta's cost: it is rebilled
+  # to Valta Home, so the MariaCL JE debits A/R with that customer ON THE LINE.
+  accounts_receivable:
+    id: "807"
+    name: "Accounts Receivable"
+
   # Rebilled costs. Every fee Bill used to credit `billable_supplies_owner` whatever the
   # cost actually was, so the owner statement -- which categorises on the ACCOUNT NAME --
   # filed channel and Stripe fees under Supplies.  The two fee accounts already existed
@@ -58,6 +73,10 @@ names:
   # an ASSET until the HOA is invoiced and pays -- never `Cleaning Expense - Owner`.
   # See fixes/yacinde_hoa_split.
   hoa_receivable_yacinde: "Trust Assets other than Cash & A/R:HOA Receivable - Yacinde"
+  # The owner's half of the same AA cleaning bill.  A clean moves between this and
+  # hoa_receivable_yacinde as the allocation workbook is corrected; both halves must
+  # move together or the receivable strands the difference.  See fixes/yacinde_hoa_resplit.
+  cleaning_expense_owner: "Trust Liabilities:Owner Payables:1C - Owner Expenses:Cleaning Expense - Owner"
   # Guest pet/parking fees from the expense form: each Payment lands here, and one Deposit
   # per bank-feed line moves the group into bank_str -- never a Payment straight to 9967
   # (that is the $55,972.41 double count).  See deposits/build_guest_fees.  Verify the

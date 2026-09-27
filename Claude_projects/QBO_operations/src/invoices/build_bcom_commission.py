@@ -54,7 +54,13 @@ from ..resolver import Resolver
 BCOM_ACCOUNT = "Fee - Processing & Commission:Fee - Booking.com Commission"   # Id 1602
 PAYEE = "Booking.com"          # a Customer in this company file, not a Vendor
 PAYEE_TYPE = "Customer"
-LOCATION = "Valta Realty"      # what the commission Expenses already on the books carry
+# TRUST, not Valta Realty.  This said "what the commission Expenses already on the books
+# carry" and it was wrong: it had been read off the most RECENT ones, which were themselves
+# the anomaly.  Counted 2026-09-26 over the whole file: 490 commission purchases on Trust
+# against 186 on Valta Realty, and unbroken Trust from 2025-04 through 2026-07.  The wrong
+# default put 32 Expenses on the wrong side before anyone noticed; `fixes/purchase_location`
+# moved 56 back (19,747.25).  Count before trusting a claim like this one.
+LOCATION = "Trust"
 BANK = cfg_name("bank_str")
 UNMAPPED = "*** UNMAPPED: {} ***"
 

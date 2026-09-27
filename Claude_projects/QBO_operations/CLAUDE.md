@@ -213,6 +213,15 @@ reference goes in the memo. The same scheme reproduces `20260908_Andea_455.93` e
 The duplicate key includes the paid-from account — `(bank, TxnDate, amount)` — because
 the review CSV's `PaidFrom` is now what the poster uses.
 
+**A row's invoice can be months older than the transfer, and the Expense is dated by the
+TRANSFER.** The sheet records what was reimbursed, not when the work was done: the
+2026-09-26 batch paid a 06/19 Bellevue 321 repair ($71.51) and an 08/18 Redmond 11641 clean
+($40.00) alongside eleven September lines. That is correct — the cash left on the 26th, and
+the bank feed matches on the date and amount — but those costs then reach the SEPTEMBER
+owner statement, not June's or August's. So a rebuilt June or August statement will not
+contain them, and a per-month expense reconciliation against service dates will never tie.
+Read the date out of each `filename` field before assuming a batch is all one month.
+
 **All supplies are paid from the trust account** — including company-wide
 `All units supplies` (class Valta Realty). That is owner policy (2026-09-12), so the
 default `PaidFrom` of Chase Trust Checking 9967 - STR is correct for them; do not flag
@@ -257,18 +266,30 @@ now checks every class against the company file (`Resolver.klass_fqn`) and write
 real full name into the review CSV, WARNing when it corrected one. `build_airbnb` gets
 classes a different way and does not do this check yet.
 
-### The fee Bills are generated upstream, and the generator is still wrong
+### The fee Bills are generated upstream, and the generator has been FIXED (2026-09-26)
 
 This project has never created a Bill. The `Valta Realty - *` fee Bills come from an
-external integration (DocNumber prefixes such as `YKY6_`, `RZ3O_`, `9Z5X_`) and it is
-**still running**: fee Bills created after the 2026-09-10 repoint credit plain
-`Billable Expense Income` (Id 1493), not the named accounts. So the repoint is a
-point-in-time fix — re-run it until the integration's account mapping is changed:
+external integration (DocNumber prefixes such as `YKY6_`, `RZ3O_`, `9Z5X_`). It used to
+credit plain `Billable Expense Income` (Id 1493) on everything it wrote after the
+2026-09-10 repoint, which made that repoint a point-in-time fix needing re-running.
 
-    python -m src.fixes.fee_rebill_accounts --from billable_expense_income --confirm   # both vendors
+**Checked 2026-09-26: it no longer does.** All 2,588 fee Bills dated on or after
+2026-09-01 credit their own named account — 750 Channel Fee (1150040011), 365 Stripe Fee
+(1150040012), 574 Supplies Owner (1695) — and **zero** sit on 1493. So the integration's
+mapping was corrected upstream and `fixes/fee_rebill_accounts` is no longer a standing
+chore. Keep the script: it is the fix if the mapping ever regresses, and re-checking costs
+one query.
 
-Plain `Billable Expense Income` does not match `(?i)suppl`, so these stragglers do not
-re-create the Supplies misfiling on owner statements; they are only off-convention.
+    python -m src.fixes.fee_rebill_accounts --from billable_expense_income            # dry run: expect 0
+
+Verify before assuming, in either direction — a count of zero stragglers means nothing
+unless the generator is also still producing Bills, which is why the check above counts
+both. `review/fee_rebill_done.csv` is the original run's resume ledger and
+`fixes/fee_rebill_accounts` READS it to skip Bills it has already repointed, so that file
+is a dependency, not an artefact: do not tidy it away.
+
+Plain `Billable Expense Income` does not match `(?i)suppl`, so any future straggler does
+not re-create the Supplies misfiling on owner statements; it would only be off-convention.
 
 Two more things that generator does, both left alone because neither moves money:
 - Every fee Bill's A/P account (`APAccountRef`) is 1600, not the default Accounts
@@ -296,9 +317,13 @@ Yacinde owners $11,160.00 for the HOA's cleans.  `--to hoa` reverses it in one r
 paragraph below is why the flat class existed and why it is still the safe state.
 
 **The class matters as much as the account.** `Owner_statement_whole`'s `qbo_sync` ingests
-EVERY Bill line carrying a mapped class and filters on nothing else -- there is no account
-filter -- so a listing class on an HOA line charges that owner for a clean the HOA is
-paying for, whatever account it points at.  `Yacinde HOA` (1000000041) is deliberately not
+Bill lines by their mapped class, so a listing class on an HOA line puts that clean in front
+of an owner's statement whatever account it points at.  (It DOES also gate on the account --
+`expense/qbo_sync.py` calls `account_is_owner_side` in the Bill branch and files a rejected
+line as `ACCOUNT_NOT_OWNER_SIDE`; an earlier note here saying there is no account filter was
+wrong.  Do not lean on it as the only defence: rows ingested before the gate existed are
+still flagged `include_in_statement=1`, so the class remains the safety net that has actually
+held.)  `Yacinde HOA` (1000000041) is deliberately not
 under `Listings:` and not in the statement project's `mapping_classes.yml`, so those lines
 land in its exceptions table as CLASS_NOT_MAPPED and reach no statement.  The unit then has
 nowhere to live but the Description: `07/13/2026 C1 Cleaning Fee`.
@@ -378,8 +403,8 @@ The Zelle reference reads `..._4680_4500` while both the sheet and the allocatio
 $4,500.00 -- **open**: if AA's paper invoice is $4,680.00 a 26th clean is missing from both.
 
 `invoices/hoa_cleaning` is the other half: one Invoice per month to Customer `Yacinde HOA`
-(100000031), one line per clean, through the Service item `HOA Reimbursement - Cleaning`
-(182) whose income account IS the receivable.  Recovering a cost is not revenue, so nothing
+(100000031), one line per clean, through the Service item `Owner Charges:HOA - Cleaning Fee`
+(182, renamed from `HOA Reimbursement - Cleaning`) whose income account IS the receivable.  Recovering a cost is not revenue, so nothing
 reaches the P&L -- and an item in this file may point at a balance-sheet account, which is
 the house pattern rather than a workaround (`Guest Charges:Tax` credits Rental Taxes
 Payable).  A margin, if one is ever charged, is a separate line against a real income
@@ -388,13 +413,68 @@ which is why an item has to exist at all.  Class tracking here is per transactio
 (`ClassTrackingPerTxnLine`), so the class goes on the line, not the item -- not one of the
 50 items carries a ClassRef.
 
-Posted 2026-09-17: HOA-2026-07 (118386, $4,550.00) and HOA-2026-08 (118387, $6,610.00),
-which took the receivable to $0.00.  **The receivable is the control account** -- $0.00
-means everything laid out has been invoiced; a balance means cleans paid for and not yet
-billed on.  It stands at **$4,731.06** as of 2026-09-19 and that is expected, not a fault:
-$4,500.00 of INV1200 plus $231.06 of pool items, all awaiting HOA-2026-09.  The HOA's payment
+Posted 2026-09-17: HOA-2026-07 (118386) and HOA-2026-08 (118387).  Both were **re-split on
+2026-09-25** against corrected workbooks -- $4,550.00 -> $1,930.00 and $6,610.00 -> $3,190.00
+of cleaning; see "The allocation gets corrected" below.  **The receivable is the control
+account** -- $0.00 means everything laid out has been invoiced; a balance means cleans paid
+for and not yet billed on.  The HOA's payment
 deposits to **Chase Trust 9967**, the account that paid the cleaner: reimbursement landing
 in 7197 leaves the trust permanently short.
+
+### The allocation gets corrected, and BOTH halves have to move (2026-09-25)
+
+The workbook is generated and then hand-corrected, so the split that was invoiced is not the
+final one.  A clean moves in EITHER direction, which is why `fixes/yacinde_hoa_split` does not
+fit a correction: it only moves lines ONTO the receivable, reads `Invoice - HOA` (the HOA's
+half alone) and queries **Bill** objects, and cleaning now arrives as an Expense.
+
+Two scripts, and **neither is correct on its own**:
+
+    fixes/yacinde_hoa_resplit      the EXPENSE lines -- repoints Purchase lines both ways
+    invoices/hoa_cleaning_update   the INVOICE lines -- rebuilds cleaning, KEEPS everything else
+
+Run the expense one FIRST.  In between, the receivable is temporarily negative rather than
+overstated, which is the safer half-way state: an overstated receivable reads as money owed.
+
+Lowering the invoice alone leaves the cost on the receivable, where it reads as "laid out and
+not yet billed" when it is really "not the HOA's at all".  Repointing the expense alone leaves
+the HOA billed for a clean it no longer bears.  Together they leave the receivable unchanged,
+and that is the check: **if the receivable moves, one half is missing.**
+
+- **`hoa_resplit` reads `Cleaning Allocation`, never `Invoice - HOA`** -- only it carries
+  `hoa_paid` and `owner_paid` side by side, and a re-split needs to know where a clean goes,
+  not merely that the HOA stopped paying for it.  `$0` rows are fraction-week markers and
+  rows with no `invoice` were never billed by AA; neither reaches an expense line.
+- **Only `AccountRef` moves.**  Both halves already carry the LISTING class (2026-09-17), so
+  the class is not what distinguishes them and rewriting it would be a second, silent change.
+- **`EntityRef` is not a queryable property on Purchase**, so the vendor cannot be the filter.
+  The lookup is the DocNumber scheme `<yyyymmdd>_INV<aa invoice>_<total>` against the
+  workbook's own `invoice` column, then the vendor is checked on the object.
+- **`hoa_cleaning_update` keeps every non-cleaning line verbatim.**  Maintenance reaches an
+  invoice from `hoa_maintenance`, which reads the RECEIVABLE and not a workbook, so the
+  workbook cannot reproduce those lines -- rebuilding the whole invoice from it drops them.
+  Both scripts full-update: `sparse` false, the object echoed whole.
+- **The items were RENAMED** after the first invoices posted -- `HOA Reimbursement - Cleaning`
+  is now `Owner Charges:HOA - Cleaning Fee` (still Id 182, still crediting the receivable).
+  `hoa_cleaning`'s old constant resolved to nothing, and `--create-missing` would then have
+  raised a SECOND item against the same account.
+
+2026-09-25, July + August: 34 lines over Expenses 118602/118603/118604/118605 moved
+**$6,040.00** off the receivable onto owners -- all NuGrowth whole-owner units (E3 $1,390,
+F5 $1,260, C1 $1,210, B6 $1,150, E1 $1,030) -- and invoices 118386/118387 came down by the
+same $6,040.00 ($4,550.00 -> $1,930.00 and $8,898.78 -> $5,478.78, the latter keeping its
+$2,288.78 of maintenance).  Every expense total unchanged, all four tie to their workbook
+line-for-line with no relaxation, and the receivable ended where it started at **$2,795.06**.
+
+**INV1200 was deliberately not touched**: it is September cleaning and there is no `202609`
+workbook yet.  Its full $4,500.00 still sits on the receivable awaiting HOA-2026-09.
+
+**Open: $1,936.00 of the receivable is a credit with no debit.**  HOA-2026-08 carries a
+`Derrick Holm 8.15-8.31 wage` line that was invoiced but never posted TO the receivable, so
+invoicing it credited an asset that was never debited -- the failure mode named above.  The
+$2,795.06 balance is therefore understated: genuinely unbilled is **$4,731.06** ($4,500.00
+INV1200 + $231.06 pool).  Book the wage to the receivable and the control account means what
+it says again.
 
 ### Cleaning is not the only thing the HOA bears
 
@@ -425,7 +505,7 @@ TotalAmt that moves; only AccountRef and ClassRef change.
 These lines carry class **`Yacinde HOA`, not a listing**: the pool is common area and
 belongs to no single unit, so there is no listing class to give them.  That also keeps the
 purchase and the invoice line on the same class, which is what makes the two sides
-reconcile.  The item is `Owner Charges:HOA Reimbursement - Maintenance` (184), income
+reconcile.  The item is `Owner Charges:HOA - Maintenance` (184, likewise renamed), income
 account 1150040013 -- the receivable, so nothing reaches the P&L, same as the cleaning item.
 
 `hoa_maintenance --into <DocNumber>` APPENDS to an existing invoice rather than raising a
@@ -546,12 +626,57 @@ exists to get right:
   from the bills' own month lines August's payment of July's commission up against August's
   bills and is pure noise.
 
+#### The commission invoice is RE-EXPORTED IN PLACE, and it shrinks as rows get paid
+
+`20260919_Booking commission invoice.xlsx` held 45 rows / **$10,221.81** on 2026-09-20 (27
+`Paid` $5,967.16 + 18 `Overdue` $4,254.65).  The same filename now holds **17 rows /
+$4,046.48** -- Booking.com re-issues the invoice showing only what is still outstanding, and
+the owner saves it over the old one.  So the file is a snapshot of a MOVING document, the
+same trap as Maria's workbook below, and two things follow:
+
+- **Never reconcile "invoice total vs cash booked" from the current file.**  It reads
+  $6,175.33 short of the $10,013.64 actually on 1602 for August, because the rows that paid
+  are gone from it.  The books are the record of what was booked; the file only says what is
+  left.
+- **A row can vanish without ever being `Paid`.**  $208.17 of the original 18 Overdue rows is
+  in neither export nor the books -- Booking.com dropped or credited it between issues.  That
+  is the one difference worth chasing, and it is invisible unless the old total is written
+  down.  Hence the figures above.
+
+Statuses in the file are not a payment record either: all 17 remaining rows still read
+`Overdue (due by 2026-09-19)` although the batch that paid them posted on 2026-09-24.  The
+status is as of the export, so `--status all` is what posts a batch the bank has since
+debited -- and the check that it really debited is the FEED, not the spreadsheet.
+
+**`--group batch` DocNumbers as `<yyyymmdd>_BCOM_<total>`**, one Expense over every property
+in the batch (`20260919_BCOM_4046.48`, Purchase 119389, 17 lines, memo
+`Booking.com commission 2026-08, 17 properties`).  That is what makes the DocNumber check
+able to refuse a second run, which is how a re-post of those 17 was caught on 2026-09-26 --
+`--group property` would have produced 17 new DocNumbers and no collision.  Prefer `batch`
+whenever the bank debited once.
+
 **Reconcile at least two months together.** A 9Z5X_ bill is dated by the stay and the
 invoice by Booking.com's cut-off, so a reservation on the boundary lands in different months
 on the two sides and shows as equal and opposite gaps.  Jul+Aug 2026: $392.95 of apparent
 difference cancelled exactly that way (elektra_1212 $200.14, osbr_4 $107.63, osbr_7 $37.72,
-bellevue_1420 $237.87), leaving **$1,133.28 real** -- of which **Shelton 310 is $890.13**,
-invoiced $997.68 in July with no owner charged at all.
+bellevue_1420 $237.87), leaving **$1,133.28 apparently real**.
+
+**Shelton 310's $890.13 of that was the SAME artefact, and it is now closed (2026-09-26).**
+The claim recorded here -- "invoiced $997.68 in July with no owner charged at all" -- was
+wrong.  Bill **100893**, DocNumber `9Z5X_5813844607`, dated **2026-06-30**, charges the owner
+exactly $997.68 to `1A - Net Earnings:Channel Fees` class `Listings:Shelton 310`, with the
+matching $997.68 credit to `Billable Expense Income - Channel Fee`: a correct $0.00 rebill.
+Its memo says why the two sides disagree -- **`2026-06-30 to 2026-07-07 | 7 nights`**.  The
+stay straddles the month end, so the bill is dated by CHECK-IN in June while Booking.com
+invoiced it in July.  Nothing was lost and no owner was under-charged.
+
+The lesson is not new, it is that the warning above was not applied hard enough: a
+two-month window is not sufficient when it is the WRONG two months.  July+August was
+reconciled; this reservation needed June+July.  Before calling any residual real, find the
+`9Z5X_<reservation>` bill by AMOUNT across all months and read its memo -- the stay dates
+are in there, and one exact-cent match settles it faster than any period arithmetic.  The
+rest of the $1,133.28 has not been re-examined this way and should not be quoted as real
+until it has been.
 
 Cash ties exactly where it can be checked: July's invoice $8,225.26 = August's cash
 $8,225.26, property by property.  August's $10,221.81 invoice (27 rows Paid $5,967.16,
@@ -567,6 +692,20 @@ choosing an account and a class 27 times.  A match keeps the transaction's OWN d
 Expense dated a few days off the real debit still matches cleanly -- the amount is what
 identifies it.
 
+**It cannot be READ either, so never report feed state as current.**  Nothing here can tell
+whether a line is still For Review, already matched, or excluded -- only the owner can see
+that.  A `review/CHANGE_LOG.csv` note saying "the 27 bank-feed lines are still For Review and
+must be MATCHED" is a record of what was true the day it was WRITTEN, and restating it in the
+present tense invents a status.  That happened on 2026-09-26: the six-day-old note was
+repeated as live, read as Booking.com still being outstanding, and prompted a post of a
+commission batch and four payout JEs that were all already on the books.  Say "as of
+<date>", or say nothing about the feed.
+
+What CAN be checked is the books, and that is what a question about a batch should be
+answered from -- Purchase lines on the account, the payout JEs, and the poster's own
+duplicate check, which reports `DocNumber already in QBO as Id <n>` in a dry run.  Check
+before characterising, not after.
+
 `invoices/build_bcom_commission` does this for Booking.com commission:
 
     python -m src.invoices.build_bcom_commission                     # newest invoice, Paid rows
@@ -575,8 +714,22 @@ identifies it.
 Four things it has to get right, none of them guessable from the invoice alone:
 
 - **Booking.com is a CUSTOMER here (Id 471), not a Vendor**, and these Expenses carry
-  Location `Valta Realty`, not Trust.  Every commission Expense already on the books does,
-  and a report that groups by payee splits in two if a new one disagrees.
+  Location **`Trust`**.  A report that groups by payee splits in two if a new one disagrees.
+
+  **This entry used to say `Valta Realty`, and saying so made it true 32 times.**  The claim
+  "every commission Expense already on the books does" was read off the most RECENT ones --
+  which were themselves the anomaly.  Counted over the whole file on 2026-09-26: **490
+  commission purchases on Trust against 186 on Valta Realty**, and unbroken Trust from
+  2025-04 through 2026-07.  The bad note set `LOCATION` in `build_bcom_commission`, which put
+  the 27 September Expenses, the 119389 batch and four catch-ups on the wrong side;
+  `fixes/purchase_location` moved 56 purchases / $19,747.25 back on 2026-09-26, after which
+  all 191 of 2026's commission purchases are Trust.  The 2024 and early-2025 ones are
+  genuinely mixed and were left alone.
+
+  The lesson generalises past this account: **"what the books already do" is a COUNT, not a
+  glance at the last few rows.**  A convention read off recent transactions reproduces
+  whatever the last mistake was, and a default taken from a doc note nobody re-counted is how
+  one wrong Location becomes thirty-two.
 - **Only `Paid` rows have left the bank.**  August's invoice was 27 Paid / 18 Overdue;
   posting an Overdue row invents cash that has not moved.  `--status all` overrides.
 - **Booking.com debits per PROPERTY** -- 2026-08-15 came through as 27 separate bank lines,
@@ -595,6 +748,13 @@ content-based duplicate check -- `(bank, TxnDate, amount)` within +/-3 days over
 covering this builder too, which matters here precisely because the owner may *Add* a feed
 line instead of matching it.
 
+**`invoices/post` does NOT write `review/CHANGE_LOG.csv`** -- it has no code that touches the
+file, so every Zelle, commission and form-expense entry in there was written by hand after
+the run.  (`deposits/post_guest_fees` does append; the shared expense poster does not.  An
+earlier note here saying "the change log applies unchanged" to this path was wrong about
+that one thing.)  Log the batch yourself: the posted Ids are only in the run's stdout, and
+once that scrolls away the review CSV cannot tell you which Purchase a line became.
+
 ## The monthly owner payout: a Bill AND its payment, one pair per bank line
 
 The bank pays one ACH per property, so the books carry one pair per property:
@@ -610,6 +770,37 @@ the bank line uncategorised and an open A/P balance, so the pair is posted toget
     python -m src.invoices.build_owner_payout --expect-total <the bank batch>   # review CSV
     python -m src.invoices.post_owner_payout --all --csv review/owner_payout_<period>.csv
     #   ... --confirm  to WRITE
+
+### The bill is dated by the STATEMENT month, the payment by the bank (2026-09-26)
+
+The payout settles a payable that belongs to the owner-statement month, but the ACH leaves
+the bank days later.  Owner decision: **the Bill carries the statement month-end, the
+BillPayment carries the bank's own date.**  September's 62 bills went out dated 2026-09-15/16
+and were re-dated to **2026-08-31** on 2026-09-26 ($334,625.91) with
+`fixes/bill_txndate`; their payments stayed put.
+
+    python -m src.fixes.bill_txndate --from 2026-09-01 --to 2026-09-30 \
+        --date 2026-08-31 --created-after 2026-09-20 [--confirm]
+
+**Never re-date the BillPayment to match.**  It is the object the bank feed matches, and
+moving it breaks a match already made.  A Bill dated before its payment is ordinary; the
+reverse is not, so the script refuses a target date later than any linked payment instead of
+creating one.  `DueDate` moves only with `--due` -- "raised 08-31, due 09-15" reads correctly
+and nothing here groups by it.
+
+Re-dating moves the distribution between months, so **any owner statement already built for
+either month no longer reproduces** and has to be rebuilt.
+
+The guard is a FINGERPRINT, not a total: totals, `APAccountRef`, `DocNumber`, vendor,
+`LinkedTxn` and every line's account / class / customer / amount are captured before the
+write and compared after it, because a full Bill update blanks whatever the payload omits and
+those fields are invisible until they are gone.  Read the object back and echo it; never
+hand-build a Bill payload.
+
+Selecting by date alone is not enough -- other payout Bills already sat on the target date
+(10 of them, $34,715.47).  `--created-after` is what keeps a re-date to the batch you meant,
+and the verification afterwards reads back the exact Ids from the review CSV rather than
+re-querying by date, which would count those strangers as successes.
 
 ### The sheet's `Paid From` column says which bank, and it is not optional
 
@@ -774,3 +965,70 @@ build_zelle), `in_qbo` FALSE (owner-paid, Valta Homes, Baselane), `typed_in`, al
 The poster's content check (same account, amount, ±3 days) skips a purchase the card feed already
 booked. Offline tests: `venv/bin/python -m unittest tests.test_form_expenses`. Live name resolution
 checked with sample rows (read-only); **no live post yet**.
+
+## Maria's cleaning: one JE per service month, a pure CLASS move (2026-09-26)
+
+Maria Rangel's lump Zelle payments land on `Cleaning Fee Revenue:Cleaning Payout:Destiny's
+cleaning` (1588) under class Valta Realty, so no listing carries its own cleaning cost.
+`je/build_maria_cleaning` reads the per-month sheets of
+`inputs/JE/Cleaning payouts/Maria cleaning payment process_copied20260117.xlsx` and builds one
+JE per service month, dated month-end, DocNumber `MariaCL_<YYYY-MM>`:
+
+    Dr ...:Destiny's cleaning (1588)   class = the listing    `Total for cleaner` per listing
+    Dr Accounts Receivable (807)       class = Valta Realty   `Residential cleaning`,
+                                                              Customer = **Valta Home**
+    Cr ...:Destiny's cleaning (1588)   class = Valta Realty   the sheet's `Total payment`
+
+**Both sides sit on ONE account, so the JE moves no money between accounts -- only between
+classes** (owner rule, 2026-09-26).  That account is whichever holds the month's cash:
+Destiny's cleaning from 2026-01, `Cleaning Payout` (1534) itself before that, because through
+2025 Maria's payments were booked to the parent and touching 1588 for them would strand a
+balance there.  So a 2025 JE is a pure class move within 1534 and a 2026 one within 1588 --
+same rule, different account.  `credit_account` and `debit_account` are both aliases of
+`posting_account` for exactly this reason: **a Maria JE that names two accounts is wrong.**
+
+**`Residential cleaning` is not a listing and is not Valta's cost** -- it is rebilled to Valta
+Home, so it leaves the JE as an A/R debit carrying that customer ON THE LINE, and the credit
+is then the sheet's own `Total payment`, not the listings subtotal.  The figure is read from
+the sheet every month (it moves, and 2026-03 once had none at all); a month with no
+residential gets no line rather than a $0.00 one.
+
+### The workbook is a snapshot of a live Google Sheet, and a stale one lies quietly
+
+The xlsx under `inputs/` is exported by hand from a sheet the owner edits continuously
+(`doc_id 1DYndAEzV1V4vLXVcGs8IVoZY-jrIYGuPBpZpH68DDKQ`).  A stale export does not fail --
+**it silently reads a blank `Residential cleaning` cell as "none this month" and writes no
+line**, and it reproduces listing totals that have since been corrected.  A 13-day-old copy
+did exactly that on 2026-09-26: 2026-03 looked like it had no residential when it had
+$7,831.84, and three months' listing subtotals were wrong.  `fixes/maria_cleaning_je_shape`
+prints the file's modification time for this reason.  **Re-export before every run.**
+
+### A corrected sheet means REBUILD, not patch
+
+A correction can move a listing's amount, drop a listing or add one -- 2026-03 went from 40
+listings / $22,237.00 to 38 / $22,620.00.  No line-by-line patch expresses that, so:
+
+    python -m src.je.build_maria_cleaning --rebuild          # emit rows for months already in QBO
+    python -m src.fixes.maria_cleaning_je_rebuild            # dry run, per-JE diff
+    python -m src.fixes.maria_cleaning_je_rebuild --confirm  # full-update each JE in place
+
+`--rebuild` is what makes the builder emit a month it would otherwise SKIP as already booked.
+The fix script constructs no lines of its own: it reuses `je/post.build_payload`, so the
+builder stays the single source of truth for what a Maria JE looks like.  It full-updates,
+keeping the Id, DocNumber and date -- never delete-and-recreate.
+
+**`build_payload` resolves every name to an Id and drops the name**, so a listing line and the
+A/R line are indistinguishable in its output.  Anything reporting on what changed must read
+the review CSV's `Class`/`Name` columns instead; measuring the new shape off the payload put
+every listing into the A/R bucket and made a correct rebuild look catastrophic.
+
+`fixes/maria_cleaning_je_shape` is the narrower tool -- it re-points accounts and adds a
+missing A/R line without touching amounts.  It is superseded by the rebuild whenever the sheet
+itself has changed.  Its one lasting lesson: **a line's role cannot be inferred from its
+class.**  Deriving "listing means debit, flat means credit" broke `MariaCL_2026-06`, because
+the A/R line is neither a listing nor the credit.
+
+2026-01..08 rebuilt 2026-09-26 from the corrected sheet (JE 119390-119397, $254,365.75 of
+sheet totals; listing debits moved off 1534 onto 1588 and all eight A/R lines added or
+corrected).  2025-07..12 (JE 119406-119411, $124,977.00) are untouched and already correct
+under the rule -- Dr/Cr both within 1534.
