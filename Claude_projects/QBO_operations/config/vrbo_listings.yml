@@ -1,0 +1,12 @@
+# VRBO "Listing Number" -> the property name to use.
+#
+# Only for invoice rows whose `Property` cell is BLANK and whose listing number appears
+# NOWHERE in the invoice files beside a name.  A blank-property row whose listing number IS
+# named elsewhere in the files is placed from that, not from here -- the files are better
+# evidence than a map that can go stale.
+#
+# Owner-supplied 2026-09-28.  Both are recent listings (the numbers are far above the rest),
+# which is why no earlier invoice carries their name.
+listings:
+  "5307470": "Bellevue 2323 Main"
+  "5355662": "Yacinde E3"

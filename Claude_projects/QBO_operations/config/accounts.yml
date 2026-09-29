@@ -32,6 +32,15 @@ accounts:
     id: "1600"
     name: "PMS Clearing \u2013 A/P"      # EN DASH, not a hyphen -- an exact-name lookup fails on '-'
 
+  # The ORDINARY A/P, for bills this project raises itself -- a cleaner's monthly labour
+  # billed in its service month and paid the following month.  Deliberately NOT
+  # `pms_clearing_ap`: 1600 is the PMS integration's own clearing account and carries its
+  # balance (-168,662.35 on 2026-09-26), so a Siren's bill posted there is invisible in any
+  # "what do we owe this vendor" reading.  815 was 0.00 and unused.
+  accounts_payable:
+    id: "815"
+    name: "Accounts Payable"
+
   # Maria Rangel's cleaning team.  Her lump Zelle payments are booked to Destiny's
   # cleaning, class Valta Realty; je/build_maria_cleaning moves each month onto the
   # parent Cleaning Payout per listing class, from the per-listing sheet in her workbook.

@@ -1032,3 +1032,428 @@ the A/R line is neither a listing nor the credit.
 sheet totals; listing debits moved off 1534 onto 1588 and all eight A/R lines added or
 corrected).  2025-07..12 (JE 119406-119411, $124,977.00) are untouched and already correct
 under the rule -- Dr/Cr both within 1534.
+
+## Siren's cleaning: a Bill in the service month, paid the next (2026 onward)
+
+Siren's Cleaning Crew is paid one lump ACH per service month, always out of
+Chase Trust 9967, always mid-following-month (July's labour on 08-14, August's on 09-15).
+`je/build_siren_cleaning` reads `inputs/JE/Cleaning payouts/Cl2024-12gSheet_Siren.xlsx`,
+one `YYYYMM` sheet per service month, and spreads it per (listing, category).  The module
+docstring carries the five load-bearing facts about that sheet and the free-text `Others`
+rules; what follows is the shape decision only.
+
+**Two shapes, and the boundary is RECONCILIATION, not the calendar** (owner decision
+2026-09-26):
+
+    --shape je     (2024-2025)   Dr per (listing, category)   Cr 1534 flat  -- reclass
+    --shape bill   (2026 on)     Bill  svc month-end   Dr per (listing, category)  Cr A/P 815
+                                 BillPayment  ACH date  Dr A/P   Cr Chase Trust 9967 (Check)
+
+Every Siren's bank line from 2024-06 to 2025-12-24 is **reconciled** (`Clr` = R); not one
+2026 line is (six blank, three C).  Replacing a reconciled Expense breaks a closed period,
+so 2025 and earlier keep the JE shape and **this is not a migration to run backwards.**
+Check `Clr` with `reports/GeneralLedger`, `account=<Id>` before extending it either way.
+
+Three things the Bill buys:
+
+- **It needs no cash.**  The JE's credit IS the payment, so `build_siren_cleaning --shape je`
+  refuses a month with no matching Purchase on the books -- by design, "an amount match is
+  evidence and date arithmetic is an assumption."  That makes August unbookable until about
+  the 15th of September, so the month cannot be closed on the sheet.  A Bill can.
+- **A/P becomes a control account.**  Under the JE shape an unpaid month sits as an
+  unlabelled credit inside 1534 flat class, pooled with every other cleaner and unreadable.
+  Under Bills it is the vendor's A/P balance, and a non-zero Siren's balance after the ACH
+  clears means the sheet and the bank disagree.  That check survives; the builder's
+  build-time amount match fires once and only if someone runs the builder.
+- **The service month is right even where the Purchase was spread BY HAND.**  2026-06 has no
+  JE at all: Purchase 110628 carries the listing split itself, dated 2026-07-13, so June's
+  $9,015.00 of cleaning lands in JULY.  The JE shape cannot see that month -- its payment
+  view excludes lines already carrying a `Listings:` class -- and it BLOCKS on it.  The bill
+  shape aggregates each Purchase's whole 1534 total instead, which is why it converts.
+
+**The A/P account is 815 `Accounts Payable`, never 1600.**  `pms_clearing_ap` is the PMS
+integration's own clearing account and carried -$168,662.35 on 2026-09-26, so a cleaner's
+bill posted there is invisible in any "what do we owe this vendor" reading.  815 was $0.00
+and unused.
+
+### A NOTE makes its own line, whatever the category (2026-09-28)
+
+Owner decision: the sheet's `Notes` cell goes into the line DESCRIPTION, rows WITHOUT a note sum
+per (listing, category) as before, and **every row with a note becomes its own line.**  Before
+this only the `Others` category keyed on its note, so 117 noted rows across every other category
+-- $9,819.24 -- had their explanation aggregated away: `3 Hr drain & fill`, `Had to cover for
+brittany`, `clean needed after maintenance stayed to get repairs done`, `Rates doubled for the
+weekend as it was urgent laundry`.  The note is the only record of why a clean cost what it did.
+
+Two rows sharing the SAME note on the same listing and category still merge, and the description
+then carries `[xN]` -- two identically-explained cleans are one fact, and the count keeps the line
+honest about how many.
+
+**A noted row can be $0.00** -- `Direct booking by a Siren Cleaning Crew member`, `Guests never
+actually stayed`, `Brittany took over cleaning on 10/29`.  Those used to vanish into a bucket with
+real money; now each would be its own $0.00 line, which a JE will not carry.  They are DROPPED and
+PRINTED: the note is information, but it is not money and it cannot be a line.  Six months have
+one.
+
+**SPLITTING CHANGES A MONTH'S TOTAL BY A CENT, and that is not a bug in either direction.**  Round
+each line first, then sum -- so the grouping decides which way each bucket rounds.  2025-07 went
+from $12,476.59 to $12,476.58 and the builder BLOCKED it against its own payment, which is the
+guard working.  `--absorb-cents 0.01` is the answer: it adds the cent to the largest line and says
+so in that line's description.
+
+    python -m src.je.build_siren_cleaning --month 2025-07 --rebuild --absorb-cents 0.01
+
+`--absorb-cents` had a float bug until 2026-09-28: `12,476.59 - 12,476.58` is `0.010000000000672`
+in binary floating point, so `<= 0.01` refused the very gap the flag exists for.  It now compares
+against `+ 1e-9`, and sorts on the gap ALONE rather than a `(gap, dict)` tuple, which would raise
+the moment two gaps tied.
+
+**THE 17 ALREADY-POSTED DOCUMENTS ARE NOT REBUILT, and that is a decision, not an omission**
+(owner, 2026-09-28: "no need to rebuild, make changes moving forward").  Re-running the builder
+over them would add lines to 15 of the 17 (+1 to +6 each) and change no amount, so the churn buys
+nothing -- while a rebuild would WIPE the hand-made A/R split on JE 119578 (`SirenCL_2025-07`,
+Hoodsport's hot tub against `homeaway - Lin Jiang - HA-FFz33vm`), and the 2026 Bills' payment
+Purchases were deleted in the conversion so their dates could not be re-derived from a payment
+match at all.
+
+**So this change takes effect from the next month posted.**  Do not offer or perform a retro-rebuild
+of `SirenCL_2025-04`..`SirenCL_2026-08` unless the owner asks for one; if they ever do, re-apply
+119578's A/R split afterwards and read each Bill's own `TxnDate`/`PayDate` instead of `--paid`.
+
+### Converting does NOT move an owner statement -- except where it corrects one
+
+1534 is outside the statement account gate, so the cleaning bulk reaches no statement under
+either shape.  Only the owner-side categories (Maintenance / Supplies / Repairs - Owner) do,
+and for those the date, class, account, amount and sign are identical -- verified against
+`Owner_statement_whole`'s `qbo_sync`, whose **Bill** branch stores `-amount` exactly as its
+JournalEntry branch stores `-abs(amount)` for a Debit, gates on `account_is_owner_side` and
+requires a `ClassRef` in both.  No `vendor_regex` rule exists in that project's config, so
+the Bill branch passing a vendor where the JE branch passes `NULL` cannot shift a category.
+
+**The exception is 2026-06, and it is a real change.**  The hand-entered Purchase put all
+$9,015.00 on 1534; the sheet's hot-tub rule moves $562.50 to Maintenance - Owner (Hoodsport
+26060 $112.50, Lilliwaup 28610 $112.50, Shelton 250 $112.50, Shelton 310 $225.00).  Those
+four June statements gain a charge they never carried.  That is the hot-tub decision of
+2026-09-26 applied consistently, not a side effect -- but it is the one figure that moves,
+so say so rather than repeating "nothing changes".
+
+### `invoices/post_cleaning_bill` -- a MULTI-LINE Bill and its payment
+
+`post_owner_payout` is one line per Bill, one Bill per property, keyed
+(Vendor, TxnDate, amount).  A cleaning month is 9-18 lines on one Bill, so this poster
+GROUPS rows by `DocNumber` and **aborts if any header field disagrees within a group** --
+that would mean two months, or two banks, flattened into one document.  The Bill posts
+first; if the payment then fails the run stops and names the Bill Id, because half a pair is
+the one state worth interrupting for.
+
+**The replaced Purchase is EXPECTED, and that breaks the usual duplicate check.**
+`post_owner_payout` skips any row whose (Vendor, amount) already exists as a Purchase.  Here
+that Purchase is the whole point, so the naive check would refuse all eight months.  The
+check is narrowed, not dropped: the review CSV names it in `ReplacesPurchase`, that one is
+allowed and reported, and **any OTHER Siren's Purchase at the same amount is still a hard
+skip** -- an amount matching two Purchases is exactly how a month gets paid twice.  The
+DocNumber, (TxnDate, total) Bill and (PayDate, total) BillPayment layers all stay.
+
+Verification reads both objects back and compares the Bill's total and its
+per-(account, class) subtotals **by Id, never by name** -- QuickBooks renders the same class
+differently depending on which object is asked, which once rejected a correct Purchase after
+it had been written.
+
+**Create before deleting.**  QBO has no convert, a Purchase's `PaymentType` is final, and
+the replacement has to exist before the original goes -- the other order leaves a month of
+cleaning charged to nothing.  In between, the month's cash is on the books twice and plainly
+visible.  The builder and the poster both print the delete list (Purchase + JE per month);
+deleting is the owner's, as is re-matching the released bank line to the new BillPayment,
+which nothing here can see.
+
+Built 2026-09-26: 8 Bills / 98 lines / **$54,966.09** for 2026-01..08, review CSV
+`review/siren_cleaning_bill.csv`.  All seven months that have a JE reproduce its debit lines
+exactly, by account Id and class Id; 2026-06 ties to Purchase 110628 per class to the cent.
+
+### Deleting: the one narrow exception, and how it is gated (2026-09-27)
+
+`fixes/delete_superseded_je` is the only script here that deletes anything, and the exception is
+deliberately narrow: **a JournalEntry whose DocNumber is also carried by a Bill that reproduces
+it.**  The create-before-delete rule stated throughout this file is not softened -- its PURPOSE
+is served once the replacement exists and ties out, and that is a thing a script can check
+better than a human reading a register, against the LIVE books rather than the CSV that drove
+the conversion.
+
+All of these must hold or the Id is refused, and nothing about it is sent:
+
+    a Bill exists carrying the JE's own DocNumber
+    Bill TotalAmt == the JE's total DEBITS
+    Bill per-(account Id, class Id) subtotals == the JE's DEBIT subtotals, exactly, BY Id
+    Bill Balance == 0.00      -- evidence the BillPayment exists; half a replacement is worse
+                                 than none, because the cash is then unrecorded
+
+The refusal is per Id (each is a separate month), but nothing partial happens within an Id.  The
+JE's CREDIT side is deliberately not compared: a Bill has no credit line, its credit being A/P
+on the object, and that asymmetry IS the conversion.  **The delete response is not proof** -- the
+Id is re-queried afterwards, and one that still returns is reported as a failure.
+
+The gate earns its keep in a way worth recording: run over `--doc-like 'SirenCL_%'` it refused
+all eight 2025-04..11 JEs *because no Bill replaces them*, which is the same answer a human
+reached by reading the year, arrived at from the books instead.
+
+### Deleting the ORIGINAL first is the unsafe half, and it reads as correct (2026-09-27)
+
+The 2026 Siren's conversion was completed in the wrong order by hand: the nine payment
+Purchases were deleted while all sixteen `SirenCL_` JEs were left posted.  Know what that looks
+like, because it is the mirror image of the state create-before-delete is designed to leave:
+
+- **Intended order** -- replacement first: the month's cash is on the books TWICE and plainly
+  visible.  Someone notices.
+- **What happened** -- original first: every line the JE and the Bill share is charged twice
+  ($48,734.44, of which **$4,071.70 on owner-side accounts that DO reach owner statements**),
+  while the JEs' $48,734.44 of credits sit on `Cleaning Payout` flat class with no offsetting
+  debit at all.  Nothing is missing, no total is obviously wrong, and the bank is
+  under-recorded.  It reads as correct.
+
+**`SyncToken` 0 with `LastUpdatedTime` == `CreateTime` proves an object has never been touched
+since it was written.**  That is how "I deleted them" was distinguished from a caching artifact
+and from a VOID -- a voided JE stays queryable with zeroed lines and a bumped SyncToken, where a
+deleted one does not return from a query at all.  Check the metadata before either believing or
+doubting a report about what is on the books.
+
+Final Siren's state, 2026-09-27: **8 JEs** (`SirenCL_2025-04`..`2025-11`, $76,915.81, the reclass
+shape, reconciled Purchases intact and untouched) and **9 Bill + BillPayment pairs**
+(`SirenCL_2025-12`..`2026-08`, $57,749.44, open A/P $0.00, no Siren's Purchase left from
+2025-12-25 on).  No month carries both.  2025-11 is the boundary: its payment is the 2025-12-18
+bank line and that one is reconciled.
+
+### A hot tub charge the GUEST bears is a RECEIVABLE, not an owner expense (2026-09-27)
+
+Hoodsport 26060's hot tub is a FLAT $112.50 a month -- 17 consecutive months carry exactly that,
+which is why the one deviation is worth a paragraph.  2025-07 was invoiced at **$225.00**, and
+the sheet says why in its own Notes cell: `2nd drain and fill needed on 7/22 clean. Guests to be
+charged.`
+
+Owner decision 2026-09-27: **charge the owner ONCE, and the second $112.50 is the guest's.**  It
+is the same logic as the Yacinde HOA -- a guest is a third party who REIMBURSES, not an owner
+whose payable can be charged -- so it is an ASSET, on `Accounts Receivable` (807) with the guest
+ON THE LINE, not `Maintenance - Owner` (1684).  Done by `fixes/je_split_line` (NEW) on JE 119578:
+one line of $225.00 became $112.50 on 1684 plus $112.50 on 807, Customer
+`homeaway - Lin Jiang - HA-FFz33vm`, both class `Listings:Hoodsport 26060`.
+
+**The guest was never actually charged, and that was worth checking before believing it.**
+Invoice 80326 covers the 7/22 stay at $624.33 with Balance 0.00 and no hot-tub line; nothing at
+$112.50 was ever billed to a guest on Hoodsport, and the only guest recoveries in that period
+are unrelated ($80.00, $80.00, $340.00 of resolutions in June and October).  The note was an
+INTENTION, not a record.  So the receivable is genuinely open, and 807 being the control account
+is what will keep saying so -- a balance there means money laid out and not yet recovered.  A
+listing class on it charges nobody: 807 is outside the statement gate
+(`mapping_accounts.yml` `include_exact: []`, and no `include_prefixes` entry covers A/R).
+
+**KNOWN FRAGILITY: `build_siren_cleaning --rebuild` would undo this.**  `CATEGORY_ACCOUNT` sends
+every `Hot tub` row to `MAINT_OWNER` wholesale, so a rebuilt 2025-07 re-derives one $225.00 line
+on 1684 and the split is lost silently.  No rule reads the Notes cell for `Hot tub` (only
+`Others` does), and a rule could not supply the CUSTOMER anyway -- the sheet carries no
+confirmation code in the 2025 layout.  So this correction lives in the books, not in the
+builder: **before rebuilding any month, check whether its hot-tub lines were split.**
+
+`fixes/je_split_line` vs `fixes/je_account`: the latter repoints a whole line, this one divides
+it, and a split cannot be expressed as a repoint because the amount must land on two accounts at
+once.  The line is selected by (account Id, class Id, amount) and a non-unique match is REFUSED
+-- these JEs legitimately carry the same account and class twice, from the itemised `Others`
+rows.  The new line inherits PostingType, ClassRef and the per-line `DepartmentRef`: **Location
+is a PER-LINE field on a JE**, inside `JournalEntryLineDetail`, unlike a Purchase where it is
+transaction-level, so a new line built without it drops off every Location-filtered report while
+every total still ties.
+
+Also corrected here: the builder's comment on `MAINT_OWNER` said `# 1678`.  Maintenance - Owner
+is **1684**; 1678 is `Cleaning Expense - Owner`.  A wrong Id in a comment is how a wrong Id ends
+up in a payload -- `python -m src.verify_accounts` only checks the names in `accounts.yml`, not
+annotations in source.
+
+### Yacinde cleaning, from 2026-09-28: one ACCOUNT, and the CLASS carries the HOA split
+
+Owner decision 2026-09-28, replacing the receivable-based split above for CLEANING only:
+
+    expense    Dr Cleaning Expense - Owner (1678)   class = the UNIT       the owner's cleans
+    expense    Dr Cleaning Expense - Owner (1678)   class = `Yacinde HOA`  the HOA's cleans
+    invoice    Dr A/R (Yacinde HOA)  Cr Cleaning Expense - Owner (1678), class `Yacinde HOA`
+
+**The HOA is still invoiced.**  What changed is that its share no longer sits on
+`HOA Receivable - Yacinde` (1150040013): it sits on the same owner-expense account as everyone
+else's and is distinguished by the flat class.
+
+**THE ITEMS NO LONGER CREDIT THE RECEIVABLE, and every note above saying they do is STALE.**
+Checked 2026-09-28: item 182 `Owner Charges:HOA - Cleaning` credits **`Cleaning Expense - Owner`**,
+184 `HOA - Maintenance Labor` credits **`Maintenance - Owner`**, 189 `HOA - Supplies` credits
+**`Supplies - Owner`**.  They were re-pointed upstream at some point.  That is what makes this
+design work rather than strand a balance: the invoice credits the SAME account and the SAME class
+the expense debits, so a clean billed to the HOA nets to zero and one not yet billed does not.
+
+**So `1678` at class `Yacinde HOA` IS the control account now**, in place of 1150040013:
+
+      debits (the HOA's cleans)                9,260.00
+      credits (HOA-2026-07 + HOA-2026-08)     -5,120.00
+      balance                                  4,140.00   = INV1200, awaiting HOA-2026-09
+
+A non-zero balance is cleaning laid out and not yet billed on.  Check it the same way the
+receivable used to be checked, and do NOT read 1150040013 for cleaning any more.
+
+**No owner is charged for the HOA's share, by two independent mechanisms** -- the invoice credit
+cancels the debit, and `Yacinde HOA` is absent from the statement project's `mapping_classes.yml`
+so those lines land in its exceptions table as CLASS_NOT_MAPPED.  The class is the binding one;
+rely on it, because the credit only arrives when the invoice is raised.
+
+    fixes/yacinde_cleaning_all_owner   moves the HOA's cleans OFF 1150040013 onto 1678
+    fixes/yacinde_hoa_reclass          puts the flat `Yacinde HOA` class on them
+
+**`yacinde_hoa_reclass` identifies the HOA's lines FROM THE INVOICES, and it has to.**  Once the
+account move has run, every cleaning line on an AA Purchase carries the same account, so nothing
+on the expense distinguishes a clean that was the HOA's from one that was the owner's.  What was
+billed to the HOA is by definition what the HOA bore, so lines are matched on (date, unit, amount)
+parsed from the description and the per-Purchase total must hit an EXPECTED figure or the run
+aborts.  Two description formats exist and both are parsed -- `07/13/2026 C1 Cleaning Fee` on the
+older expenses, `2026-09-01 Yacinde B1 Cleaning Fee (AA …)` on INV1200.
+
+**`fixes/yacinde_hoa_classes` cannot see any of this**: it queries `Bill` objects and Yacinde HOA
+Invoices only, and AA cleaning became a PURCHASE on 2026-09-19.  Same staleness already recorded
+for `yacinde_hoa_split`.  Neither `yacinde_hoa_split` nor `yacinde_hoa_resplit` fits either --
+both read the allocation workbook to decide who bears each clean, and this decision overrides the
+workbook wholesale.
+
+**MAINTENANCE AND SUPPLIES NOW FOLLOW CLEANING (2026-09-28), and `1150040013` IS RETIRED for
+Yacinde -- its balance is 0.00.**  Each line went to the account ITS OWN INVOICE ITEM credits,
+which is the whole point: Derrick Holm's wages (2 x $1,936.00, 09-02 ref …4687 and 09-16 ref
+…3465 -- two pay periods, not a duplicate) to `Maintenance - Owner` (item 184), the pool chemicals
+($168.16 + $62.90) to `Supplies - Owner` (item 189).  `fixes/hoa_recategorize --to owner` does it
+and refuses to run without an explicit `--account` and `--class`.
+
+So there are now THREE control accounts, all at class `Yacinde HOA`, each reading
+laid-out-less-invoiced:
+
+      Cleaning Expense - Owner    7,100.00 - 5,120.00 = 1,980.00
+      Maintenance - Owner         4,276.45 - 1,936.00 = 2,340.45
+      Supplies - Owner              231.06 -     0.00 =   231.06
+
+`Maintenance - Owner` reads $4,276.45 against the $3,872.00 moved: there is **$404.45 of other
+HOA-class maintenance** already there, now under the same control.  Check it before the next HOA
+invoice, along with the second wage period, which is laid out and not billed.
+
+**`--to-units` is the reverse direction**, for cleans the HOA turns out not to bear:
+`yacinde_hoa_reclass --to-units <purchase>:<total> --keep-units B1,B2,...` puts each line back on
+its own unit class.  Used on INV1200 on 2026-09-28 (owner decision: only B1-B4 and F1 are the
+HOA's) -- 12 lines / $2,160.00 to B6, C1, E1, E3 and F5, leaving $1,980.00 on the flat class.
+Only lines currently on the flat class are candidates, and a line with no readable unit aborts the
+run rather than being guessed.
+
+**The owner corrects the split BY HAND in QuickBooks while this work is in flight.**  118603 was
+edited at 09:14 on 2026-09-28 to move $70.00 of an INV1173 clean to class `Valta Realty`
+("company absorb as missing claim"), and 118594 at 09:39 to move two September cleans ($360.00,
+09/01 B6 and 09/03 E1) from `Yacinde HOA` to their units.  Both are legitimate and neither came
+from a script here.  **Re-read before comparing:** a snapshot taken minutes earlier reads as a
+discrepancy and sends you hunting for a bug in your own run.  `SyncToken` and `LastUpdatedTime`
+settle it -- that is how both were identified.
+
+## VRBO commission: one JE per invoice month, a pure CLASS move (2026-09-28)
+
+VRBO charges one card payment per monthly invoice and it lands on
+`Fee - Processing & Commission:Fee - VRBO Commission` (1606) under the flat `Valta Realty`
+class, so no listing carries its own channel commission.  `je/build_vrbo_commission` reads
+`inputs/Invoice_payment/vrbo_invoices/VHA13B*-YYYYMM.csv`, one row per reservation, and builds
+one JE per invoice period, DocNumber `VrboCM_<YYYY-MM>`:
+
+    Dr Fee - VRBO Commission (1606)   class = the listing     per-listing commission
+    Cr Fee - VRBO Commission (1606)   class = Valta Realty    the invoice's total
+
+**Both sides are ONE account, so the JE moves no money between accounts -- only between
+classes**, the same rule as `build_maria_cleaning`.  A VRBO JE naming two accounts is wrong.
+1606 is COGS and outside the owner-statement gate exactly as `Fee - Booking.com Commission`
+(1602) is: the owner is already charged for channel fees at reservation time through the rebill
+Bills, so putting commission on an owner-expense account would charge them twice.  This fixes
+per-listing reporting and nothing else.
+
+**Dated by the PAYMENT, not the invoice month-end.**  The card is charged early in the month
+(2026-02-04 for the `202602` invoice), so a month-end JE would leave the flat class carrying the
+whole amount for most of the month for no reason.  Crediting on the payment's own date makes the
+two exactly offset.
+
+**The month is BLOCKED unless its rows sum to a real unspread payment** -- the Siren rule: an
+amount match is evidence, where deriving the total from the rows would make a missing row
+invisible.  All nine 2026 months tied to the cent.
+
+### A blank `Property` cell is real money, and the LISTING NUMBER is the identity
+
+8 of 715 rows carry no `Property`, **$1,060.10**, and they are exactly why four months first
+looked short of their payment.  Two kinds:
+
+- **`UOM` = `Cancellation`** -- no guest, no gross, a 10% or 25% penalty rate.  4 rows, $769.80.
+- **An ordinary reservation on a listing too new to appear by name anywhere.**  4 rows, $290.30.
+
+Both still carry a `Listing Number`, so `Property` is looked up from every row in every file
+that has both -- `2704155` resolves to Elektra 703 from the files themselves.  Only when a
+number is named nowhere does `config/vrbo_listings.yml` supply it (owner-maintained: 5307470 =
+Bellevue 2323 Main, 5355662 = Yacinde E3), and a number in neither BLOCKS the month.  Every
+placement is printed, because it is the one derived field.
+
+### Names that are not a class
+
+- **Every `Cottage N` is an OSBR cottage** and rolls up to `Listings:OSBR` (owner decision
+  2026-09-28), the same lump `build_siren_cleaning` uses.
+- **A bare building name is the unit the REGISTER already uses**, not a property-level class,
+  which mostly does not exist.  Read off the very reservations in these files by their `HA-`
+  DocNumber: `Seattle 906` -> `Seattle 906 Lower` (65 existing lines, $8,362.15),
+  `Seattle 7434` -> `Seattle 7434 Whole` (10, $4,775.33).  Never from a class map -- the class
+  map is not proof a class exists.  These agree with `payout_classes.yml`, which is
+  corroboration, not the source.
+- `Poulsbo Scandinavian Retreat, 2 blocks to DT` -> `Listings:Poulsbo 563` (owner, 2026-09-28).
+
+Posted 2026-09-28: JE **119816-119824**, 9 JEs / 315 lines / **$43,120.37**.  After them 1606's
+flat class holds **$793.30** for 2026 and the listings hold $43,258.63.
+
+### There is MORE THAN ONE VRBO account (2026-09-28)
+
+The `$793.30` of "small monthly charges no invoice row accounts for" was not a mystery: it is a
+**second VRBO account's entire invoice**, one per month, every row an Elektra unit.  Each of its
+nine 2026 invoices matches one of those nine small card charges EXACTLY and uniquely.
+
+    inputs/Invoice_payment/vrbo_invoices/vacation/   9 invoices, 43,120.37   (the big charge)
+    inputs/Invoice_payment/vrbo_invoices/elektra/    9 invoices,    793.30   (the small one)
+
+The builder reads `rglob("*.csv")`, so files may sit directly under the root or one level down,
+and **the folder name IS the account**.  The listing# -> property map is built across ALL files
+of every account on purpose: a listing named in one account's file places a blank row in
+another's, and there is no reason to withhold that evidence.
+
+**The PERIOD comes from the matched PAYMENT, never the filename.**  The `elektra` files are named
+`VHA13B<invoice>.csv` with no period at all, where the `vacation` ones carry `-YYYYMM`.  The
+charge is what the books must agree with and it dates itself, so the payment decides; a filename
+label that disagrees is printed as a NOTE rather than obeyed.  A non-unique amount match is
+REFUSED -- two accounts billing the same total in one month would otherwise swap silently -- and
+files are matched biggest-first so a collision blocks the small one instead of stealing from it.
+
+**DocNumbers name the account**: `VrboCM_ELK_<YYYY-MM>`.  The `vacation` account keeps the
+unprefixed `VrboCM_<YYYY-MM>` because its nine JEs were posted before the second account was
+known, and renaming nine posted JEs is not worth the churn -- `ACCOUNT_CODE` maps `vacation` to
+`None` for exactly that reason.
+
+Posted 2026-09-28: `elektra` JE **119829-119837**, 9 JEs / 20 lines / **$793.30**.  After them
+1606's flat class is **0.00 for 2026** and $43,775.41 sits on listings.
+
+**Two things still on the flat class:**
+- **2024 and 2025 are untouched**: $27,258.52 and $33,650.76, no invoice files supplied.  The
+  builder handles them the moment the CSVs arrive -- for BOTH accounts, so expect two series.
+### `Credit: true` on a Purchase INVERTS it, and `Amount` does not say so
+
+A card refund is a `Purchase` with **`Credit: true`** and a POSITIVE `Amount`.  Summing `Amount`
+without reading that flag counts a refund as a charge, which is a sign error of twice the figure.
+
+It cost a wrong call here.  Purchase 96254 (2026-02-08, $138.26, class `Listings:Bellevue 10409`,
+`homeaway - Akeylee West - HA-HjNpB…`) was reported as a second CHARGE, making the 202602
+cancellation `HA-HJNPBXM` look like it was on the books twice.  It is the **credit VRBO gave back**
+for that cancellation.  So the invoice charged $138.26, `VrboCM_2026-02` moved it to Bellevue
+10409, and the refund is already there too -- that reservation nets to **$0.00** and nothing is
+duplicated.  **Any report over `Purchase` lines must carry `-1 if p.get("Credit") else 1`**;
+`fixes/*` that only repoint a class or account are unaffected, but anything that adds up is not.
+
+Only one VRBO-commission Purchase in 2024-2026 is a credit, so the flag is easy to forget and
+easy to get wrong.  1606 with it respected:
+
+      year      flat class      listings         total
+      2024       27,258.52          0.00     27,258.52
+      2025       33,650.76          0.00     33,650.76
+      2026          793.30     42,982.11     43,775.41
