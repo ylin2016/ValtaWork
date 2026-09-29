@@ -103,3 +103,24 @@ expiry. All data calls hit `https://open-api.guesty.com/v1`.
 
 Docs: <https://open-api-docs.guesty.com/docs/authentication> ·
 <https://open-api-docs.guesty.com/docs/create-a-property>
+
+## 6. Compare Guesty descriptions with the local Word copies
+
+```bash
+python -m src.compare_descriptions            # pulls Guesty (read-only), active listings
+python -m src.compare_descriptions --cached   # reuse data/desc_listings.json
+python -m src.compare_descriptions --all      # include inactive listings
+```
+
+Finds every `*Listing Description*.docx` under `** Properties ** -- Valta`
+(closed properties excluded), splits it on the Guesty headings (Summary, The
+Space, The Neighborhood, Guest Access, Getting Around, Other things to note,
+Interaction with Guests, House Rules, plus the Title/Listing name line) and
+diffs each field against the listing's `publicDescription`. Whitespace, curly
+quotes and dashes are ignored; punctuation/case-only changes are reported as
+"cosmetic only". House Rules are not kept in the Word docs, so they're listed
+but not counted. When a listing has several docs (STR + CH LTR), the closest
+one is compared and the others are shown as alternates.
+
+Writes `Output/description_diff_<date>.xlsx` (Summary / Differences /
+All fields / Unmatched local docs) and a `.html` with highlighted word diffs.

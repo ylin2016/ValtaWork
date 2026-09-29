@@ -3,3 +3,4 @@ python-dotenv
 pandas
 openpyxl
 PyYAML
+python-docx>=1.1
