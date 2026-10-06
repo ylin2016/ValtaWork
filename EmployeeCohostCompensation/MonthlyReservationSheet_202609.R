@@ -64,8 +64,8 @@ write.xlsx(all_sheets,ownerfile,
 
 confirmed = confirmed %>% 
   filter(!Confirmation.Code %in% ownerstay$Confirmation.Code) 
-dim(confirmed) #434
-cancelled = cancelled_input(fileloc,filemonth) #122
+dim(confirmed) #439
+cancelled = cancelled_input(fileloc,filemonth) #125
 dim(cancelled)
 
 
@@ -76,7 +76,7 @@ dups = duplicated_reservations_lastmonth(confirmed,prior1="2026-08-01")
 #combResvId = c(combResvId,dups[c(1,2)])
 #only 3 need to combine
 confirmed = update_duplicated_confirmed(confirmed,combResvId[1])
-dim(confirmed) #433
+dim(confirmed) #438
 
 ##-----------------------------------------------------------------------------------
 ######## add trip data ########
@@ -95,7 +95,7 @@ trips.all = combine_trips(trips)#,inspections)
 View(trips.all) #20
 ##-----------------------------------------------------------------------------------
 reservations = combine_reservations(confirmed,cancelled)
-dim(reservations) #764
+dim(reservations) #563
 
 #==========No recorded backup this month   =============================
 # tmp = add_backups(fileloc, filemonth,reservations,employee)
@@ -106,7 +106,7 @@ dim(reservations) #764
 ## Combine all 
 ##-----------------------------------------------------------------------------------
 reservations =combine_reservations_trips_backup(reservations,trips.all)
-length(unique(reservations$Listing)) #97
+length(unique(reservations$Listing)) #94
 
 ##summary sheets:
 output = summary_sheets(reservations)
