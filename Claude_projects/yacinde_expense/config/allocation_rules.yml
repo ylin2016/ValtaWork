@@ -11,7 +11,7 @@ inputs:
 # Reporting period: stays are counted by CHECK-OUT date (the turnover being cleaned).
 period:
   start: 2026-07-01             # confirmed by user 2026-09-16
-  end: 2026-09-15
+  end: 2026-09-30             # extended when AA invoice 1204 (Sep 16-30) arrived
 
 # Individual (timeshare) owner weeks from the fractional master are added as stays when no booking
 # source has them, starting with the week that begins on this date (06/26-07/03 covers early July).
@@ -24,7 +24,12 @@ migration_cutoff: 2026-07-30
 supplies:
   rate_per_guest_night: 0.9      # guests * nights * rate; timeshare stays use max sleeps instead of guests
   hoa_pays_from: 2026-07-12      # HOA bears supplies for every booking checking in on/after this date
-  source_workbook: output/yacinde_expense_allocation_20260701_20260915.xlsx   # supplies per stay, for extracts without the column
+  source_workbook: output/yacinde_expense_allocation_20260701_20260930.xlsx   # supplies per stay, for extracts without the column
+
+# A clean the bearing party is charged less for than the cleaner billed; the company absorbs the rest.
+# Keyed by AA invoice number (one clean per invoice here). User, 2026-10-02.
+cleaning_caps:
+  "1173": 180        # B6 intensive smoke clean, $250 billed: NuGrowth is charged $180, $70 on the company
 
 # Cleans merge to stays by checkout: same unit, clean on the checkout date or up to N days after it.
 cleaning_match:
@@ -38,13 +43,14 @@ parties:
   Whole owner: NuGrowth                 # B6, C1, E1, E3, F5 - wholly owned by NuGrowth Chelan LLC.
 
 # HOA-covered cleaning. Cleans outside these rules are paid by the allocated party.
-#  - Whole-owner units: HOA pays the first N cleans of each calendar month (by clean date).
+#  - Whole-ownership units (B6 C1 E1 E3 F5): the HOA covers none. Their owner, NuGrowth, bears every
+#    clean (user, 2026-09-25). Set free_cleans_per_month above 0 to give them HOA cleans per month again.
 #  - Fractional units (B1 B2 B3 B4 F1): every fraction week (any owner: Individual, Developer, LLC)
 #    gets N HOA cleans (~4/unit/month); further cleans that week are paid by the week's owner.
 #    A clean belongs to the week with week_start < date <= week_end. Weeks with no invoiced clean get a $0 HOA row.
 hoa_cleaning:
   paid_by: HOA
-  free_cleans_per_month: 4
+  free_cleans_per_month: 0
   fraction_free_cleans_per_week: 1
   scope: unit                           # confirmed by user 2026-09-16: 4 per unit per month
   exclude_invoices: ["1173"]            # special cleans (B6 intensive/smoke) never count toward or get HOA coverage

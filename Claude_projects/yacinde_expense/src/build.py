@@ -321,7 +321,8 @@ def fraction_weeks(cl: pd.DataFrame, master: pd.DataFrame, start: pd.Timestamp, 
 def assign_cleaning_paid(cl: pd.DataFrame, hoa: dict) -> pd.DataFrame:
     """Add cleaning_paid_by / hoa_paid / owner_paid / hoa_rule.
 
-    * Whole-owner units: HOA pays the first N eligible cleans per calendar month (per unit).
+    * Whole-owner units: HOA pays the first N eligible cleans per calendar month (per unit);
+      with N = 0 (the current rule) their owner bears every clean.
     * Fractional units: every fraction week (any owner) gets N HOA cleans (the first N by date);
       further cleans that week are paid by the week's owner.
     * Everything else is paid by the allocated party.
@@ -340,7 +341,9 @@ def assign_cleaning_paid(cl: pd.DataFrame, hoa: dict) -> pd.DataFrame:
 
     cl["hoa_clean_seq"] = pd.concat([seq_whole, seq_ts])        # NaN for cleans outside both rules
     cl["hoa_rule"] = None
-    cl.loc[whole.index, "hoa_rule"] = f"whole owner: first {hoa['free_cleans_per_month']}/month"
+    n_whole = hoa["free_cleans_per_month"]
+    cl.loc[whole.index, "hoa_rule"] = (f"whole owner: first {n_whole}/month" if n_whole
+                                       else "whole owner: owner pays all")
     cl.loc[ts.index, "hoa_rule"] = f"fraction: first {hoa['fraction_free_cleans_per_week']}/fraction week"
     hoa_paid = (cl.index.isin(whole.index) & (cl.hoa_clean_seq <= hoa["free_cleans_per_month"])) | \
                (cl.index.isin(ts.index) & (cl.hoa_clean_seq <= hoa["fraction_free_cleans_per_week"]))

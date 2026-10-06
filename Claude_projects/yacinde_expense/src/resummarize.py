@@ -3,7 +3,7 @@
 The combined tab is the source of truth and is left exactly as it is. Every other derived tab
 (Summary, By Owner, Whole Owner Cleans by Month, Fraction Cleans by Month, one Invoice tab per party
 in INVOICE_PARTIES (cleaning lines that carry an amount - $0 rows such as the uninvoiced fraction
-weeks are left off), Invoice_HOA_supply (HOA's supplies, one line per booking), Cleaning Allocation,
+weeks are left off), Invoice_<party>_supply (that party's supplies, one line per booking), Cleaning Allocation,
 Exceptions) is regenerated from it. Bookings, Dedup Log and Prev Holds Excluded are not touched.
 
 Reading the corrected tab:
@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import datetime
+import re
 from pathlib import Path
 
 import openpyxl
@@ -36,7 +37,9 @@ COMBINED = "Bookings + Cleaning"
 REBUILT = ["Summary", "By Owner", "Whole Owner Cleans by Month", "Fraction Cleans by Month",
            "Cleaning Allocation", "Exceptions"]
 INVOICE_PARTIES = ["HOA", "NuGrowth", "Yacinde Holdings"]      # one cleaning invoice tab each
-SUPPLY_TAB = "Invoice_HOA_supply"                              # HOA's supplies, one line per booking
+COMPANY = "Company (not billed out)"           # cleaning_caps: the part no party is charged
+def supply_tab(party: str) -> str:                             # that party's supplies, one line per booking
+    return f"Invoice_{party.replace(' ', '_')}_supply"
 
 
 def source_sheet(sheets: dict[str, pd.DataFrame]) -> str:
@@ -59,8 +62,9 @@ def _excel_date(v):
 def add_supplies(d: pd.DataFrame, cfg: dict) -> pd.DataFrame:
     """Fill stay_supplies_cost (from the full workbook when the extract lacks it) and say who pays it.
 
-    HOA bears the supplies of every booking checking in on/after `supplies.hoa_pays_from`, whatever
-    the unit's owner or party. Stays checking in earlier are marked "not charged" and appear on no invoice.
+    From `supplies.hoa_pays_from` onward, supplies follow the unit: the whole-ownership units (B6 C1 E1
+    E3 F5) go to their owner, NuGrowth, and the fractional units go to the HOA. Stays checking in earlier
+    are marked "not charged" and appear on no invoice.
     """
     d = d.copy()
     if "stay_supply_guests" not in d:
@@ -77,7 +81,9 @@ def add_supplies(d: pd.DataFrame, cfg: dict) -> pd.DataFrame:
             print(f"WARNING: no supplies found for {int(missing.sum())} stays "
                   + ", ".join(f"{r.unit} {r.stay_check_in:%m/%d}" for r in d[missing].itertuples()))
     frm = pd.Timestamp(str(cfg["supplies"]["hoa_pays_from"]))
-    d["supplies_paid_by"] = pd.Series("HOA", index=d.index).where(d.stay_check_in >= frm, "not charged")
+    whole = d.ownership_type.eq("Whole owner") if "ownership_type" in d else pd.Series(False, index=d.index)
+    payer = d.party.where(whole, "HOA")                        # whole-ownership units: their own owner
+    d["supplies_paid_by"] = payer.where(d.stay_check_in >= frm, "not charged")
     return d
 
 
@@ -118,7 +124,11 @@ def read_combined(path: Path, cfg: dict) -> tuple[pd.DataFrame, pd.DataFrame, pd
     stays["stay_nights"] = stays.stay_nights.fillna((stays.stay_check_out - stays.stay_check_in).dt.days)
 
     cl = d[d.clean_cleaning_paid_by.notna()].copy()
-    cl["Amount"] = cl.clean_Amount.fillna(0.0)
+    cl["billed"] = cl.clean_Amount.fillna(0.0)                     # what AA billed for the clean
+    caps = {str(k): float(v) for k, v in (cfg.get("cleaning_caps") or {}).items()}
+    capped = cl["clean_Invoice #"].map(caps)                        # NaN where the invoice has no cap
+    cl["Amount"] = cl.billed.where(capped.isna(), capped.fillna(0)).clip(upper=cl.billed)
+    cl["company_absorbed"] = cl.billed - cl.Amount                 # the company bears the difference
     cl["paid_by"] = cl.clean_cleaning_paid_by
     cl["hoa_paid"] = cl.Amount.where(cl.paid_by == "HOA", 0.0)
     cl["owner_paid"] = cl.Amount - cl.hoa_paid
@@ -138,6 +148,11 @@ def build_tabs(d: pd.DataFrame, stays: pd.DataFrame, cl: pd.DataFrame, hoa: dict
                                     cleaning_cost=("Amount", "sum"))
     cc.index.name = "party"
     summary = st.join([cc, sup], how="outer").fillna(0).reset_index()
+    absorbed = cl[cl.company_absorbed > 0]
+    if len(absorbed):                                              # not billed to any party
+        summary.loc[len(summary)] = {"party": COMPANY, "cleans": len(absorbed),
+                                     "invoiced_cleans": 0, "cleaning_cost": absorbed.company_absorbed.sum()}
+        summary = summary.fillna(0)
     summary["total_cost"] = summary.supplies_cost + summary.cleaning_cost
     summary.loc[len(summary)] = ["TOTAL", *summary.iloc[:, 1:].sum().tolist()]
 
@@ -168,10 +183,13 @@ def build_tabs(d: pd.DataFrame, stays: pd.DataFrame, cl: pd.DataFrame, hoa: dict
              .rename("fraction_weeks"))
     frac_m = weeks.to_frame().join(monthly(fr), how="outer").fillna(0).reset_index()
 
-    alloc = cl[["row", "date", "unit", "clean_Invoice #", "Amount", "paid_by", "hoa_paid", "owner_paid",
+    alloc = cl[["row", "date", "unit", "clean_Invoice #", "billed", "Amount", "company_absorbed",
+                "paid_by", "hoa_paid", "owner_paid",
                 "party", "owner", "ownership_type", "week_start", "week_end", "stay_check_in", "stay_check_out",
                 "stay_guest", "clean_match", "clean_Notes", "month"]].rename(
-        columns={"row": "combined_row", "clean_Invoice #": "invoice", "paid_by": "cleaning_paid_by"})
+        columns={"row": "combined_row", "clean_Invoice #": "invoice", "paid_by": "cleaning_paid_by",
+                 "billed": "billed_by_cleaner"})          # Amount keeps its name: QBO_operations
+                                                          # (invoices/build_aa_cleaning) reads it
 
     wk = d[d.week_start.notna()].drop_duplicates(["unit", "week_start"])
     exc = []
@@ -214,22 +232,30 @@ def build_tabs(d: pd.DataFrame, stays: pd.DataFrame, cl: pd.DataFrame, hoa: dict
         inv = lines[[c for c in cols if c in lines]].rename(columns=cols).sort_values(
             ["unit", "date"], na_position="last").reset_index(drop=True)
         inv["combined_row"] = inv.combined_row.astype("Int64")
+        for i, r in lines.reset_index(drop=True).iterrows():        # note the capped lines
+            if r.company_absorbed > 0:
+                note = f"billed ${r.billed:,.2f}; ${r.company_absorbed:,.2f} borne by the company"
+                j = inv.index[(inv.combined_row == r.row)]
+                inv.loc[j, "notes"] = inv.loc[j, "notes"].fillna("").str.cat([note] * len(j), sep="; ").str.strip("; ")
         inv.loc[len(inv)] = {"unit": "TOTAL", "amount": inv.amount.sum()}   # date left blank: keeps it a date
         tabs[f"Invoice - {party}"] = inv
 
-    sup_lines = stays[(stays.supplies_paid_by == "HOA") & (stays.stay_supplies_cost > 0)].copy()
-    sup_lines["date"] = sup_lines.stay_check_out
-    sup_lines["month"] = sup_lines.stay_check_out.dt.strftime("%Y-%m")
     scols = {"date": "date", "month": "month", "unit": "unit", "owner": "owner", "ownership_type": "ownership_type",
              "week_start": "week_start", "week_end": "week_end", "stay_guest": "guest",
              "stay_check_in": "check_in", "stay_check_out": "check_out", "stay_nights": "nights",
              "stay_supply_guests": "guests", "stay_supplies_cost": "supplies_cost", "row": "combined_row"}
-    sup_inv = sup_lines[[c for c in scols if c in sup_lines]].rename(columns=scols).sort_values(
-        ["unit", "date"]).reset_index(drop=True)
-    sup_inv["combined_row"] = sup_inv.combined_row.astype("Int64")
-    sup_inv.loc[len(sup_inv)] = {"unit": "TOTAL", "guests": sup_inv.guests.sum(),
-                                 "nights": sup_inv.nights.sum(), "supplies_cost": sup_inv.supplies_cost.sum()}
-    tabs[SUPPLY_TAB] = sup_inv
+    for party in INVOICE_PARTIES:                                 # one supply tab per party that bears any
+        sup_lines = stays[(stays.supplies_paid_by == party) & (stays.stay_supplies_cost > 0)].copy()
+        if not len(sup_lines):
+            continue
+        sup_lines["date"] = sup_lines.stay_check_out
+        sup_lines["month"] = sup_lines.stay_check_out.dt.strftime("%Y-%m")
+        sup_inv = sup_lines[[c for c in scols if c in sup_lines]].rename(columns=scols).sort_values(
+            ["unit", "date"]).reset_index(drop=True)
+        sup_inv["combined_row"] = sup_inv.combined_row.astype("Int64")
+        sup_inv.loc[len(sup_inv)] = {"unit": "TOTAL", "guests": sup_inv.guests.sum(),
+                                     "nights": sup_inv.nights.sum(), "supplies_cost": sup_inv.supplies_cost.sum()}
+        tabs[supply_tab(party)] = sup_inv
 
     return {"Summary": summary, "By Owner": by_owner, "Whole Owner Cleans by Month": whole_m,
             "Fraction Cleans by Month": frac_m, **tabs,
@@ -264,19 +290,19 @@ def write_tabs(path: Path, tabs: dict[str, pd.DataFrame]) -> None:
                 if isinstance(c.value, datetime.date):
                     c.number_format = "yyyy-mm-dd"
             ws.column_dimensions[col[0].column_letter].width = min(45, max(10, *(len(str(c.value or "")) for c in col[:200])) + 2)
-    order = ["Summary", "Invoice - HOA", SUPPLY_TAB,                         # summary, invoices, source, rest
-             *(f"Invoice - {p}" for p in INVOICE_PARTIES if p != "HOA")]
+    order = [x for p in INVOICE_PARTIES for x in (f"Invoice - {p}", supply_tab(p))]   # invoices, then source
+    order = ["Summary", *order]
     rest = [n for n in wb.sheetnames if n not in order]
     wb._sheets = [wb[n] for n in order if n in wb.sheetnames] + [wb[n] for n in rest]
     wb.active = 0
     wb.save(path)
 
 
-def split_by_month(path: Path, cfg: dict) -> list[Path]:
+def split_by_month(path: Path, cfg: dict, only: list[str] | None = None) -> list[Path]:
     """Write one workbook per month, each with that month's source rows plus its own summaries.
 
     A row belongs to the month of its charge: the clean date, or the checkout / week end when there
-    is no clean. Files are named <stem minus any trailing period>_<yyyymon>.xlsx next to the original,
+    is no clean. Pass --months to write only some of them (e.g. --months 2026-07,2026-08). Files are named <stem minus any trailing period>_<yyyymon>.xlsx next to the original,
     which is left alone.
     """
     sheets = pd.read_excel(path, sheet_name=None)
@@ -287,12 +313,16 @@ def split_by_month(path: Path, cfg: dict) -> list[Path]:
         if col not in raw:
             raw.insert(raw.columns.get_loc("clean_Date"), col, d[col].values)
     month = d.clean_Date.fillna(d.stay_check_out).fillna(d.week_end).dt.strftime("%Y-%m")
-    stem = path.stem
-    for suffix in ("_2026jul_aug", f"_{path.stem.split('_')[-1]}"):                # drop an old period suffix
-        stem = stem.removesuffix(suffix)
+    parts = path.stem.split("_")                                  # drop trailing period tokens: 20260701, 2026jul, aug
+    while len(parts) > 1 and re.fullmatch(r"\d{4,8}|\d{4}[a-z]{3}|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec",
+                                          parts[-1], re.I):
+        parts.pop()
+    stem = "_".join(parts)
     out = []
     for m in sorted(month.dropna().unique()):
-        f = path.with_name(f"{stem}_{pd.Timestamp(m + '-01'):%Y%b}".lower() + ".xlsx")
+        if only and m not in only:
+            continue
+        f = path.with_name(f"{stem}_{m.replace('-', '')}.xlsx")
         with pd.ExcelWriter(f, engine="openpyxl") as xw:
             raw[month == m].to_excel(xw, sheet_name=name, index=False)
         write_tabs(f, {name: raw[month == m]})                                     # re-write with date formats
@@ -309,10 +339,11 @@ def main():
     ap.add_argument("--file", default=str(ROOT / "output" / "yacinde_expense_allocation_20260701_20260915.xlsx"))
     ap.add_argument("--split-by-month", action="store_true",
                     help="write one workbook per month instead of summarising in place")
+    ap.add_argument("--months", help="with --split-by-month: only these months, e.g. 2026-07,2026-08")
     args = ap.parse_args()
     path = Path(args.file)
     if args.split_by_month:
-        split_by_month(path, cfg)
+        split_by_month(path, cfg, args.months.split(",") if args.months else None)
         return
     d, stays, cl = read_combined(path, cfg)
     tabs = build_tabs(d, stays, cl, cfg["hoa_cleaning"])
@@ -323,8 +354,10 @@ def main():
     for party in INVOICE_PARTIES:
         inv = tabs[f"Invoice - {party}"]
         print(f"Invoice - {party}: {len(inv) - 1} lines, ${inv.amount.iloc[-1]:,.2f}")
-    sup = tabs[SUPPLY_TAB]
-    print(f"{SUPPLY_TAB}: {len(sup) - 1} bookings, ${sup.supplies_cost.iloc[-1]:,.2f}")
+    for party in INVOICE_PARTIES:
+        sup = tabs.get(supply_tab(party))
+        if sup is not None:
+            print(f"{supply_tab(party)}: {len(sup) - 1} bookings, ${sup.supplies_cost.iloc[-1]:,.2f}")
     e = tabs["Exceptions"]
     print(e.type.value_counts().to_string() if len(e) else "no exceptions")
     print(f"-> {path}")

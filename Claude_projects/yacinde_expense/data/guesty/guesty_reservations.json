@@ -4526,7 +4526,7 @@
   },
   "createdAt": "2026-09-09T03:06:42.452Z",
   "checkIn": "2026-09-11T23:00:00.000Z",
-  "checkOut": "2026-09-13T18:00:00.000Z"
+  "checkOut": "2026-09-13T17:00:00.000Z"
  },
  {
   "_id": "6a84b0b68eeec646560b2714",
@@ -4553,7 +4553,7 @@
   },
   "createdAt": "2026-08-18T19:21:26.607Z",
   "checkIn": "2026-09-12T23:00:00.000Z",
-  "checkOut": "2026-09-15T18:00:00.000Z",
+  "checkOut": "2026-09-15T17:00:00.000Z",
   "guest": {
    "_id": "6a84b0b5a216d17ed1638d35",
    "fullName": "Anna Stukov"
@@ -4635,11 +4635,7 @@
    "_id": "63d492e7dad6540043a3abd6",
    "platform": "manual",
    "limitations": {
-    "availableStatuses": [
-     "checked_in",
-     "checked_out",
-     "canceled"
-    ]
+    "availableStatuses": []
    }
   },
   "confirmationCode": "GY-AN9VjajY",
@@ -4647,7 +4643,7 @@
   "guestId": "6a6ac59ff720ad5fbcc006e5",
   "guestsCount": 4,
   "source": "owner",
-  "status": "confirmed",
+  "status": "canceled",
   "listingId": "6a506e416b8f0a00142dfbd5",
   "listing": {
    "_id": "6a506e416b8f0a00142dfbd5",
@@ -4662,7 +4658,8 @@
   "createdAt": "2026-07-30T03:31:43.867Z",
   "checkIn": "2026-09-18T23:00:00.000Z",
   "checkOut": "2026-09-25T18:00:00.000Z",
-  "nightsCount": 7
+  "nightsCount": 7,
+  "canceledAt": "2026-09-24T18:18:14.990Z"
  },
  {
   "_id": "6a6ac64dc3bdae76fb175b54",
@@ -4670,11 +4667,7 @@
    "_id": "63d492e7dad6540043a3abd6",
    "platform": "manual",
    "limitations": {
-    "availableStatuses": [
-     "checked_in",
-     "checked_out",
-     "canceled"
-    ]
+    "availableStatuses": []
    }
   },
   "confirmationCode": "GY-UJcc6BXt",
@@ -4682,7 +4675,7 @@
   "guestId": "6a6ac64cc724cb6b09a5100d",
   "guestsCount": 4,
   "source": "owner",
-  "status": "confirmed",
+  "status": "canceled",
   "listingId": "6a507a3a76749a0013d757f8",
   "listing": {
    "_id": "6a507a3a76749a0013d757f8",
@@ -4697,7 +4690,8 @@
   "guest": {
    "_id": "6a6ac64cc724cb6b09a5100d",
    "fullName": "Eric & Carrie Snell"
-  }
+  },
+  "canceledAt": "2026-09-24T18:15:08.387Z"
  },
  {
   "_id": "6a6ac75e2c6e8a81c80f327c",
@@ -4997,6 +4991,41 @@
   "canceledAt": "2026-08-19T05:18:13.868Z"
  },
  {
+  "_id": "6aac18f92cee86282e1396b5",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": [
+     "checked_in",
+     "checked_out",
+     "canceled"
+    ]
+   }
+  },
+  "confirmationCode": "GY-5VRSdUC5",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aac18f9a9766f50fa55a39d",
+  "guestsCount": 3,
+  "source": "BE-API",
+  "status": "confirmed",
+  "listingId": "6a373ba1dcac1a00138bf739",
+  "listing": {
+   "_id": "6a373ba1dcac1a00138bf739",
+   "nickname": "Yacinde E3",
+   "title": "Designer Lakefront Condo E3, Wapato Point Chelan ",
+   "accommodates": 6
+  },
+  "guest": {
+   "_id": "6aac18f9a9766f50fa55a39d",
+   "fullName": "Anurag Dikshit"
+  },
+  "createdAt": "2026-09-17T16:44:41.936Z",
+  "checkIn": "2026-09-20T23:00:00.000Z",
+  "checkOut": "2026-09-23T18:00:00.000Z",
+  "nightsCount": 3
+ },
+ {
   "_id": "6a6ace8b76c2c3a63bdfd782",
   "integration": {
    "_id": "63d492e7dad6540043a3abd6",
@@ -5134,16 +5163,43 @@
   "canceledAt": "2026-09-14T13:30:44.281Z"
  },
  {
+  "_id": "6aad927456eb63a39e6911de",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMHD29SKJP",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aad9273aa7fe4d8469c3292",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 3,
+  "listingId": "6a543fc682d8130013cd8faf",
+  "listing": {
+   "_id": "6a543fc682d8130013cd8faf",
+   "nickname": "Yacinde F5",
+   "title": "Romantic Lakefront Condo F5 + Pool - Wapato Chelan",
+   "accommodates": 4
+  },
+  "createdAt": "2026-09-18T19:35:16.556Z",
+  "checkIn": "2026-09-24T23:00:00.000Z",
+  "checkOut": "2026-09-27T17:00:00.000Z",
+  "guest": {
+   "_id": "6aad9273aa7fe4d8469c3292",
+   "fullName": "Arvind Bhullar"
+  }
+ },
+ {
   "_id": "6aa2dd38ee58687169fbe8c0",
   "integration": {
    "_id": "63d492e7dad6540043a3abd6",
    "platform": "manual",
    "limitations": {
-    "availableStatuses": [
-     "checked_in",
-     "checked_out",
-     "canceled"
-    ]
+    "availableStatuses": []
    }
   },
   "confirmationCode": "GY-fddPMsfu",
@@ -5151,7 +5207,7 @@
   "guestId": "6aa2dd380a2a567c2e50ebdd",
   "guestsCount": 1,
   "source": "BE-API",
-  "status": "confirmed",
+  "status": "canceled",
   "listingId": "6a507a3a76749a0013d757f8",
   "listing": {
    "_id": "6a507a3a76749a0013d757f8",
@@ -5166,7 +5222,8 @@
   "createdAt": "2026-09-10T16:39:20.567Z",
   "checkIn": "2026-09-25T23:00:00.000Z",
   "checkOut": "2026-09-28T18:00:00.000Z",
-  "nightsCount": 3
+  "nightsCount": 3,
+  "canceledAt": "2026-09-18T17:35:35.831Z"
  },
  {
   "_id": "6aaade47e75c0b7304360b3e",
@@ -5197,7 +5254,198 @@
   },
   "createdAt": "2026-09-16T18:21:59.764Z",
   "checkIn": "2026-09-25T23:00:00.000Z",
-  "checkOut": "2026-09-27T18:00:00.000Z"
+  "checkOut": "2026-09-27T17:00:00.000Z"
+ },
+ {
+  "_id": "6aaca5bc56eb63a39e55671f",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMQWZN3JMB",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aaca5bc7f43dca5f36e8650",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a506e416b8f0a00142dfbd5",
+  "listing": {
+   "_id": "6a506e416b8f0a00142dfbd5",
+   "nickname": "Yacinde B1",
+   "title": "Lakefront Condo B1  Pool in Wapato Point Chelan ",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aaca5bc7f43dca5f36e8650",
+   "fullName": "Claudine Falk"
+  },
+  "createdAt": "2026-09-18T02:45:16.858Z",
+  "checkIn": "2026-09-25T23:00:00.000Z",
+  "checkOut": "2026-09-27T17:00:00.000Z"
+ },
+ {
+  "_id": "6aadd94656eb63a39e70a9ec",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMJ9C4P9DR",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aadd9452f9d3b1265177736",
+  "guestsCount": 1,
+  "source": "airbnb2",
+  "status": "canceled",
+  "nightsCount": 2,
+  "listingId": "6a50dcbbeabda4000f6c9da7",
+  "listing": {
+   "_id": "6a50dcbbeabda4000f6c9da7",
+   "nickname": "Yacinde B4",
+   "title": "Lakefront Condo B4  Pool in Wapato Point Chelan",
+   "accommodates": 8
+  },
+  "createdAt": "2026-09-19T00:37:26.180Z",
+  "checkIn": "2026-09-25T23:00:00.000Z",
+  "checkOut": "2026-09-27T18:00:00.000Z",
+  "guest": {
+   "_id": "6aadd9452f9d3b1265177736",
+   "fullName": "Manmeet Brar"
+  },
+  "canceledAt": "2026-09-25T18:57:48.756Z"
+ },
+ {
+  "_id": "6aaeb0afe75c0b7304848e2c",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMKDRCYPZW",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aaeb0af9130216575e13399",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a507a3a76749a0013d757f8",
+  "listing": {
+   "_id": "6a507a3a76749a0013d757f8",
+   "nickname": "Yacinde B2",
+   "title": "Lakefront Condo B2  Pool in Wapato Point Chelan ",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aaeb0af9130216575e13399",
+   "fullName": "Carey Canpbell"
+  },
+  "createdAt": "2026-09-19T15:56:31.760Z",
+  "checkIn": "2026-09-25T23:00:00.000Z",
+  "checkOut": "2026-09-27T17:00:00.000Z"
+ },
+ {
+  "_id": "6aaf5df656eb63a39e8cbd4e",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMENEX8HMP",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aaf5df54f7c21e0c335a66d",
+  "guestsCount": 3,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a5431ac3cc0fa00112d37d4",
+  "listing": {
+   "_id": "6a5431ac3cc0fa00112d37d4",
+   "nickname": "Yacinde F1",
+   "title": "Modern Lakefront Condo F1 + Pool - Wapato Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aaf5df54f7c21e0c335a66d",
+   "fullName": "Naveen Akkineni"
+  },
+  "createdAt": "2026-09-20T04:15:50.499Z",
+  "checkIn": "2026-09-25T23:00:00.000Z",
+  "checkOut": "2026-09-27T17:00:00.000Z"
+ },
+ {
+  "_id": "6ab025a456eb63a39e9afa62",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMMS8WZFJC",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab025a3486d7ff9a630cb12",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a50ebd924d7930010e216e9",
+  "listing": {
+   "_id": "6a50ebd924d7930010e216e9",
+   "nickname": "Yacinde B6",
+   "title": "High-end Lakefront Condo B6 Wapato Point Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6ab025a3486d7ff9a630cb12",
+   "fullName": "Jin Zhao"
+  },
+  "createdAt": "2026-09-20T18:27:48.092Z",
+  "checkIn": "2026-09-25T23:00:00.000Z",
+  "checkOut": "2026-09-27T17:00:00.000Z"
+ },
+ {
+  "_id": "6ab19c6e61c0de11d7106c08",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": [
+     "checked_in",
+     "checked_out",
+     "canceled"
+    ]
+   }
+  },
+  "confirmationCode": "GY-Ru8hzVNH",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aa2dd380a2a567c2e50ebdd",
+  "guestsCount": 1,
+  "source": "BE-API",
+  "status": "confirmed",
+  "listingId": "6a3670d80c06220015163d61",
+  "listing": {
+   "_id": "6a3670d80c06220015163d61",
+   "nickname": "Yacinde C1",
+   "title": "Luxury Lakefront Condo C1 + BBQ in Wapato Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aa2dd380a2a567c2e50ebdd",
+   "fullName": "Richard Tift"
+  },
+  "createdAt": "2026-09-21T21:06:54.579Z",
+  "checkIn": "2026-09-25T23:00:00.000Z",
+  "checkOut": "2026-09-28T18:00:00.000Z",
+  "nightsCount": 3
  },
  {
   "_id": "6aa8fd8156eb63a39e00a026",
@@ -5228,7 +5476,613 @@
   },
   "createdAt": "2026-09-15T08:10:41.565Z",
   "checkIn": "2026-09-26T23:00:00.000Z",
-  "checkOut": "2026-09-28T18:00:00.000Z"
+  "checkOut": "2026-09-28T17:00:00.000Z"
+ },
+ {
+  "_id": "6ab47a5b5f0c2fd016ee2341",
+  "integration": {
+   "_id": "63fcf6a2a6b99f002ac8bee5",
+   "platform": "homeaway2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HA-6vxEJf3",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab47a56679140c4b54d1256",
+  "guestsCount": 2,
+  "source": "VRBO",
+  "status": "confirmed",
+  "nightsCount": 7,
+  "listingId": "6a373ba1dcac1a00138bf739",
+  "listing": {
+   "_id": "6a373ba1dcac1a00138bf739",
+   "nickname": "Yacinde E3",
+   "title": "Designer Lakefront Condo E3, Wapato Point Chelan ",
+   "accommodates": 6
+  },
+  "guest": {
+   "_id": "6ab47a56679140c4b54d1256",
+   "fullName": "Jeffrey Loth"
+  },
+  "createdAt": "2026-09-24T01:18:12.000Z",
+  "checkIn": "2026-09-26T23:00:00.000Z",
+  "checkOut": "2026-10-03T18:00:00.000Z"
+ },
+ {
+  "_id": "6ab42ec65f64a75192fc88af",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HM4WE43QDF",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab42ec57b33337c197186fb",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 3,
+  "listingId": "6a506e416b8f0a00142dfbd5",
+  "listing": {
+   "_id": "6a506e416b8f0a00142dfbd5",
+   "nickname": "Yacinde B1",
+   "title": "Lakefront Condo B1  Pool in Wapato Point Chelan ",
+   "accommodates": 4
+  },
+  "createdAt": "2026-09-23T19:55:50.297Z",
+  "checkIn": "2026-10-01T23:00:00.000Z",
+  "checkOut": "2026-10-04T18:00:00.000Z",
+  "guest": {
+   "_id": "6ab42ec57b33337c197186fb",
+   "fullName": "Susan Kutz"
+  }
+ },
+ {
+  "_id": "6aba8c2ff3d7ce36fa044385",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMR5NMCT35",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aba8c2d6dea4f9912c9a7ae",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 3,
+  "listingId": "6a543fc682d8130013cd8faf",
+  "listing": {
+   "_id": "6a543fc682d8130013cd8faf",
+   "nickname": "Yacinde F5",
+   "title": "Romantic Lakefront Condo F5 + Pool - Wapato Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aba8c2d6dea4f9912c9a7ae",
+   "fullName": "Kari Coffee"
+  },
+  "createdAt": "2026-09-28T15:47:59.246Z",
+  "checkIn": "2026-10-01T23:00:00.000Z",
+  "checkOut": "2026-10-04T17:00:00.000Z"
+ },
+ {
+  "_id": "6abaa0d0f3d7ce36fa07285e",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMEEJSBP89",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6abaa0cf387411db3aec2c22",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 3,
+  "listingId": "6a3670d80c06220015163d61",
+  "listing": {
+   "_id": "6a3670d80c06220015163d61",
+   "nickname": "Yacinde C1",
+   "title": "Luxury Lakefront Condo C1 + BBQ in Wapato Chelan",
+   "accommodates": 4
+  },
+  "createdAt": "2026-09-28T17:16:00.279Z",
+  "checkIn": "2026-10-01T23:00:00.000Z",
+  "checkOut": "2026-10-04T17:00:00.000Z",
+  "guest": {
+   "_id": "6abaa0cf387411db3aec2c22",
+   "fullName": "Jessica Young"
+  }
+ },
+ {
+  "_id": "6abdd330df82bb9ef902fd9d",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": [
+     "checked_in",
+     "checked_out",
+     "canceled"
+    ]
+   }
+  },
+  "confirmationCode": "GY-ZmhNKvkM",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6abdd32fc118765d6bb611a1",
+  "guestsCount": 2,
+  "source": "manual",
+  "status": "confirmed",
+  "listingId": "6a52743e07ad6a0013e6954c",
+  "listing": {
+   "_id": "6a52743e07ad6a0013e6954c",
+   "nickname": "Yacinde E1",
+   "title": "Luxury Condo E1 + Hot tub at Wapato Point Chelan ",
+   "accommodates": 6
+  },
+  "guest": {
+   "_id": "6abdd32fc118765d6bb611a1",
+   "fullName": "Jing Zhou"
+  },
+  "createdAt": "2026-10-01T03:27:44.077Z",
+  "checkIn": "2026-10-01T23:00:00.000Z",
+  "checkOut": "2026-10-02T17:00:00.000Z",
+  "nightsCount": 1
+ },
+ {
+  "_id": "6abdd459e0a67c5a92883795",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": [
+     "checked_in",
+     "checked_out",
+     "canceled"
+    ]
+   }
+  },
+  "confirmationCode": "GY-CjfsM9i2",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6abdd32fc118765d6bb611a1",
+  "guestsCount": 2,
+  "source": "manual",
+  "status": "confirmed",
+  "listingId": "6a50a18a6b8f0a00142ff590",
+  "listing": {
+   "_id": "6a50a18a6b8f0a00142ff590",
+   "nickname": "Yacinde B3",
+   "title": "Lakefront Condo B3  Pool in Wapato Point Chelan",
+   "accommodates": 8
+  },
+  "guest": {
+   "_id": "6abdd32fc118765d6bb611a1",
+   "fullName": "Jing Zhou"
+  },
+  "createdAt": "2026-10-01T03:32:41.467Z",
+  "checkIn": "2026-10-01T23:00:00.000Z",
+  "checkOut": "2026-10-02T17:00:00.000Z",
+  "nightsCount": 1
+ },
+ {
+  "_id": "6aaf456a56eb63a39e8b58f9",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMAYF95WJZ",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aaf4569e9aace86a77822bf",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a507a3a76749a0013d757f8",
+  "listing": {
+   "_id": "6a507a3a76749a0013d757f8",
+   "nickname": "Yacinde B2",
+   "title": "Lakefront Condo B2  Pool in Wapato Point Chelan ",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aaf4569e9aace86a77822bf",
+   "fullName": "Heidi Nunez"
+  },
+  "createdAt": "2026-09-20T02:31:06.334Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-04T18:00:00.000Z"
+ },
+ {
+  "_id": "6ab0d7c7103a0163f21f3af2",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMTHD4CM2W",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab0d7c7502c3b5f98b0069d",
+  "guestsCount": 3,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a50a18a6b8f0a00142ff590",
+  "listing": {
+   "_id": "6a50a18a6b8f0a00142ff590",
+   "nickname": "Yacinde B3",
+   "title": "Lakefront Condo B3  Pool in Wapato Point Chelan",
+   "accommodates": 8
+  },
+  "guest": {
+   "_id": "6ab0d7c7502c3b5f98b0069d",
+   "fullName": "Chenyuan Jin"
+  },
+  "createdAt": "2026-09-21T07:07:51.957Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-04T18:00:00.000Z"
+ },
+ {
+  "_id": "6ab18907eb4a98211c020c02",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMWKT4KE8A",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab18906a5030a4f28a74049",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a50ebd924d7930010e216e9",
+  "listing": {
+   "_id": "6a50ebd924d7930010e216e9",
+   "nickname": "Yacinde B6",
+   "title": "High-end Lakefront Condo B6 Wapato Point Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6ab18906a5030a4f28a74049",
+   "fullName": "Tony VanGerpen"
+  },
+  "createdAt": "2026-09-21T19:44:07.065Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-04T18:00:00.000Z"
+ },
+ {
+  "_id": "6ab1d5ee7fd6c2d830f06187",
+  "integration": {
+   "_id": "648a641a1a1f3f004b3b0575",
+   "platform": "bookingCom",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "BC-G2y79AkPL",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab1d5eddd7f9c3b2aa615bd",
+  "guestsCount": 2,
+  "source": "Booking.com",
+  "status": "canceled",
+  "nightsCount": 2,
+  "listingId": "6a3670d80c06220015163d61",
+  "listing": {
+   "_id": "6a3670d80c06220015163d61",
+   "nickname": "Yacinde C1",
+   "title": "Luxury Lakefront Condo C1 + BBQ in Wapato Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6ab1d5eddd7f9c3b2aa615bd",
+   "fullName": "Janice Gupta"
+  },
+  "createdAt": "2026-09-22T01:12:14.181Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-04T18:00:00.000Z",
+  "canceledAt": "2026-09-22T01:28:14.206Z"
+ },
+ {
+  "_id": "6ab1d92a7fd6c2d830f09903",
+  "integration": {
+   "_id": "648a641a1a1f3f004b3b0575",
+   "platform": "bookingCom",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "BC-lkYqy7XvM",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab1d5eddd7f9c3b2aa615bd",
+  "guestsCount": 2,
+  "source": "Booking.com",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a52743e07ad6a0013e6954c",
+  "listing": {
+   "_id": "6a52743e07ad6a0013e6954c",
+   "nickname": "Yacinde E1",
+   "title": "Luxury Condo E1 + Hot tub at Wapato Point Chelan ",
+   "accommodates": 6
+  },
+  "guest": {
+   "_id": "6ab1d5eddd7f9c3b2aa615bd",
+   "fullName": "Janice Gupta"
+  },
+  "createdAt": "2026-09-22T01:26:02.648Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-04T18:00:00.000Z"
+ },
+ {
+  "_id": "6ab579f7267fcb421c629a67",
+  "integration": {
+   "_id": "63fcf6a2a6b99f002ac8bee5",
+   "platform": "homeaway2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HA-FTNo5YW",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab579f3679140c4b54fd953",
+  "guestsCount": 2,
+  "source": "VRBO",
+  "status": "confirmed",
+  "nightsCount": 4,
+  "listingId": "6a5431ac3cc0fa00112d37d4",
+  "listing": {
+   "_id": "6a5431ac3cc0fa00112d37d4",
+   "nickname": "Yacinde F1",
+   "title": "Modern Lakefront Condo F1 + Pool - Wapato Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6ab579f3679140c4b54fd953",
+   "fullName": "Cassie Nichols"
+  },
+  "createdAt": "2026-09-24T19:28:50.000Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-06T17:00:00.000Z"
+ },
+ {
+  "_id": "6ab5ff16267fcb421c6e9732",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMNNQM8SFQ",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab5ff15a4ecbae091a1f5a1",
+  "guestsCount": 4,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a50dcbbeabda4000f6c9da7",
+  "listing": {
+   "_id": "6a50dcbbeabda4000f6c9da7",
+   "nickname": "Yacinde B4",
+   "title": "Lakefront Condo B4  Pool in Wapato Point Chelan",
+   "accommodates": 8
+  },
+  "guest": {
+   "_id": "6ab5ff15a4ecbae091a1f5a1",
+   "fullName": "Salena Wang"
+  },
+  "createdAt": "2026-09-25T04:56:54.247Z",
+  "checkIn": "2026-10-02T23:00:00.000Z",
+  "checkOut": "2026-10-04T17:00:00.000Z"
+ },
+ {
+  "_id": "6ab36197f198241475f286a0",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HM2YK8BCXW",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab3619672885c448ea7aa6a",
+  "guestsCount": 3,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a50dcbbeabda4000f6c9da7",
+  "listing": {
+   "_id": "6a50dcbbeabda4000f6c9da7",
+   "nickname": "Yacinde B4",
+   "title": "Lakefront Condo B4  Pool in Wapato Point Chelan",
+   "accommodates": 8
+  },
+  "createdAt": "2026-09-23T05:20:23.327Z",
+  "checkIn": "2026-10-04T23:00:00.000Z",
+  "checkOut": "2026-10-06T18:00:00.000Z",
+  "guest": {
+   "_id": "6ab3619672885c448ea7aa6a",
+   "fullName": "Chenfei Zhou"
+  }
+ },
+ {
+  "_id": "6abee482d59ddcd1e34b2f3e",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": [
+     "checked_in",
+     "checked_out",
+     "canceled"
+    ]
+   }
+  },
+  "confirmationCode": "GY-ZyPGpRKD",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6abee482cbb86f08f4a45838",
+  "guestsCount": 2,
+  "source": "owner-guest",
+  "status": "confirmed",
+  "listingId": "6a506e416b8f0a00142dfbd5",
+  "listing": {
+   "_id": "6a506e416b8f0a00142dfbd5",
+   "nickname": "Yacinde B1",
+   "title": "Lakefront Condo B1  Pool in Wapato Point Chelan ",
+   "accommodates": 4
+  },
+  "createdAt": "2026-10-01T22:53:54.766Z",
+  "checkIn": "2026-10-06T23:00:00.000Z",
+  "checkOut": "2026-10-08T17:00:00.000Z",
+  "nightsCount": 2,
+  "guest": {
+   "_id": "6abee482cbb86f08f4a45838",
+   "fullName": "Brian Walker"
+  }
+ },
+ {
+  "_id": "6ab065d9e75c0b7304a8242f",
+  "integration": {
+   "_id": "63fcf6a2a6b99f002ac8bee5",
+   "platform": "homeaway2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HA-ZVKkyg8",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab065d15dd783b4b2f6b7d0",
+  "guestsCount": 4,
+  "source": "VRBO",
+  "status": "confirmed",
+  "nightsCount": 3,
+  "listingId": "6a52743e07ad6a0013e6954c",
+  "listing": {
+   "_id": "6a52743e07ad6a0013e6954c",
+   "nickname": "Yacinde E1",
+   "title": "Luxury Condo E1 + Hot tub at Wapato Point Chelan ",
+   "accommodates": 6
+  },
+  "guest": {
+   "_id": "6ab065d15dd783b4b2f6b7d0",
+   "fullName": "mike franich"
+  },
+  "createdAt": "2026-09-20T23:01:34.000Z",
+  "checkIn": "2026-10-08T23:00:00.000Z",
+  "checkOut": "2026-10-11T18:00:00.000Z"
+ },
+ {
+  "_id": "6aba8e2fa05819ae583110f1",
+  "integration": {
+   "_id": "6481680e9f3a8ca3b6d848b5",
+   "platform": "expedia",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "EXP-2569317718-7K6V5",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aba8e25387411db3aebafc7",
+  "guestsCount": 4,
+  "source": "expedia",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a50ebd924d7930010e216e9",
+  "listing": {
+   "_id": "6a50ebd924d7930010e216e9",
+   "nickname": "Yacinde B6",
+   "title": "High-end Lakefront Condo B6 Wapato Point Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aba8e25387411db3aebafc7",
+   "fullName": "jed hoffmann"
+  },
+  "createdAt": "2026-09-28T15:56:00.000Z",
+  "checkIn": "2026-10-09T23:00:00.000Z",
+  "checkOut": "2026-10-11T17:00:00.000Z"
+ },
+ {
+  "_id": "6abe6522cc48f69d8a3c6b39",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6abe6522cbb86f08f4a13ada",
+  "guestsCount": 4,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 3,
+  "listingId": "6a3670d80c06220015163d61",
+  "listing": {
+   "_id": "6a3670d80c06220015163d61",
+   "nickname": "Yacinde C1",
+   "title": "Luxury Lakefront Condo C1 + BBQ in Wapato Chelan",
+   "accommodates": 4
+  },
+  "createdAt": "2026-10-01T13:50:26.229Z",
+  "checkIn": "2026-10-09T23:00:00.000Z",
+  "checkOut": "2026-10-12T17:00:00.000Z",
+  "confirmationCode": "HMAXXC2X24",
+  "guest": {
+   "_id": "6abe6522cbb86f08f4a13ada",
+   "fullName": "Alexandria Robinett"
+  }
+ },
+ {
+  "_id": "6abedf11568659d45bea1490",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": [
+     "checked_in",
+     "checked_out",
+     "canceled"
+    ]
+   }
+  },
+  "confirmationCode": "GY-V6Te2HWz",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6abedf11f7d1497a75bf3d49",
+  "guestsCount": 1,
+  "source": "owner-guest",
+  "status": "confirmed",
+  "listingId": "6a50a18a6b8f0a00142ff590",
+  "listing": {
+   "_id": "6a50a18a6b8f0a00142ff590",
+   "nickname": "Yacinde B3",
+   "title": "Lakefront Condo B3  Pool in Wapato Point Chelan",
+   "accommodates": 8
+  },
+  "guest": {
+   "_id": "6abedf11f7d1497a75bf3d49",
+   "fullName": "Kamil  Slusarski"
+  },
+  "createdAt": "2026-10-01T22:30:41.408Z",
+  "checkIn": "2026-10-09T23:00:00.000Z",
+  "checkOut": "2026-10-11T17:00:00.000Z",
+  "nightsCount": 2
  },
  {
   "_id": "6a6acdbb37acd6cbed74fde9",
@@ -5264,6 +6118,68 @@
   "checkIn": "2026-10-10T23:00:00.000Z",
   "checkOut": "2026-10-12T18:00:00.000Z",
   "nightsCount": 2
+ },
+ {
+  "_id": "6ab9e79e5f0c2fd0165e108d",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HMQBHENA4Z",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6ab9e79ea4ecbae091ac8991",
+  "guestsCount": 1,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a506e416b8f0a00142dfbd5",
+  "listing": {
+   "_id": "6a506e416b8f0a00142dfbd5",
+   "nickname": "Yacinde B1",
+   "title": "Lakefront Condo B1  Pool in Wapato Point Chelan ",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6ab9e79ea4ecbae091ac8991",
+   "fullName": "Ritesh Varyani"
+  },
+  "createdAt": "2026-09-28T04:05:50.781Z",
+  "checkIn": "2026-10-10T23:00:00.000Z",
+  "checkOut": "2026-10-12T17:00:00.000Z"
+ },
+ {
+  "_id": "6aab50fbe75c0b730440ee42",
+  "integration": {
+   "_id": "63fce6d94f91fd0037033571",
+   "platform": "airbnb2",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "HM9FZJTYN3",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aab50fbe9aace86a76d6c22",
+  "guestsCount": 2,
+  "source": "airbnb2",
+  "status": "confirmed",
+  "nightsCount": 2,
+  "listingId": "6a5431ac3cc0fa00112d37d4",
+  "listing": {
+   "_id": "6a5431ac3cc0fa00112d37d4",
+   "nickname": "Yacinde F1",
+   "title": "Modern Lakefront Condo F1 + Pool - Wapato Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aab50fbe9aace86a76d6c22",
+   "fullName": "Samuel Rice"
+  },
+  "createdAt": "2026-09-17T02:31:23.640Z",
+  "checkIn": "2026-10-14T23:00:00.000Z",
+  "checkOut": "2026-10-16T18:00:00.000Z"
  },
  {
   "_id": "6a693f0c10843acd4a571fc5",
@@ -5676,6 +6592,38 @@
   "checkIn": "2026-11-09T00:00:00.000Z",
   "checkOut": "2026-11-10T19:00:00.000Z",
   "nightsCount": 2
+ },
+ {
+  "_id": "6aac346cd13527f726974fea",
+  "integration": {
+   "_id": "63d492e7dad6540043a3abd6",
+   "platform": "manual",
+   "limitations": {
+    "availableStatuses": []
+   }
+  },
+  "confirmationCode": "GY-jZLU8cY2",
+  "accountId": "63c8437baf657e004a999f00",
+  "guestId": "6aac327f7f43dca5f36d104c",
+  "guestsCount": 2,
+  "source": "BE-API",
+  "status": "canceled",
+  "listingId": "6a50ebd924d7930010e216e9",
+  "listing": {
+   "_id": "6a50ebd924d7930010e216e9",
+   "nickname": "Yacinde B6",
+   "title": "High-end Lakefront Condo B6 Wapato Point Chelan",
+   "accommodates": 4
+  },
+  "guest": {
+   "_id": "6aac327f7f43dca5f36d104c",
+   "fullName": "Howard Huang"
+  },
+  "createdAt": "2026-09-17T18:41:48.367Z",
+  "checkIn": "2026-11-11T00:00:00.000Z",
+  "checkOut": "2026-11-12T19:00:00.000Z",
+  "nightsCount": 2,
+  "canceledAt": "2026-09-17T19:14:07.594Z"
  },
  {
   "_id": "6a6ac67ad64419e30b0a6463",
