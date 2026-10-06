@@ -76,3 +76,17 @@ skip_sources: [owner, owner-guest]
 
 supplies_rate_per_guest_night: 0.9
 supplies_max_nights: 60
+
+# --- payments + payout JEs (src/build_payouts) --------------------------------------
+# Two-step model: Payment Dr clearing / Cr A/R per reservation; payout JE Dr Chase 9967 /
+# Cr clearing per payout. Hopper stays manual (owner, 2026-10-06) -- not built here.
+payouts:
+  bank: "Chase Trust Checking 9967 - STR"
+  clearing:
+    airbnb: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Airbnb"
+    bookingcom: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Booking.com"
+    stripe: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Stripe"
+  resolutions: "Trust Liabilities:Owner Payables:1A - Net Earnings:Resolutions"
+  stripe_fee: "Fee - Processing & Commission:Fee - Stripe Processing"
+  commission_revenue: "Management Commissions Revenue"
+  company_class: "Valta Realty"

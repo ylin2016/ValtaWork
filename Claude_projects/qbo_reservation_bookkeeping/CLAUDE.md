@@ -21,7 +21,7 @@ spec â€” DocNumbers, customers, items, accounts, classes, descriptions, signs â€
 the objects VRP actually posted, with worked samples that tie to the cent. Match it exactly
 unless a decision below says otherwise.
 
-Status (2026-10-04): **Invoice + Bills builder built (dry run only, nothing posted).** Parity vs
+Status (2026-10-06): **backfill POSTED.** 154 reservations written 2026-10-06 (76 new invoices + customers, 26 invoice updates, 10 voids, 177 Bill creates, 59 updates, 16 zeroed); re-snapshot + rebuild = 249 SAME. Held: HA-CUd9gPx ($200 kept) and HA-31ztBpZ ($200 refunded) -- voids blocked by a linked payment; month-end step. Next: payments + payout JEs. Parity vs
 VRP on 470 reservations it already posted: 383/392 invoices, 362/375 commission, 213/214 supplies,
 62/64 Booking + 62/63 VRBO fee Bills identical; every residual explained (VRP stale, Stripe
 policy). Next: owner review of the open questions in the build output, the poster (`--confirm`),
@@ -33,6 +33,15 @@ then payments + payout JEs (Airbnb + itemized Stripe payout files are in `inputs
     python -m src.qbo_snapshot          # read-only: VRP's Invoices/Bills for those codes
     python -m src.build_invoices        # changed since VRP's cutoff -> review/plan|reservations|lines_*
     python -m src.build_invoices --parity   # rebuild what VRP posted and diff -> review/parity_*
+    python -m src.post_invoices [--code X ...]          # DRY RUN of the latest plan (live checks)
+    python -m src.post_invoices [--code X ...] --confirm   # write; appends review/CHANGE_LOG.csv
+
+`post_invoices` posts the PLAN FILE the owner reviewed, never a rebuild. It refuses a CREATE
+whose DocNumber now exists, an UPDATE/ZERO/VOID whose SyncToken moved since the snapshot
+(rebuild the plan), and a VOID with a payment linked (month-end cancellation step). First
+live post 2026-10-05: HMHTND2XXN (Invoice 120128, Bills 120129/120130) -- format verified.
+    python -m src.payout_inbox [--dry-run]  # inputs/inbox/ Airbnb + Booking.com exports -> new,
+                                            # verified payouts in inputs/airbnb|bookingcom + payout_ledger.csv
 
 Both siblings call their package `src`; `src/bridge.py` loads them as `qbo_ops` / `osw`.
 

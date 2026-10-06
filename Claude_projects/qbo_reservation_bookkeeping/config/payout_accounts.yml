@@ -1,0 +1,13 @@
+# Payout-file sources read by `python -m src.payout_inbox`.
+
+# Payouts dated before this belong to VRP's era -- ignored even if an export contains them
+# (Airbnb's Export CSV always returns full history, whatever the date filter says).
+start_date: 2026-09-28
+
+# Airbnb host accounts. The export does not say which account it came from, so the inbox
+# file name must contain the alias or the id (e.g. `vacation2.csv`, `lucia_1005.csv`,
+# `airbnb_86206483.csv`). Failing that, the account is inferred from listings already seen.
+airbnb_accounts:
+  vacation: 158715708
+  vacation2: 435615827
+  lucia: 86206483

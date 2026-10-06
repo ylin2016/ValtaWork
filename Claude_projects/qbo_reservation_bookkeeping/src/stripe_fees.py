@@ -34,6 +34,21 @@ class StripeFiles:
     by_code: dict[str, list[str]] = field(default_factory=dict)   # code -> [ch_ ids]
 
 
+CODE_RE = re.compile(r"^(HM[A-Z0-9]{8}|[A-Z]{2,4}-[\w-]+|\d{9,11})$")
+
+
+def charge_code(row: dict) -> str:
+    """The booking a Stripe charge belongs to: the row's `Description` first.
+
+    The `confirmationCode (metadata)` column can be STALE -- Stripe reuses the customer, and
+    the metadata keeps the guest's EARLIER booking (HA-1kxAoMB, a 2025 stay, on a 2026-09-28
+    charge whose description is HA-VXElpbD). Metadata only when Description is not a code."""
+    d = (row.get("Description") or "").strip()
+    if CODE_RE.match(d):
+        return d
+    return (row.get("confirmationCode (metadata)") or d).strip()
+
+
 @lru_cache(maxsize=1)
 def load() -> StripeFiles:
     sf = StripeFiles()
@@ -42,7 +57,7 @@ def load() -> StripeFiles:
             for row in csv.DictReader(fh):
                 typ, cid = row["Type"], row["ID"]
                 if typ == "Charge":
-                    code = (row.get("confirmationCode (metadata)") or row.get("Description") or "").strip()
+                    code = charge_code(row)
                     sf.charges[cid] = {"code": code, "amount": float(row["Amount"]),
                                        "fees": float(row["Fees"]), "file": p.name}
                     sf.by_code.setdefault(code, []).append(cid)

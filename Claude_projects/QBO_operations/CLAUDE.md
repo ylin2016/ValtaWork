@@ -4,8 +4,12 @@ Guidance for Claude Code working in this project.
 
 ## What this is
 
-The **only** project permitted to write to the Valta Realty QuickBooks company file
-(realm `9130356236278636`). It posts channel payout journal entries, creates and
+One of TWO projects permitted to write to the Valta Realty QuickBooks company file
+(realm `9130356236278636`). The second, from 2026-10-05, is `../qbo_reservation_bookkeeping`
+(VRP's replacement: reservation Invoices, $0 fee Bills, payments/payout JEs per reservation).
+It writes through THIS project's client and token file (imported, never copied) and follows
+the same build -> review CSV -> `--confirm` rule; its writes are logged in its own
+`review/CHANGE_LOG.csv`. It posts channel payout journal entries, creates and
 repoints reservation payments, and recategorises account lines.
 
 `../Owner_statement_whole` is the owner-statement pipeline; it **reads** the same
