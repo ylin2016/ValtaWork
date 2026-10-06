@@ -400,7 +400,87 @@ absolutely above -- read them together, not separately:
 
 Posted 2026-09-19: Purchase 118594, INV1200, $4,500.00 over 25 lines, all on the receivable.
 The Zelle reference reads `..._4680_4500` while both the sheet and the allocation say
-$4,500.00 -- **open**: if AA's paper invoice is $4,680.00 a 26th clean is missing from both.
+$4,500.00 -- **closed 2026-10-02**: AA's paper invoice IS $4,680.00 over 26 cleans, and the 26th
+(F1 on 09/08) was deducted and never paid -- nothing checked out of F1 that day and the week was
+cleaned on 09/11.  The expense is right at $4,500.00; the owner's cleaning records now flag that
+line NOT PAID.
+
+### `--from-allocation`: an invoice with no bank row yet
+
+`invoices/build_aa_cleaning --invoice 1204 --from-allocation --txndate 2026-10-02` builds the
+same review CSV with no expense sheet at all, for an invoice that has not been paid.  There is
+then no `Category` column to outrank anything, so the workbook decides every line.  It also
+follows the 2026-09-28 shape, which is what the posted expenses now carry: the account is always
+`Cleaning Expense - Owner` and the CLASS says who bears the clean.  Several workbooks hold the
+same invoice (a month's report and the full-period file it was split from), so the most recently
+written one wins outright -- merging them would book every clean twice.
+
+Posted 2026-10-02: Purchase 120062, `20261002_INV1204_3860`, 22 lines -- HOA $1,700.00
+flat-classed, owners $2,160.00 on unit classes.  **It was posted BEFORE the payment**, on the
+owner's instruction: there is no bank line to match until the Zelle goes out, so the trust shows
+the cash gone early.  Move its TxnDate to the real payment date when it lands.
+
+### Keeping a posted expense in step with a corrected allocation
+
+`fixes/yacinde_clean_class_align --purchase <Id>` sets each cleaning line's CLASS to the one the
+workbook's party implies -- the flat `Yacinde HOA` for the HOA's cleans, the unit's listing class
+for an owner's -- in both directions, per line.  `yacinde_cleaning_all_owner` moves every
+flat-classed line and `yacinde_hoa_reclass` moves a named total the other way; neither can follow
+a workbook line by line, which is what a corrected allocation needs.  Pairing is EXACT on
+(date, unit, amount) and any unpaired line blocks the Purchase: a dropped line there would mean
+the books and the workbook disagree about what the clean IS, which a class change must not paper
+over.  Only `ClassRef` changes, fingerprinted before and after.
+
+Ran 2026-10-02 on 118594: 3 B3 cleans, $540.00, off the flat class onto `Yacinde B3`, because the
+corrected workbook gives them to Yacinde Holdings where the expense sheet had put all 25 on the
+HOA.  118594 now reads HOA $1,440.00 / NuGrowth $2,520.00 / Yacinde Holdings $540.00, matching
+the allocation exactly.
+
+**`hoa_receivable_yacinde` no longer resolves.** `HOA Receivable - Yacinde` is not in the chart
+of accounts any more (nothing matches `%HOA Receivable%`), so `Resolver.account()` returns None
+for it. Every Yacinde cleaning line is on `Cleaning Expense - Owner` and the class carries the
+split, which is why `--from-allocation` and `yacinde_clean_class_align` treat the receivable as
+optional. Anything still written to assume that account exists will exit; check what the HOA
+invoice item (182) credits now before relying on the receivable as the control account.
+
+Posted 2026-10-02: Invoice 120063, `HOA-2026-09`, $3,140.00 over 18 lines, all flat-classed --
+the same figure the two September documents put on the flat class ($1,440.00 + $1,700.00), so
+September's flat-class cleaning nets to zero.
+
+Two things `invoices/hoa_cleaning` had gone stale on, both fixed 2026-10-02:
+
+- **Item 182 is now `Owner Charges:HOA - Cleaning`** (it was `... - Cleaning Fee`). The constant
+  is updated; never reach for `--create-missing` when the name fails, it would raise a second
+  item against the same account.
+- **It no longer demands the receivable exists.** An invoice LINE has no account of its own, so
+  the credit account is read off the ITEM and only has to be a non-income account; the script
+  aborted outright while `HOA Receivable - Yacinde` was in its preflight.
+
+### Expense -> Bill, when the cost belongs to a month the cash does not
+
+`fixes/expense_to_bill` is the opposite of `bill_to_expense`: it recreates an Expense as a Bill,
+line for line, so the cost lands on the Bill's date and the cash moves separately. Owner
+request 2026-10-02, to get both September AA invoices into September:
+
+    Expense 120062  20261002_INV1204_3860  2026-10-02  ->  Bill 120064  YacindeCL_1204  2026-09-30
+    Expense 118594  20260917_INV1200_4500  2026-09-17  ->  Bill 120065  YacindeCL_1200  2026-09-15
+
+Both bills are posted and mirror their Expense exactly -- same 22 and 25 lines, same accounts,
+same classes, subtotals checked per (account, class) before anything was kept. **The owner
+deletes the two Expenses in the UI** (this project does not delete), and until they do, September
+carries the 1200 cleaning twice and October the 1204 cleaning twice.
+
+**The 1200 payment has to wait for that delete.** 118594's cash really did leave on 09/17, so
+Bill 120065 needs a BillPayment (Check, Chase Trust 9967) carrying DocNumber
+`20260917_INV1200_4500` -- the reference the bank-feed line already has. QBO refuses it with
+`Duplicate Document Number Error` while the Expense still owns that number, so the order is
+delete, then:
+
+    python -m src.fixes.expense_to_bill --payment-only --bill 120065 --ids 118594 \
+        --date 2026-09-17 --docnumber 20260917_INV1200_4500 --confirm
+
+1204 needs no payment: it was never paid, and the Bill correctly shows $3,860.00 outstanding
+against AA, due 10/16.
 
 `invoices/hoa_cleaning` is the other half: one Invoice per month to Customer `Yacinde HOA`
 (100000031), one line per clean, through the Service item `Owner Charges:HOA - Cleaning Fee`

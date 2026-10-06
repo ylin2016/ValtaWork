@@ -43,14 +43,20 @@ import openpyxl
 from ..config import client, location, name as acct_name_of
 from ..paths import review_csv
 from ..qbo_client import QBOClient
-from ..resolver import Resolver
+from ..resolver import Resolver, esc
 
 CUSTOMER = "Yacinde HOA"
 HOA_CLASS = "Yacinde HOA"
-# Renamed from `HOA Reimbursement - Cleaning` after the first invoices posted (Id 182,
-# still crediting the receivable).  The old name resolves to nothing, and `--create-missing`
-# would then raise a SECOND item pointing at the same account.
-ITEM = "Owner Charges:HOA - Cleaning Fee"
+# Id 182, renamed twice: `HOA Reimbursement - Cleaning` -> `HOA - Cleaning Fee` ->
+# `HOA - Cleaning` (seen 2026-10-02).  An old name resolves to nothing, and `--create-missing`
+# would then raise a SECOND item against the same account -- so check the name, never that flag.
+#
+# What it credits moved too.  It pointed at `HOA Receivable - Yacinde`; that account is gone from
+# the chart of accounts and the item now credits `Cleaning Expense - Owner` (1678), which is where
+# the cleaning expenses sit.  That still keeps the HOA's share off the P&L and out of every owner
+# statement -- the flat `Yacinde HOA` class on both sides is what nets them against each other --
+# but the control account is now owner cleaning under the flat class, not a receivable of its own.
+ITEM = "Owner Charges:HOA - Cleaning"
 
 HOA_SHEET = "Invoice - HOA"
 WORKBOOK_DIR = Path(__file__).resolve().parents[3] / "yacinde_expense" / "output"
@@ -132,7 +138,7 @@ def build(period: str, cleans: list[dict], ids: dict, due_days: int) -> dict:
         "TxnDate": txndate,
         "DueDate": due,
         "PrivateNote": (f"Yacinde HOA share of AA Professional Cleaners cleaning, {period}. "
-                        f"Clears {acct_name_of('hoa_receivable_yacinde')}."),
+                        f"Clears the HOA's cleaning under the flat {HOA_CLASS!r} class."),
         "Line": lines,
     }
 
@@ -171,21 +177,37 @@ def main() -> None:
 
     qbo = client()
     res = Resolver(qbo)
-    acct = acct_name_of("hoa_receivable_yacinde")
     ids = {
         "customer": res.customer(CUSTOMER),
         "item": res._one("Item", "FullyQualifiedName", ITEM),
         "class": res.klass(HOA_CLASS),
         "location": res.department(location()),
-        "account": res.account(acct),
     }
+    # An invoice LINE has no account of its own: the credit account comes from the ITEM, so read
+    # it off the item rather than asserting a named one.  It used to be `HOA Receivable - Yacinde`,
+    # which no longer exists; what matters is that it is still not an income account, or recovering
+    # a cost would show up as revenue.
+    item = (qbo.query_all(f"SELECT * FROM Item WHERE Id = '{esc(ids['item'])}'", "Item")[0]
+            if ids["item"] else {})
+    credit = item.get("IncomeAccountRef") or {}
+    acct = credit.get("name") or "(none)"
+    ids["account"] = credit.get("value")
     print("resolving:")
     for k, label in (("customer", f"Customer {CUSTOMER!r}"), ("item", f"Item {ITEM!r}"),
                      ("class", f"Class {HOA_CLASS!r}"), ("location", f"Location {location()!r}"),
                      ("account", f"Account {acct!r}")):
         print(f"  {label:<62} {'Id ' + ids[k] if ids[k] else '*** MISSING ***'}")
+    if not ids["item"]:
+        sys.exit(f"ABORT — item {ITEM!r} does not exist; check its name before --create-missing, "
+                 f"which would raise a second one")
     if not ids["account"]:
-        sys.exit(f"ABORT — {acct!r} does not exist; run fixes/yacinde_hoa_split first")
+        sys.exit(f"ABORT — item {ITEM!r} credits no account")
+    kind = (qbo.query_all(f"SELECT * FROM Account WHERE Id = '{esc(ids['account'])}'",
+                          "Account")[0].get("AccountType") or "")
+    if kind == "Income":
+        sys.exit(f"ABORT — item {ITEM!r} credits {acct!r}, an INCOME account: recovering a cost "
+                 f"is not revenue")
+    print(f"  the item credits {acct!r} ({kind})")
 
     prior = existing(qbo, ids["customer"])
     seen_doc = {i.get("DocNumber") for i in prior}

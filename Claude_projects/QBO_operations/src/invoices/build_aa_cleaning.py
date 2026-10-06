@@ -35,6 +35,17 @@ and `--split sheet` changes only which side wins a disagreement.
     python -m src.invoices.build_aa_cleaning --invoice 1200
     python -m src.invoices.post --all --csv review/aa_cleaning_1200.csv --confirm
 
+`--from-allocation --txndate YYYY-MM-DD` builds the same CSV with no expense sheet at all,
+for an invoice that has not been paid yet and so has no bank row to read.  There is then no
+`Category` column to outrank anything, so the workbook decides every line, and the lines carry
+the shape the posted expenses now have (owner decision 2026-09-28,
+`fixes/yacinde_cleaning_all_owner`): the account is always `Cleaning Expense - Owner` and the
+CLASS says who bears the clean -- the flat `Yacinde HOA` for the HOA's, the unit's listing class
+for an owner's.  `fixes/yacinde_clean_class_align` is what keeps an already-posted expense in
+step with the workbook afterwards.
+
+    python -m src.invoices.build_aa_cleaning --invoice 1204 --from-allocation --txndate 2026-10-02
+
 The output is the review CSV that `invoices/post` already reads, so nothing about
 posting, the duplicate check or the change log is special-cased for this vendor.
 """
@@ -59,6 +70,7 @@ BANK_ACCT = cfg_name("bank_str")
 LOCATION = location()
 
 HOA_ACCT = cfg_name("hoa_receivable_yacinde")
+HOA_CLASS = "Yacinde HOA"              # flat: the HOA's share, off every owner statement
 OWNER_ACCT = "Trust Liabilities:Owner Payables:1C - Owner Expenses:Cleaning Expense - Owner"
 
 ALLOC_DIR = Path(__file__).resolve().parents[3] / "yacinde_expense" / "output"
@@ -234,26 +246,61 @@ def main() -> None:
     ap.add_argument("--workbook", action="append", default=None,
                     help="allocation workbook (repeatable); default = yacinde_expense/output")
     ap.add_argument("--out", default=None)
+    ap.add_argument("--from-allocation", action="store_true",
+                    help="build from the allocation workbook alone, with no expense sheet "
+                         "(an invoice not yet paid); requires --invoice and --txndate")
+    ap.add_argument("--txndate", default=None, help="with --from-allocation: the expense date")
+    ap.add_argument("--payref", default=None,
+                    help="with --from-allocation: the payment reference / memo")
     ap.add_argument("--split", choices=("sheet", "allocation"), default="sheet",
                     help="who bears each clean: the expense sheet's own Category column "
                          "(default), or the allocation workbook's hoa_paid/owner_paid")
     args = ap.parse_args()
 
-    sheet, invoice, hdr = sheet_rows(Path(args.src), args.invoice)
-    if not sheet:
-        sys.exit(f"no {VENDOR} rows in {args.src}")
+    if args.from_allocation:
+        if not args.invoice or not args.txndate:
+            sys.exit("--from-allocation needs both --invoice and --txndate")
+        sheet, invoice = [], args.invoice
+        hdr = {"TxnDate": args.txndate, "Ref": args.payref or "", "JEAmount": 0.0}
+    else:
+        sheet, invoice, hdr = sheet_rows(Path(args.src), args.invoice)
+        if not sheet:
+            sys.exit(f"no {VENDOR} rows in {args.src}")
     books = [Path(p) for p in args.workbook] if args.workbook else sorted(ALLOC_DIR.glob(ALLOC_GLOB))
     books = [p for p in books if not p.name.startswith("~$")]
     if not books:
         sys.exit("no allocation workbooks found -- pass --workbook")
 
-    alloc = allocation(books, invoice)
-    print(f"AA invoice {invoice}: {len(sheet)} sheet lines, {len(alloc)} allocation cleans")
+    if args.from_allocation:
+        # Several workbooks carry the same invoice -- a month's report and the full-period file
+        # it was split from -- and with no sheet to pair against, merging them would book every
+        # clean twice.  The most recently written one wins; --workbook overrides.
+        carries = [(b, c) for b in sorted(books) if (c := allocation([b], invoice))]
+        if not carries:
+            sys.exit(f"invoice {invoice} appears in no allocation workbook")
+        carries.sort(key=lambda bc: bc[0].stat().st_mtime)
+        books, alloc = [carries[-1][0]], carries[-1][1]
+        if len(carries) > 1:
+            print(f"  workbook {books[0].name} (also in "
+                  f"{', '.join(b.name for b, _ in carries[:-1])})")
+    else:
+        alloc = allocation(books, invoice)
+    if args.from_allocation:                       # one "pair" per clean; nothing to reconcile
+        if not alloc:
+            sys.exit(f"invoice {invoice} appears in no allocation workbook")
+        print(f"AA invoice {invoice}: no expense sheet, {len(alloc)} allocation cleans")
+    else:
+        print(f"AA invoice {invoice}: {len(sheet)} sheet lines, {len(alloc)} allocation cleans")
     print(f"  allocation: HOA {sum(a['HOA'] for a in alloc):,.2f} + "
           f"owner {sum(a['Owner'] for a in alloc):,.2f} = "
           f"{sum(a['Amount'] for a in alloc):,.2f}")
 
-    pairs, unmatched, leftover, warnings = match(sheet, alloc)
+    if args.from_allocation:
+        pairs = [({"_row": 0, "Date": a["Date"], "Unit": a["Unit"], "Amount": a["Amount"],
+                   "Desc": "", "SheetAccount": ""}, a) for a in alloc]
+        unmatched, leftover, warnings = [], [], []
+    else:
+        pairs, unmatched, leftover, warnings = match(sheet, alloc)
     for s in unmatched:
         warnings.append(f"row {s['_row']}: {s['Unit']} {s['Date']} ${s['Amount']:,.2f} is on the "
                         f"expense sheet but NOT in the allocation -- line DROPPED")
@@ -267,9 +314,14 @@ def main() -> None:
         sys.exit(f"vendor {VENDOR!r} is not in this company file")
     # Every account that could reach a line, including the ones the sheet names itself:
     # a typo in that column must fail loudly here, never post to the wrong account.
-    for acct in {HOA_ACCT, OWNER_ACCT, BANK_ACCT} | {s["SheetAccount"] for s in sheet if s["SheetAccount"]}:
+    need = {OWNER_ACCT, BANK_ACCT} | {s["SheetAccount"] for s in sheet if s["SheetAccount"]}
+    if not args.from_allocation:
+        need.add(HOA_ACCT)             # the sheet path can still name the receivable
+    for acct in need:
         if res.account(acct) is None:
             sys.exit(f"account {acct!r} is not in this company file")
+    if args.from_allocation and res.klass(HOA_CLASS) is None:
+        sys.exit(f"class {HOA_CLASS!r} is not in this company file")
 
     docnum = compact_docnumber(hdr["TxnDate"], invoice, sum(s["Amount"] for s, _ in pairs))
     rows = []
@@ -283,6 +335,8 @@ def main() -> None:
                             f"line DROPPED")
             continue
         from_alloc = HOA_ACCT if a["HOA"] > 0 else OWNER_ACCT
+        if args.from_allocation:       # 2026-09-28 shape: one account, the class does the work
+            from_alloc = OWNER_ACCT
         acct = (s["SheetAccount"] or from_alloc) if args.split == "sheet" else from_alloc
         if s["SheetAccount"] and s["SheetAccount"] != from_alloc:
             kept, other = ((s["SheetAccount"], from_alloc) if args.split == "sheet"
@@ -293,7 +347,8 @@ def main() -> None:
                             f"(--split {args.split})")
         # The class map is not proof a class exists -- resolve the real FQN, which for
         # these units is two levels deep (`Listings:Yacinde NuGrowth:Yacinde E1`).
-        cls = res.klass_fqn(f"Yacinde {a['Unit']}")
+        cls = HOA_CLASS if (args.from_allocation and a["HOA"] > 0) \
+            else res.klass_fqn(f"Yacinde {a['Unit']}")
         if cls is None:
             cls = f"*** UNMAPPED Yacinde {a['Unit']} ***"
             warnings.append(f"{a['Unit']} {a['Date']}: no class resolves for "
@@ -305,6 +360,7 @@ def main() -> None:
             "Description": f"{when} Yacinde {a['Unit']} Cleaning Fee (AA INV{invoice})",
             "Category": a["Party"], "Property": f"Yacinde {a['Unit']}",
             "Invoice": f"INV{invoice}", "LumpTotal": "",
+            "Memo": (f"{VENDOR} INV{invoice} cleaning" if args.from_allocation else ""),
         })
 
     total = round(sum(float(r["Amount"]) for r in rows), 2)
@@ -318,12 +374,15 @@ def main() -> None:
     out.parent.mkdir(parents=True, exist_ok=True)
     fields = ["PayRef", "DocNumber", "TxnDate", "Vendor", "PaidFrom", "Location", "LineNum",
               "Amount", "Account", "Class", "Description", "Category", "Property", "Invoice",
-              "LumpTotal"]
+              "LumpTotal", "Memo"]
     with out.open("w", newline="", encoding="utf-8") as fh:
         w = csv.DictWriter(fh, fieldnames=fields)
         w.writeheader()
         w.writerows(rows)
 
+    if args.from_allocation:
+        print(f"  classes: {HOA_CLASS} (the HOA's) / Listings:Yacinde <unit> (an owner's); "
+              f"account {OWNER_ACCT.rsplit(':', 1)[-1]} throughout")
     split = defaultdict(float)
     for r in rows:
         split[r["Account"].rsplit(":", 1)[-1]] += float(r["Amount"])
