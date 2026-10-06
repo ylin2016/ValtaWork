@@ -1,0 +1,78 @@
+# VRP's posting format, as reverse-engineered in docs/VRP_QBO_FORMAT.md and re-checked
+# against the live company file 2026-10-04. Names, not Ids: the builder resolves every
+# one against QBO at build time and BLOCKS on any that does not resolve.
+
+location: Trust
+ap_account: "PMS Clearing – A/P"          # Id 1600 -- EN DASH
+
+# VRP's nightly batch stopped after this instant (2026-09-28 22:00 PT).
+vrp_cutoff_utc: "2026-09-29T05:00:00Z"
+
+bills:
+  commission:
+    prefix: 5W4Y
+    vendor: "Valta Realty - commission"
+    label: "Management Commission"
+    credit: "Management Commissions Revenue"
+    debit: "Trust Liabilities:Owner Payables:1A - Net Earnings:Management Commissions"
+  supplies:
+    prefix: RR26
+    vendor: "Valta Realty - Supplies"
+    label: "Supplies Charge"
+    credit: "Billable Expense Income:Billable Expense Income - Supplies Owner"
+    debit: "Trust Liabilities:Owner Payables:1C - Owner Expenses:Supplies - Reservations - Owner"
+  booking_fee:
+    prefix: 9Z5X
+    vendor: "Valta Realty - Channel Fee"
+    label: "Booking.com channel fee"
+    credit: "Billable Expense Income:Billable Expense Income - Channel Fee"
+    debit: "Trust Liabilities:Owner Payables:1A - Net Earnings:Channel Fees"
+    deduction: true
+  vrbo_fee:
+    prefix: 8M10
+    vendor: "Valta Realty - Channel Fee"
+    label: "VRBO channel fee"
+    credit: "Billable Expense Income:Billable Expense Income - Channel Fee"
+    debit: "Trust Liabilities:Owner Payables:1A - Net Earnings:Channel Fees"
+    deduction: true
+  tripcom_fee:
+    prefix: YKY6
+    vendor: "Valta Realty - Channel Fee"
+    label: "Tripcom Channel fee"
+    credit: "Billable Expense Income:Billable Expense Income - Channel Fee"
+    debit: "Trust Liabilities:Owner Payables:1A - Net Earnings:Channel Fees"
+    deduction: true
+  stripe_fee:
+    prefix: RZ3O
+    vendor: "Valta Realty - Stripe Fee"
+    label: "Stripe fee"
+    credit: "Billable Expense Income:Billable Expense Income - Stripe Fee"
+    debit: "Trust Liabilities:Owner Payables:1A - Net Earnings:Credit Card Fees"
+    deduction: true
+
+# The Deduction pair every fee Bill carries (commission given back on the fee).
+deduction:
+  debit: "Management Commissions Revenue"
+  credit: "Trust Liabilities:Owner Payables:1A - Net Earnings:Management Commissions"
+
+# payment_model row group -> which channel-fee Bill it gets. Channels not listed carry
+# their channel fee as a negative line ON the invoice (Airbnb, Expedia, Hopper,
+# Marriott, Whimstay) and get no channel-fee Bill.
+channel_fee_bill:
+  booking: booking_fee
+  homeaway: vrbo_fee
+  tripcom: tripcom_fee
+
+# Invoice items whose sum is the commission base (verified on 381 VRP bills, 2026-10-04).
+commission_base_items:
+  - "Guest Charges:Owner Income:Accommodation Fare"
+  - "Guest Charges:Owner Income:Accommodation Fare Adjustment"
+  - "Guest Charges:Owner Income:Accommodation Fare Discount"
+  - "Guest Charges:Owner Income:Channel Commission"
+  - "Guest Charges:Owner Income:Pet Fee (Owner)"
+
+# Sources that are not guest revenue -- no invoice, no bills.
+skip_sources: [owner, owner-guest]
+
+supplies_rate_per_guest_night: 0.9
+supplies_max_nights: 60
