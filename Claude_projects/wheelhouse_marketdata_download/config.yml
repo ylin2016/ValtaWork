@@ -68,8 +68,11 @@ params:
   #   performance: low | average | high      bedrooms: 0 | 1 | 2 | 3 | 4+
   market_segments:
     include_overall: true      # also pull the unsegmented market baseline
-    performance: ["high"]
-    bedrooms: ["0", "1", "2", "3", "4+"]
+    # "" = all performance levels, so ("", "2") is the whole market's 2BR.
+    # Bedroom "" = all sizes (fallback when a market×bedroom segment is empty).
+    # The weekly revenue report matches each listing on market AND bedroom.
+    performance: ["", "high"]
+    bedrooms: ["", "0", "1", "2", "3", "4+"]
 
 # Endpoint path templates (aligned to the Wheelhouse RM API help docs, Jul 2026).
 # {listing_id} / {market_id} / {set_id} are filled in per call. If a live call

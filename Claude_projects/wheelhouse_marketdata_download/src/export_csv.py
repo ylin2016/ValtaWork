@@ -61,6 +61,49 @@ GROUP BY t.market_id, t.bedrooms, t.month
 ORDER BY market_name, t.bedrooms, t.month
 """
 
+# Monthly OCCUPANCY (high performers) per market, broken out by bedroom, for the
+# current year only — restricted to the bedroom sizes we actually own in each
+# market. `port` maps each of our listings to its market's bedroom bucket
+# (0/1/2/3/4+, matching the market segments), so a market only shows the
+# bedroom rows relevant to our portfolio there.
+_MARKET_OCC_BY_BEDROOM_YEAR_SQL = """
+WITH port AS (
+  SELECT DISTINCT market_id,
+         CASE WHEN bedrooms >= 4 THEN '4+'
+              ELSE CAST(CAST(bedrooms AS INT) AS TEXT) END AS bedrooms
+  FROM listings
+  WHERE snapshot_date = ? AND market_id IS NOT NULL AND bedrooms IS NOT NULL
+)
+SELECT mm.market_id,
+       (SELECT name FROM markets m
+        WHERE m.market_id = mm.market_id AND m.snapshot_date = mm.snapshot_date) AS market_name,
+       mm.bedrooms,
+       mm.month,
+       mm.value AS occupancy_adjusted
+FROM market_monthly mm
+JOIN port p ON p.market_id = mm.market_id AND p.bedrooms = mm.bedrooms
+WHERE mm.snapshot_date = ?
+  AND mm.performance = 'high'
+  AND mm.metric = 'occupancy_adjusted'
+  AND mm.month LIKE ? || '-%'
+ORDER BY market_name, mm.bedrooms, mm.month
+"""
+
+# Monthly OCCUPANCY per dynamic set for the current year only, from the set's
+# aggregated (monthly) metrics.
+_SET_OCC_MONTHLY_YEAR_SQL = """
+SELECT a.set_id,
+       (SELECT name FROM dynamic_sets d
+        WHERE d.set_id = a.set_id AND d.snapshot_date = a.snapshot_date) AS set_name,
+       substr(a.period, 1, 7) AS month,
+       a.value AS occupancy_adjusted
+FROM dynamic_set_aggregated_metrics a
+WHERE a.snapshot_date = ?
+  AND a.metric = 'occupancy_adjusted'
+  AND a.period LIKE ? || '-%'
+ORDER BY set_name, month
+"""
+
 
 def export_snapshot(conn, export_dir: str, snapshot_date: str) -> str:
     """Write each table's rows for snapshot_date to one CSV per table, plus a
@@ -90,6 +133,28 @@ def export_snapshot(conn, export_dir: str, snapshot_date: str) -> str:
             _MARKET_HIGH_PERF_MONTHLY_SQL, conn, params=(snapshot_date,))
         if not df.empty:
             df.to_csv(out_dir / "market_high_performer_monthly.csv", index=False)
+            total += len(df)
+            n_files += 1
+
+    year = snapshot_date[:4]  # current-year occupancy views
+
+    # Derived: monthly occupancy per market x bedroom (our portfolio's bedroom
+    # sizes only), current year.
+    if "market_monthly" in existing:
+        df = pd.read_sql_query(
+            _MARKET_OCC_BY_BEDROOM_YEAR_SQL, conn,
+            params=(snapshot_date, snapshot_date, year))
+        if not df.empty:
+            df.to_csv(out_dir / f"market_occupancy_by_bedroom_{year}.csv", index=False)
+            total += len(df)
+            n_files += 1
+
+    # Derived: monthly occupancy per dynamic set, current year.
+    if "dynamic_set_aggregated_metrics" in existing:
+        df = pd.read_sql_query(
+            _SET_OCC_MONTHLY_YEAR_SQL, conn, params=(snapshot_date, year))
+        if not df.empty:
+            df.to_csv(out_dir / f"set_occupancy_monthly_{year}.csv", index=False)
             total += len(df)
             n_files += 1
 
