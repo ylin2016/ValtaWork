@@ -13,6 +13,7 @@ import subprocess
 import sys
 from datetime import date
 
+import build_artifact
 import build_report
 import fetch_guesty
 from paths import WHEELHOUSE_PROJECT
@@ -38,6 +39,7 @@ def main():
     print("[3/3] Report")
     build_report.main(["--asof", args.asof, "--market-snapshot", args.asof]
                       + (["--publish"] if args.publish else []))
+    build_artifact.build(args.asof)   # output/revenue_dashboard.html -> republish the artifact
 
 
 if __name__ == "__main__":

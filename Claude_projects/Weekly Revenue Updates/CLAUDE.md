@@ -33,6 +33,16 @@ nickname; a listing can be in 2 sets). ADR caveat: market ADR is
 cleaning" toggle. Neutral gray theme in `.streamlit/config.toml`. After every
 rebuild, restart Streamlit.
 
+## Shareable dashboard (Artifact)
+
+`build_artifact.py` (run by `run_weekly.py`) writes one self-contained page —
+`artifact_template.html` + the run's data embedded as JSON — to
+`output/<date>/revenue_dashboard.html` and the stable copy
+`output/revenue_dashboard.html`. Same views/logic as `dashboard.py`, computed in
+the browser. Published 2026-10-06 as https://claude.ai/artifact/Pcwts2dWwSjRyzhnDgbcqy
+(private). Each week: run, then ask Claude to republish
+`output/revenue_dashboard.html` (same path / `url`) so the link stays the same.
+
 ## Inputs
 
 - **Guesty** (`fetch_guesty.py`): confirmed reservations, check-in >= 2026-01-01,
