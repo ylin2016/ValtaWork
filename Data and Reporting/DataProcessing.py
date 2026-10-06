@@ -153,7 +153,10 @@ def format_reservation(df, startdate, enddate):
     df["checkin_date_plot"] = pd.to_datetime(df["checkin_date"])
     return df
 
-def import_data():
+def import_data(guesty_current_path=None):
+    """guesty_current_path: 2026+ confirmed reservations in the Guesty UI export
+    layout. Default = the manual export dated today; the weekly script passes
+    the API pull (Claude_projects/Weekly Revenue Updates/fetch_guesty.py)."""
     filepath = "/Users/ylin/Google Drive/My Drive/Data and Reporting/"
     platforms = pd.read_excel(filepath+"Data/Revenue/Source_Platform.xlsx")
 
@@ -168,7 +171,9 @@ def import_data():
     # 2026 Guesty (exclude specific listings)
     today = date.today()#- timedelta(days=1)
     curr_date = f"{today.year:04d}{today.month:02d}{today.day:02d}"
-    guesty_2026 = pd.read_csv(filepath+"Data/Revenue/Guesty_bookings_2026-"+curr_date+".csv", na_values=["", " "])
+    if guesty_current_path is None:
+        guesty_current_path = filepath+"Data/Revenue/Guesty_bookings_2026-"+curr_date+".csv"
+    guesty_2026 = pd.read_csv(guesty_current_path, na_values=["", " "])
     guesty_2026 = guesty_2026[~guesty_2026["LISTING'S NICKNAME"].isin(["Ashford 137", "Auburn 29123", "Hoquiam 21"])]
     guesty_2026=guesty_2026.drop(["PLATFORM"], axis=1)
     guesty_2026.columns=np.delete(guesty_bf25.columns,[-7,-1])
