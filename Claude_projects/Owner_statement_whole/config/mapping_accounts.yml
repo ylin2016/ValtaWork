@@ -1,7 +1,13 @@
 rules:
-  - account_regex: "(?i)repair|maintenance"
+  # Repairs and Maintenance are separate QBO accounts ("…Owner Expenses:Repairs - Owner"
+  # / "…:Maintenance - Owner") and the owner reads them as different things, so they get
+  # their own subcategories. Repairs first — an account naming both lands in Repairs.
+  - account_regex: "(?i)repair"
     category: "EXPENSE"
-    subcategory: "Repairs & Maintenance"
+    subcategory: "Repairs"
+  - account_regex: "(?i)maintenance"
+    category: "EXPENSE"
+    subcategory: "Maintenance"
   - account_regex: "(?i)clean"
     category: "EXPENSE"
     subcategory: "Cleaning Labor"
@@ -26,3 +32,35 @@ rules:
   - account_regex: ".*"
     category: "EXPENSE"
     subcategory: "Other Expense"
+
+# --- the account gate -------------------------------------------------------------
+# A line reaches an owner statement only if its ACCOUNT says the owner bears it.
+#
+# Until 2026-09-17 the CLASS decided alone and the account only picked a label, so any
+# line carrying a mapped listing class was charged to that owner whatever account it sat
+# on. That is how `Billable Expense Income - Supplies Owner` -- Valta INCOME -- was filed
+# under the owner's Supplies line (718 lines, $22,828.07), and how HOA cleaning parked in
+# `HOA Receivable - Yacinde` would have been charged to ten Yacinde owners.
+#
+# The chart of accounts already encodes the answer in its tree, so the gate reads the tree
+# instead of re-deriving it from substrings of the name:
+#
+#   1A - Net Earnings:*    reduces what the owner earned
+#   1C - Owner Expenses:*  a cost the owner bears
+#   2 - Owner Distributions  a payout to the owner
+#   anything else          Valta's side, or a third party -> never on a statement
+#
+# A line failing the gate is SKIPPED and logged as ACCOUNT_NOT_OWNER_SIDE -- it is not
+# stored with include_in_statement=0, because two build steps re-include rows in bulk and
+# a suppressed row could come back.
+#
+# `include_exact` is the escape hatch for an account outside the tree that the owner has
+# decided does belong on a statement. Each entry needs a reason; an empty list is correct
+# until someone makes such a decision.
+gate:
+  enabled: true
+  include_prefixes:
+    - "Trust Liabilities:Owner Payables:1A - Net Earnings:"
+    - "Trust Liabilities:Owner Payables:1C - Owner Expenses:"
+    - "Trust Liabilities:Owner Payables:2 - Owner Distributions"
+  include_exact: []

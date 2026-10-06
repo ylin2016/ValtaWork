@@ -1637,3 +1637,12 @@
   pm_fee_rate: 0.18
   term: STR
   address: 1 Yacinde Dr, Manson, WA, USA
+- qbo_class_id: '1000000039'
+  qbo_class_name: Listings:Bellevue 15746
+  property_id: bellevue_15746
+  property_name: Bellevue 15746
+  owner_id: owner_bellevue_15746
+  owner_name: Bellevue 15746 Owner
+  owner_email: ''
+  pm_fee_rate: 0.2
+  term: STR
