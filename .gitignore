@@ -110,3 +110,5 @@ Claude_projects/owner_statement_mvp/data/*.csv
 Claude_projects/wheelhouse_marketdata_download/data/
 .gitignore
 Guesty_booking_2026-05.csv
+Claude_projects/VRMA_AI revenue analysis/data/
+Claude_projects/VRMA_AI revenue analysis/output/
