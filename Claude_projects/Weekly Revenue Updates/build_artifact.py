@@ -15,6 +15,7 @@ import json
 import numpy as np
 import pandas as pd
 
+from comp_map import build_maps
 from paths import OUTPUT_DIR, PROJECT
 
 TEMPLATE = PROJECT / "artifact_template.html"
@@ -54,6 +55,7 @@ def build(run: str):
             "s": None if m is None or pd.isna(m["Status"]) else m["Status"],
             "mk": None if m is None or pd.isna(m["Market"]) else m["Market"],
             "b": "" if m is None else str(m["Bedrooms"]),
+            "g": [] if m is None or "Group" not in m or pd.isna(m["Group"]) or not m["Group"] else m["Group"].split("|"),
             "p": None if m is None or pd.isna(m["Property"]) else m["Property"],
             "sets": sets,
         })
@@ -101,7 +103,11 @@ def build(run: str):
         "occ": [_r(v, 4) for v in bench["Occ"]], "adr": [_r(v, 2) for v in bench["ADR"]],
         "lt": [_r(v, 1) for v in (bench["Lead"] if "Lead" in bench else [None] * len(bench))],
     }
+    maps, loc, maps_snap = build_maps(run, set_names, {l["n"]: l["sets"] for l in listings})
+    for l in listings:
+        l["ll"] = loc.get(l["n"])
     payload = {"asof": run, "listings": listings, "setNames": set_names,
+               "maps": maps, "mapsSnap": maps_snap,
                "lm": data_lm, "bench": data_b, "occYtd": occ_ytd, "pay": data_pay, "payY": data_pay_y}
     blob = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
     html = TEMPLATE.read_text().replace("/*__DATA__*/", blob).replace("__ASOF__", run)

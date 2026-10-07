@@ -138,6 +138,24 @@ def latest_ui_export() -> Path | None:
     return files[-1] if files else None
 
 
+def save_locations(client: GuestyClient) -> None:
+    """Listing coordinates for the dashboard's comp-set maps (comp_map.py)."""
+    rows, skip = [], 0
+    while True:
+        d = client.get("/listings", params={"limit": 100, "skip": skip, "fields": "nickname address active"})
+        res = d.get("results", [])
+        for r in res:
+            a = r.get("address") or {}
+            rows.append({"nickname": r.get("nickname"), "lat": a.get("lat"), "lng": a.get("lng"),
+                         "full": a.get("full"), "active": r.get("active")})
+        skip += len(res)
+        if not res or skip >= d.get("count", 0):
+            break
+    out = DATA_DIR / "guesty" / "listing_locations.csv"
+    pd.DataFrame(rows).to_csv(out, index=False)
+    print(f"  guesty: {len(rows)} listing locations -> {out}")
+
+
 def main(argv=None) -> Path:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--asof", default=date.today().isoformat(), help="Run date (YYYY-MM-DD)")
@@ -160,7 +178,12 @@ def main(argv=None) -> Path:
         print(f"  guesty: {before} -> {len(df)} rows, wrote {out}")
         return out
 
-    raw = fetch_confirmed(GuestyClient(), args.checkin_from)
+    client = GuestyClient()
+    raw = fetch_confirmed(client, args.checkin_from)
+    try:
+        save_locations(client)
+    except Exception as e:   # maps fall back to the previous file
+        print(f"  guesty: listing locations not refreshed ({e})")
     rows = [to_ui_row(r) for r in raw]
     df = pd.DataFrame(rows, columns=UI_COLUMNS)
     # per-booking itemization (fee categories, Stripe payment count, virtual card) in

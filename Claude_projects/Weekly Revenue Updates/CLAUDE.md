@@ -26,8 +26,8 @@ dashboard (removed 2026-10-07).
 
 Team settings (2026-10-07): the artifact declares `capabilities: {db: {}, user:
 {scopes: ["profile"]}}` (a redeploy that omits `capabilities` keeps them). Shared db:
-`settings/team` = {flags: {occRed, occAmber, revRed, revAmber, rpRed, rpAmber} in
-percent, hidden: [listing names], by: user id, at} and `notes/<listing key>` =
+`settings/team` = {flags: {hpRed, hpAmber (pts below market HP), revRed, revAmber, rpRed,
+rpAmber} in percent, hidden: [listing names], by: user id, at} and `notes/<listing key>` =
 {listing, text, by, at} (key = name with unsafe chars as `~hex`). Default rules:
 Contributor (`interact`) and up write, Viewers read only. Hidden listings drop out of
 the Valta and Trends views (not Owner). Read them with ArtifactData if needed.
@@ -37,9 +37,16 @@ the Valta and Trends views (not Owner). Read them with ArtifactData if needed.
 `output/<date>/revenue_dashboard.html` and the stable copy
 `output/revenue_dashboard.html`. Layout is the user's design (str-dashboard-v2.jsx,
 2026-10-07): burgundy header with Year / Quarter / Month / Market / Type filters and
-Valta | Trends | Owner views. Valta = KPI tiles (vs last year, vs comp), flag legend
-+ flagged list (rules in `FLAG` at the top of the script: occ <60/65%, revenue
--15/-10% vs last, RevPAR -10/-5% vs comp), property rows (This/Last/Comp bars);
+Valta | Trends | Owner views. Valta and Trends also filter by Bedrooms (0/1/2/3/4+ buckets)
+and Listing group (`build_report.listing_groups`; a listing can be in several): Elektra /
+Yacinde by listing name; OSBR / Remote / Beachwood / Microsoft by the first word of
+Property_Cohost `Set` (Remote also takes the Hawaii market); Seattle / Bellevue / Kirkland /
+Redmond = every listing whose Property_Cohost `City` is that city. (No separate location
+filter — removed 2026-10-07 at the user's request.) Valta = KPI tiles (vs last year, vs comp), flag legend
++ flagged list (rules in `FLAG_DEFAULT` / team settings: occupancy 10/5+ pts below
+market high performers at the SAME market + bedroom bucket, compared month by month
+over finished months (gap weighted by available nights; build_report drops the
+all-sizes HP fallback); revenue -15/-10% vs last; RevPAR -10/-5% vs comp), property rows (This/Last/Comp bars);
 Trends = monthly revenue 3 years, pacing for the next 3 months, markets table, top
 movers; Owner = per owner statement (`Property`) with combined revenue + payout
 (monthly `Payout`, else the yearly `payout` sheet). Clicking a listing opens a drawer
@@ -66,6 +73,17 @@ deactivated listings (UI supplement) and pre-2026 check-ins are "not itemized". 
 design is kept in `artifact_template_v1.html`. Published 2026-10-06 as https://claude.ai/artifact/Pcwts2dWwSjRyzhnDgbcqy
 (private). Each week: run, then ask Claude to republish
 `output/revenue_dashboard.html` (same path / `url`) so the link stays the same.
+
+Comp-set maps (Owner tab, 2026-10-07): one street map per Wheelhouse comp set for each
+of the owner's short-term listings — pink pins = active comps (click opens Airbnb, hover =
+last-365-day ADR/occupancy/rating), grey dots = comps in review, burgundy house = this
+listing, dark houses = other Valta listings. `comp_map.py` (called by build_artifact) frames
+each set (5-95th percentile of comps + our listings), stitches OpenStreetMap tiles (cached in
+`data/tiles/`; no contact info in the User-Agent) into `output/maps/s<set index>.jpg`. Comps =
+wheelhouse `dynamic_set_members` (now pulled by `--only report`); our coordinates = Guesty
+listing addresses, saved by `fetch_guesty.py` to `data/guesty/listing_locations.csv`.
+The artifact can't load tiles itself (CSP), so **republish with the images**: `root` =
+`output/`, `files` = every `maps/s*.jpg` mapped to itself.
 
 ## Inputs
 

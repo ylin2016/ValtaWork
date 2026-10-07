@@ -85,6 +85,26 @@ FORMAT_RULES = {
 # ---------------------------------------------------------------------------
 # Market data (Wheelhouse)
 # ---------------------------------------------------------------------------
+# Listing groups (a listing can be in several, "|"-joined): Elektra / Yacinde by name,
+# OSBR / Beachwood / Microsoft / Remote by the first word of Property_Cohost "Set"
+# (Remote also takes the Hawaii market), plus one group per city in GROUP_CITIES.
+SET_GROUPS = {"osbr": "OSBR", "remote": "Remote", "beachwood": "Beachwood", "microsoft": "Microsoft"}
+GROUP_CITIES = ["Seattle", "Bellevue", "Kirkland", "Redmond"]
+
+
+def listing_groups(r):
+    name = str(r["Listing"])
+    g = [x for x in ("Elektra", "Yacinde") if name.startswith(x)]
+    w = str(r["Set"]).split()[0].lower() if pd.notna(r["Set"]) and str(r["Set"]).strip() else ""
+    if w in SET_GROUPS:
+        g.append(SET_GROUPS[w])
+    if r["Market"] == "Hawaii" and "Remote" not in g:
+        g.append("Remote")
+    if r["City"] in GROUP_CITIES:
+        g.append(r["City"])
+    return "|".join(g)
+
+
 def bedroom_bucket(b):
     if pd.isna(b):
         return ""
@@ -220,14 +240,19 @@ def dashboard_tables(data, monthly, prop, market, snap, money_csv=None):
           .merge(lead, on=["Listing", "yearmonth"], how="left")
           .merge(rev_month, on=["Listing", "yearmonth"], how="left")
           .merge(mix, on=["Listing", "yearmonth"], how="left")
-          .merge(prop[["Listing", "Property", "Type", "Status", "Market", "BEDROOMS"]],
+          .merge(prop[["Listing", "Property", "Type", "Status", "Market", "BEDROOMS", "City", "Set"]],
                  on="Listing", how="left"))
     lm["Bedrooms"] = lm["BEDROOMS"].map(bedroom_bucket)
+    lm["Group"] = lm.apply(listing_groups, axis=1)
+    lm = lm.drop(columns=["Set", "City"])
     lm = safe_round(lm.drop(columns="BEDROOMS"))
 
     mk = attach_market(prop.loc[prop["Type"] == "STR"], market)
+    # market high performers only at the listing's OWN bedroom size (they drive the
+    # occupancy flag); never the all-sizes fallback, never for a listing with no count
+    hp = mk[(mk["Occ_HP_src"] == "bedroom") & (mk["Bedrooms"] != "")]
     bench = [
-        mk[["Listing", "yearmonth", "Occ_HP", "ADR_HP"]]
+        hp[["Listing", "yearmonth", "Occ_HP", "ADR_HP"]]
           .rename(columns={"Occ_HP": "Occ", "ADR_HP": "ADR"})
           .assign(benchmark="Market high performers", kind="market_hp"),
         mk[["Listing", "yearmonth", "Occ_All", "ADR_All"]]
