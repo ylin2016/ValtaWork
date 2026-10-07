@@ -1,9 +1,8 @@
 """Per-reservation payment waterfall — the Section 1 fee breakdown.
 
-Faithful transcription of GuestyFinancials/payment_breakdown.py (which itself
-mirrors the user-owned ``config/payment_structure.xlsx``). Refactored from a
-flat script into ``compute_breakdown(summary_df, tax_rates_csv)`` so the whole
-pipeline can call it in-memory on a freshly-pulled month.
+Faithful transcription of the user-owned ``config/payment_structure.xlsx``, as
+``compute_breakdown(summary_df, tax_rates_csv)`` so the whole pipeline can call
+it in-memory on a freshly-pulled month.
 
 Columns of the returned DataFrame (one row per reservation):
     confirmationCode, channel, row_group, listing, guest, checkIn, checkOut,
@@ -12,7 +11,7 @@ Columns of the returned DataFrame (one row per reservation):
 
 InvoiceItem = Guesty hostPayout (Σ invoiceItems) exactly as shown; never
 re-derived. If the user edits payment_structure.xlsx, update the rates/formulas
-here to match — the sheet is the source of truth (see GuestyFinancials CLAUDE.md).
+here to match — the sheet is the source of truth (see CLAUDE.md).
 """
 import numpy as np
 import pandas as pd

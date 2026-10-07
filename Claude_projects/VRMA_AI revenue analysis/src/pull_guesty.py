@@ -1,11 +1,13 @@
 """Pull Guesty data for the pricing-error scan.
 
-Reuses GuestyFinancials' client + cached token (5 tokens/24h shared limit —
-never force-refresh). Writes CSVs to data/raw/:
+Reuses Owner_statement_whole's Guesty client + cached token (5 tokens/24h shared
+limit — never force-refresh). Writes CSVs to data/raw/:
   guesty_listings.csv      one row per listing
   guesty_reservations.csv  one row per non-canceled reservation (check-in window)
   guesty_calendar.csv      one row per listing x date (current price + status)
 """
+import importlib
+import importlib.util
 import json
 import sys
 from datetime import date, timedelta
@@ -13,9 +15,21 @@ from pathlib import Path
 
 import pandas as pd
 
-GF = Path("/Users/ylin/ValtaWork/Claude_projects/GuestyFinancials")
-sys.path.insert(0, str(GF))
-from src.guesty_client import GuestyClient  # noqa: E402
+OSW_SRC = Path("/Users/ylin/ValtaWork/Claude_projects/Owner_statement_whole/src")
+
+
+def _guesty_client_cls():
+    """Owner_statement_whole's package is also named `src`, so load it as `osw`."""
+    if "osw" not in sys.modules:
+        spec = importlib.util.spec_from_file_location(
+            "osw", OSW_SRC / "__init__.py", submodule_search_locations=[str(OSW_SRC)])
+        mod = importlib.util.module_from_spec(spec)
+        sys.modules["osw"] = mod
+        spec.loader.exec_module(mod)
+    return importlib.import_module("osw.guesty.client").GuestyClient
+
+
+GuestyClient = _guesty_client_cls()
 
 OUT = Path(__file__).resolve().parent.parent / "data" / "raw"
 TODAY = date(2026, 10, 6)

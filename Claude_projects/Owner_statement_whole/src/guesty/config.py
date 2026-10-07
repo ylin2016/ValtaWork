@@ -15,7 +15,7 @@ from ..paths import ENV_FILE, GUESTY_TOKEN, PROJECT_ROOT
 # Load Guesty (+ QBO) credentials from the shared secrets .env.
 load_dotenv(ENV_FILE)
 
-# Fixed Guesty Open API endpoints (formerly GuestyFinancials/config.yml).
+# Fixed Guesty Open API endpoints.
 _GUESTY_CONFIG = {
     "base_url": "https://open-api.guesty.com/v1",
     "token_url": "https://open-api.guesty.com/oauth2/token",

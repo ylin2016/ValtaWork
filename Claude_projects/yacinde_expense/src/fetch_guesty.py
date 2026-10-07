@@ -2,9 +2,9 @@
 
     python -m src.fetch_guesty --checkin-from 2026-06-01 --checkin-to 2026-12-31
 
-Reuses GuestyFinancials' client (its .env + cached 24h token; Guesty allows only
-5 tokens/24h per client, so never force-refresh). Writes the raw JSON to
-data/guesty/guesty_reservations.json.
+Reuses Owner_statement_whole's Guesty client (its config/secrets/.env + cached 24h
+token; Guesty allows only 5 tokens/24h per client, so never force-refresh). Writes the
+raw JSON to data/guesty/guesty_reservations.json.
 """
 import argparse
 import importlib
@@ -14,7 +14,7 @@ import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-GF_SRC = PROJECT_ROOT.parent / "GuestyFinancials" / "src"
+OSW_SRC = PROJECT_ROOT.parent / "Owner_statement_whole" / "src"
 OUT = PROJECT_ROOT / "data" / "guesty" / "guesty_reservations.json"
 
 PAGE = 100
@@ -25,15 +25,16 @@ FIELDS = ("confirmationCode source status checkIn checkOut nightsCount guestsCou
 
 
 def _load_client():
-    """Import GuestyFinancials' client under a unique package name (both projects have `src`)."""
-    pkg = "guestyfinancials_src"
+    """Import Owner_statement_whole's client under a unique package name (both have `src`).
+    Its .env / token paths resolve through its own src/paths.py, so no chdir is needed."""
+    pkg = "osw"
     if pkg not in sys.modules:
         spec = importlib.util.spec_from_file_location(
-            pkg, GF_SRC / "__init__.py", submodule_search_locations=[str(GF_SRC)])
+            pkg, OSW_SRC / "__init__.py", submodule_search_locations=[str(OSW_SRC)])
         mod = importlib.util.module_from_spec(spec)
         sys.modules[pkg] = mod
         spec.loader.exec_module(mod)
-    return importlib.import_module(f"{pkg}.guesty_client").GuestyClient
+    return importlib.import_module(f"{pkg}.guesty.client").GuestyClient
 
 
 def fetch(client, dfrom: str, dto: str) -> list[dict]:
@@ -62,9 +63,6 @@ def main():
     ap.add_argument("--checkin-to", default="2026-12-31")
     args = ap.parse_args()
 
-    # GuestyFinancials' config resolves .env / token paths relative to its own root.
-    import os
-    os.chdir(GF_SRC.parent)
     client = _load_client()()
     res = fetch(client, args.checkin_from, args.checkin_to)
     yac = [x for x in res if "yacinde" in ((x.get("listing") or {}).get("nickname") or "").lower()]

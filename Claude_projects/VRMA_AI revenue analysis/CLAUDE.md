@@ -42,8 +42,8 @@ Fold it into a script before the next run.
 
 ## Credentials and reuse
 
-- Guesty: imports `GuestyFinancials/src/guesty_client.py` and uses **its token
-  cache** (5 tokens/24h shared with GuestyAccess). Never force-refresh.
+- Guesty: imports `Owner_statement_whole/src/guesty/client.py` (loaded as package `osw`)
+  and uses **its token cache** (5 tokens/24h shared across projects). Never force-refresh.
 - Wheelhouse: imports `wheelhouse_marketdata_download/src/*`, `os.chdir`s there so
   its `.env` loads, and reads its SQLite for the listing ↔ comp-set roster.
 - The Wheelhouse web app needs the user's login. The API exposes only each

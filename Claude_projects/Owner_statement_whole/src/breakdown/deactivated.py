@@ -2,7 +2,7 @@
 
 The Guesty Open API silently excludes reservations on **deactivated**
 (active=false) listings, but the Guesty UI CSV export includes them (see
-GuestyFinancials CLAUDE.md — July 2026 had ~8-14 such rows on a few listings).
+CLAUDE.md — July 2026 had 14 such rows on 4 listings).
 `merge_deactivated` reads a Guesty UI export and appends ONLY the reservations
 whose confirmation code the API did not return, mapping the UI columns into the
 summary-frame shape so both adapters (UI export + payment breakdown) process

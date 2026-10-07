@@ -11,8 +11,7 @@ ONE API pull -> two files in inputs/<period>/:
                                      stripe/cleaning/tax -> host payout -> net) for dashboard Section 1.
 
 Both are built from the SAME reservation objects. TOTAL TAXES in (A) is the SUM of
-itemized tax_* lines, not money.totalTaxes (which undercounts — see GuestyFinancials
-CLAUDE.md). The Open API silently excludes deactivated (active=false) listings; pass
+itemized tax_* lines, not money.totalTaxes (which undercounts — see CLAUDE.md). The Open API silently excludes deactivated (active=false) listings; pass
 --deactivated-csv (a Guesty UI export filtered to those listings) to fold them in.
 """
 import argparse

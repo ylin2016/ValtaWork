@@ -1,3 +1,7 @@
+> **ARCHIVED 2026-10-07.** Superseded by `Owner_statement_whole` (Guesty client + token in
+> `src/guesty/`, fee rules in `src/breakdown/payment_model.py` + `config/payment_structure.xlsx`).
+> Nothing here is maintained; no project may import from or cite this folder.
+
 # CLAUDE.md — GuestyFinancials
 
 Guidance for Claude Code when working in this project.

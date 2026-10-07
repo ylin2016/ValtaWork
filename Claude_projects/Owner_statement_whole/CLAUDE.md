@@ -7,7 +7,8 @@ Guidance for Claude Code working in this project.
 The **unified owner-statement pipeline** for Valta Realty vacation rentals. It is the
 successor to `../owner_statement_mvp` (the SQLite + QBO statement engine) with its Guesty
 data-ingestion switched from a **manual UI CSV export** to an **automated Guesty Open API
-pull** (the fetch/breakdown code comes from `../GuestyFinancials`).
+pull**. This project is the single home of the Guesty client, the fetch and the fee
+breakdown — other projects import them from here.
 
 Output: per-owner Excel + PDF statements and a Streamlit dashboard.
 
@@ -126,22 +127,32 @@ are now no CSV-only corrections left: `STRIPE_FEE_OVERRIDES` absorbed the last t
 
 ### Task 1 — Guesty API ingestion (`src/guesty/` + `src/breakdown/`)
 
-**`src/guesty/`** (access the API) — copied from GuestyFinancials + rewired to `paths`:
-`client.py` (was `guesty_client.py`), `config.py` (endpoints are constants; token cached to
+**`src/guesty/`** (access the API), all paths through `paths`:
+`client.py`, `config.py` (endpoints are constants; token cached to
 `config/secrets/guesty_token.json`), `reservation_financials.py`, `reservations_batch.py`.
 **`src/breakdown/`** (bookings breakdown) holds the fee-waterfall + ingestion adapters:
 
 - **`payment_model.py`** — `compute_breakdown(summary_df, tax_rates_csv)`; a faithful,
-  importable transcription of `payment_structure.xlsx` (was GuestyFinancials'
-  `payment_breakdown.py`). Produces the per-booking fee waterfall.
-- **`fetch_month.py`** — orchestrator. ONE API pull → two CSVs:
+  importable transcription of the user-owned `config/payment_structure.xlsx` (the sheet is
+  the source of truth — when it changes, update the rates/formulas here). Produces the
+  per-booking fee waterfall.
+- **`fetch_month.py`** — orchestrator. ONE API pull → two CSVs. Status defaults to
+  `confirmed,canceled`: a bare pull also returns `inquiry`/`declined`/`closed` quotes with phantom
+  host payouts whose confirmation codes collide with real bookings (looks like duplicates).
   - **Output A** `to_ui_csv()`: UI-export-shaped so `convert_guesty_export.py` consumes it
     unchanged. `TOTAL TAXES` = Σ itemized `tax_*` (NOT `money.totalTaxes`, which undercounts);
     `TOTAL PAYOUT` = `host_payout` as-is. Tax columns are `fillna(0)` before summing (NaN
     poisons the sum).
+    *Why (found 2026-08-11):* `money.totalTaxes` omits some tax lines (seen:
+    `tax_destination`) — `BC-nVlG573MY` reported 26.62, true tax 26.62 + 43.26 = 69.88; Jun+Jul
+    2026 undercount ~$2,766 over 40 reservations. Sum `tax_state/county/city/local/occupancy/
+    residential/destination/reservation_total/other`; `tax_reservation_total` never coexists
+    with the others, so summing does not double-count.
   - **Output B** `payment_breakdown_<p>.csv`: Section-1 data, keyed by `property_id`.
 - **`deactivated.py`** — the Open API silently drops **deactivated** (`active=false`) listings.
   `--deactivated-csv <ui_export>` folds them in (add-only-missing by confirmation code).
+  July 2026: API 656 vs UI 670 — the 14 missing were on 4 deactivated listings (not
+  timezone/status/pagination). For a complete month, cross-check the API count against the UI.
 
 ### Booking dates are LOCAL, and a month is pulled by LOCAL check-in
 
@@ -1070,7 +1081,9 @@ mirroring `../owner_statement_mvp/deploy/`. The heavy pipeline runs locally; its
 
 ## Guesty token budget
 
-5 tokens / 24h / client, shared with `GuestyFinancials` and `GuestyAccess`. This project caches
+5 tokens / 24h / client, shared with every project on this client (`GuestyAccess`, and
+`qbo_reservation_bookkeeping`, `yacinde_expense`, `VRMA_AI revenue analysis`, which all
+import this project's client and token). This project caches
 its own token at `config/secrets/guesty_token.json` and reuses it (≈1 mint/day). **Do not
 force-refresh in a loop.**
 
