@@ -34,7 +34,7 @@ def main():
         print("[2/3] Wheelhouse market data")
         # its own venv + package; keep it a separate process ('src' name clash)
         subprocess.run([str(WHEELHOUSE_PROJECT / ".venv" / "bin" / "python"), "-m", "src.run_weekly",
-                        "--only", "market", "--snapshot-date", args.asof],
+                        "--only", "report", "--snapshot-date", args.asof],
                        cwd=WHEELHOUSE_PROJECT, check=True)
     print("[3/3] Report")
     build_report.main(["--asof", args.asof, "--market-snapshot", args.asof]

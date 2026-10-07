@@ -2,8 +2,8 @@
 Guesty UI "export reservations" CSV layout, so DataProcessing.format_reservation
 reads it unchanged (replaces the manual Guesty_bookings_2026-YYYYMMDD.csv).
 
-Reuses the GuestyFinancials client and its cached token (5 tokens/24h/client —
-never force-refresh). Deactivated listings are silently excluded by the Open
+Uses Owner_statement_whole's Guesty client and its cached token
+(config/secrets/guesty_token.json; 5 tokens/24h/client — never force-refresh). Deactivated listings are silently excluded by the Open
 API; they are filled from a Guesty UI export (data/guesty/Guesty_UI_bookings_*.csv,
 newest used) for listings the API returned nothing for. See CLAUDE.md.
 
@@ -19,16 +19,17 @@ from pathlib import Path
 
 import pandas as pd
 
-from paths import DATA_DIR, GUESTY_PROJECT
+from paths import DATA_DIR, OWNER_STATEMENT
 
-sys.path.insert(0, str(GUESTY_PROJECT))
-from src.guesty_client import GuestyClient  # noqa: E402  (GuestyFinancials)
+sys.path.insert(0, str(OWNER_STATEMENT))
+from src.guesty.client import GuestyClient  # noqa: E402  (Owner_statement_whole)
+from src.breakdown.fetch_month import build_summary_frame  # noqa: E402  (Owner_statement_whole)
 
 PAGE = 100
 FIELDS = ("confirmationCode source status checkIn checkOut checkInDateLocalized "
           "checkOutDateLocalized confirmedAt createdAt nightsCount guestsCount "
           "numberOfGuests listing.nickname listing.title listingId guest.fullName "
-          "integration.platform money")
+          "integration.platform money specialRequests")
 LOCAL_TZ = "America/Los_Angeles"
 
 # UI export column order (Guesty_bookings_2026-*.csv)
@@ -159,11 +160,17 @@ def main(argv=None) -> Path:
         print(f"  guesty: {before} -> {len(df)} rows, wrote {out}")
         return out
 
-    rows = [to_ui_row(r) for r in fetch_confirmed(GuestyClient(), args.checkin_from)]
+    raw = fetch_confirmed(GuestyClient(), args.checkin_from)
+    rows = [to_ui_row(r) for r in raw]
     df = pd.DataFrame(rows, columns=UI_COLUMNS)
+    # per-booking itemization (fee categories, Stripe payment count, virtual card) in
+    # Owner_statement_whole's summary layout — what its payment model reads
+    summary = build_summary_frame(raw)
+    summary_out = DATA_DIR / "guesty" / f"Guesty_summary_2026-{tag}.csv"
     # The API filters on UTC checkIn, which lets 12-31 local check-ins through;
     # those belong to the static 2025 file.
     df = df[df["CHECK-IN"] >= args.checkin_from].reset_index(drop=True)
+    summary = summary[summary["confirmationCode"].isin(df["CONFIRMATION CODE"])]
     dup = df["CONFIRMATION CODE"].duplicated().sum()
     if dup:
         raise RuntimeError(f"{dup} duplicate confirmation codes in the confirmed pull")
@@ -175,7 +182,8 @@ def main(argv=None) -> Path:
 
     out.parent.mkdir(parents=True, exist_ok=True)
     df.to_csv(out, index=False)
-    print(f"  guesty: wrote {out}")
+    summary.to_csv(summary_out, index=False)
+    print(f"  guesty: wrote {out} (+ itemization {summary_out.name})")
     return out
 
 

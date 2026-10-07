@@ -23,6 +23,7 @@ import sqlite3
 import sys
 from calendar import monthrange
 from datetime import date
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -159,18 +160,20 @@ def load_sets(snapshot: str) -> pd.DataFrame:
         JOIN listings l ON l.listing_id = s.user_listing_id AND l.snapshot_date = s.snapshot_date
         JOIN dynamic_sets d ON d.set_id = s.set_id AND d.snapshot_date = s.snapshot_date
         JOIN dynamic_set_aggregated_metrics a ON a.set_id = s.set_id AND a.snapshot_date = s.snapshot_date
-        WHERE s.snapshot_date = ? AND a.metric IN ('occupancy_adjusted', 'adr')""",
+        WHERE s.snapshot_date = ? AND a.metric IN ('occupancy_adjusted', 'adr', 'lead_time')""",
         con, params=(snapshot,))
     con.close()
     df["set_name"] = df["set_name"].str.strip()
     wide = df.pivot_table(index=["Listing", "set_name", "yearmonth"], columns="metric",
                           values="value", aggfunc="first").reset_index()
     wide.columns.name = None
-    return wide.rename(columns={"occupancy_adjusted": "Occ", "adr": "ADR"})
+    if "lead_time" not in wide:
+        wide["lead_time"] = np.nan
+    return wide.rename(columns={"occupancy_adjusted": "Occ", "adr": "ADR", "lead_time": "Lead"})
 
 
-def dashboard_tables(data, monthly, prop, market, snap):
-    """Tidy inputs for dashboard.py.
+def dashboard_tables(data, monthly, prop, market, snap, money_csv=None):
+    """Tidy inputs for the dashboard artifact (build_artifact.py).
     listing_monthly: our figures per Listing x yearmonth.
     benchmarks: per Listing x yearmonth x benchmark (comp set / market high
     performers / whole market, both at the listing's bedroom size)."""
@@ -186,9 +189,37 @@ def dashboard_tables(data, monthly, prop, market, snap):
     s["yearmonth"] = pd.to_datetime(s["date"]).dt.strftime("%Y-%m")
     adr_fees = s.groupby(["Listing", "yearmonth"], as_index=False).agg(ADR_w_fees=("per_night", "mean"))
 
+    # revenue in the month: each booking's revenue split evenly over its nights, so a
+    # stay that crosses a month end counts in both months (Revenue puts short-term
+    # bookings in the check-in month). Built from the bookings themselves, not
+    # Revenue_occ, which also folds unit nights into whole-house parents.
+    rm = data[["Listing", "checkin_date", "checkout_date", "nights", "total_revenue"]].copy()
+    rm = rm[(rm["nights"] > 0) & rm["checkout_date"].notna()]
+    rm["per_night"] = pd.to_numeric(rm["total_revenue"], errors="coerce").fillna(0) / rm["nights"]
+    rm["date"] = [pd.date_range(a, b - pd.Timedelta(days=1)) for a, b in
+                  zip(pd.to_datetime(rm["checkin_date"]), pd.to_datetime(rm["checkout_date"]))]
+    rm = rm.explode("date").dropna(subset=["date"])
+    rm["yearmonth"] = pd.to_datetime(rm["date"]).dt.strftime("%Y-%m")
+    rev_month = rm.groupby(["Listing", "yearmonth"], as_index=False).agg(Revenue_month=("per_night", "sum"))
+
+    # guest-payment parts (rent / cleaning / tax / channel fee) — itemized from 2026,
+    # the first year with the API's host ledger
+    from revenue_mix import MIX_COLS, monthly_mix
+    mix = monthly_mix(data, money_csv) if money_csv else pd.DataFrame(columns=["Listing", "yearmonth", *MIX_COLS])
+    mix = mix[mix["yearmonth"] >= "2026-01"]
+
+    # lead time (days from confirmation to check-in), per booking, by check-in month
+    lt = data[(data["Term"] == "STR") & data["lead_time"].notna()][["Listing", "checkin_date", "lead_time"]].copy()
+    lt["yearmonth"] = pd.to_datetime(lt["checkin_date"]).dt.strftime("%Y-%m")
+    lead = lt.groupby(["Listing", "yearmonth"], as_index=False).agg(
+        LeadTime=("lead_time", "mean"), Bookings=("lead_time", "size"))
+
     lm = (monthly[["Listing", "yearmonth", "Year", "Month", "Revenue", "Revenue_occ", "occdays",
                    "OccRt", "ADR", "Payout"]]
           .merge(adr_fees, on=["Listing", "yearmonth"], how="left")
+          .merge(lead, on=["Listing", "yearmonth"], how="left")
+          .merge(rev_month, on=["Listing", "yearmonth"], how="left")
+          .merge(mix, on=["Listing", "yearmonth"], how="left")
           .merge(prop[["Listing", "Property", "Type", "Status", "Market", "BEDROOMS"]],
                  on="Listing", how="left"))
     lm["Bedrooms"] = lm["BEDROOMS"].map(bedroom_bucket)
@@ -531,7 +562,8 @@ def build(asof: date, guesty_csv, market_snapshot=None):
                                 "PerformanceFlag"]].assign(Date=today),
     }
     info = {"auto_onboard": auto, "market_snapshot": snap, "rent_roll": rent_roll}
-    info["dashboard"] = dashboard_tables(data, monthly, prop, market, snap)
+    money_csv = Path(guesty_csv).with_name(Path(guesty_csv).name.replace("Guesty_bookings_", "Guesty_summary_"))
+    info["dashboard"] = dashboard_tables(data, monthly, prop, market, snap, money_csv)
     return out, occ_valta, tracking, info
 
 

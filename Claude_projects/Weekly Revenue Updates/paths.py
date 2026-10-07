@@ -8,7 +8,9 @@ RENT_ROLL = DATA_DIR / "LTR" / "Rent roll.xlsx"   # monthly long-term lease inco
 
 WORK = Path("/Users/ylin/ValtaWork")
 REPORTING_CODE = WORK / "Data and Reporting"          # DataProcessing.py, RevenueReportHelpers.py
-GUESTY_PROJECT = WORK / "Claude_projects" / "GuestyFinancials"
+# Guesty API client + token, booking itemization and the fee rules
+# (config/payment_structure.xlsx, config/_listing_tax_rates.csv) all come from here
+OWNER_STATEMENT = WORK / "Claude_projects" / "Owner_statement_whole"
 WHEELHOUSE_PROJECT = WORK / "Claude_projects" / "wheelhouse_marketdata_download"
 WHEELHOUSE_DB = WHEELHOUSE_PROJECT / "data" / "wheelhouse.sqlite"
 

@@ -5,8 +5,8 @@ embedded) from one report run's outputs.
     python build_artifact.py --asof 2026-09-29
 
 Writes output/<date>/revenue_dashboard.html and the stable copy
-output/revenue_dashboard.html from artifact_template.html. The page reproduces
-dashboard.py (Company / Listing / Portfolio) in the browser. Publish the STABLE
+output/revenue_dashboard.html from artifact_template.html. The page renders
+the Valta / Trends / Owner views in the browser. Publish the STABLE
 path as the Artifact and republish it each week so the link never changes.
 """
 import argparse
@@ -54,6 +54,7 @@ def build(run: str):
             "s": None if m is None or pd.isna(m["Status"]) else m["Status"],
             "mk": None if m is None or pd.isna(m["Market"]) else m["Market"],
             "b": "" if m is None else str(m["Bedrooms"]),
+            "p": None if m is None or pd.isna(m["Property"]) else m["Property"],
             "sets": sets,
         })
 
@@ -61,10 +62,35 @@ def build(run: str):
     lm = lm[lm["Listing"].notna()]
     data_lm = {
         "li": lm["Listing"].map(idx).tolist(), "ym": ym(lm["yearmonth"]).tolist(),
-        "rev": [_r(v, 2) for v in lm["Revenue"]], "rocc": [_r(v, 2) for v in lm["Revenue_occ"]],
+        # revenue in the month (bookings split by nights); pre-2023 rows lack
+        # check-out dates and keep the report's Revenue
+        "rev": [_r(v, 2) for v in (lm["Revenue_month"].fillna(lm["Revenue"])
+                                   if "Revenue_month" in lm else lm["Revenue"])], "rocc": [_r(v, 2) for v in lm["Revenue_occ"]],
         "nd": [_r(v, 0) for v in lm["occdays"]], "occ": [_r(v, 4) for v in lm["OccRt"]],
         "adr": [_r(v, 2) for v in lm["ADR"]], "adrf": [_r(v, 2) for v in lm["ADR_w_fees"]],
+        "lt": [_r(v, 1) for v in lm["LeadTime"]], "nb": [_r(v, 0) for v in lm["Bookings"]],
     }
+    # guest-payment parts (2026+; see revenue_mix.py), sparse: listing-month index -> parts
+    mix_cols = ["Mix_rent", "Mix_clean", "Mix_tax", "Mix_channel", "Mix_lease", "Mix_none",
+                "Mix_acc", "Mix_pet", "Mix_disc", "Mix_other", "Mix_comm"]
+    if "Mix_rent" in lm:
+        has = lm[mix_cols].notna().any(axis=1).values
+        data_lm["mix"] = {"i": [int(i) for i in np.flatnonzero(has)],
+                          **{c[4:].lower(): [_r(v, 0) for v in lm.loc[has, c].fillna(0)] for c in mix_cols}}
+    # owner payout is per Property (owner statement) x month, repeated on each of
+    # its listings -> keep one value per Property-month
+    pay = (lm.dropna(subset=["Payout", "Property"]).drop_duplicates(["Property", "yearmonth"]))
+    data_pay = {}
+    for prop, g in pay.groupby("Property"):
+        data_pay[prop] = {int(k[:4]) * 100 + int(k[5:7]): _r(v, 2) for k, v in zip(g["yearmonth"], g["Payout"])}
+    # yearly owner distributions per Property (some statements, e.g. OSBR, have no
+    # monthly payout rows); used for whole-year / YTD periods when monthly is missing
+    po = pd.read_excel(d / "RevenueReport_upd.xlsx", sheet_name="payout")
+    data_pay_y = {}
+    for _, r in po.iterrows():
+        ys = {int(c[-4:]): _r(r[c], 2) for c in po.columns if c.startswith("OwnerDist_") and pd.notna(r[c])}
+        if ys and pd.notna(r["Property"]):
+            data_pay_y[r["Property"]] = ys
     kind_code = {"set": 0, "market_hp": 1, "market_all": 2}
     bench = bench[bench["Listing"].isin(idx)]
     data_b = {
@@ -73,9 +99,10 @@ def build(run: str):
         "si": [sidx.get(str(b).removeprefix("Set: "), -1) if k == "set" else -1
                for b, k in zip(bench["benchmark"], bench["kind"])],
         "occ": [_r(v, 4) for v in bench["Occ"]], "adr": [_r(v, 2) for v in bench["ADR"]],
+        "lt": [_r(v, 1) for v in (bench["Lead"] if "Lead" in bench else [None] * len(bench))],
     }
     payload = {"asof": run, "listings": listings, "setNames": set_names,
-               "lm": data_lm, "bench": data_b, "occYtd": occ_ytd}
+               "lm": data_lm, "bench": data_b, "occYtd": occ_ytd, "pay": data_pay, "payY": data_pay_y}
     blob = json.dumps(payload, separators=(",", ":")).replace("</", "<\\/")
     html = TEMPLATE.read_text().replace("/*__DATA__*/", blob).replace("__ASOF__", run)
     out = d / "revenue_dashboard.html"

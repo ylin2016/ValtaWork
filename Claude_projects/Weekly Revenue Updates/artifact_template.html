@@ -1,0 +1,985 @@
+<title>Valta Revenue Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: burgundy header bar carrying every filter + view switch; one centred
+   1200px column below it. Valta = KPI tiles -> flag legend -> property rows;
+   Trends = monthly revenue, pacing, markets, movers; Owner = statement header +
+   listing cards. Clicking a property opens a listing drawer with monthly detail. */
+:root {
+  --brand: #7B1E2B;            /* header, "This" bars */
+  --brand-text: #7B1E2B;       /* burgundy used as text on the page surface */
+  --brand-soft: rgba(123,30,43,0.08);
+  --last: #c4a0a7;             /* same period last year */
+  --comp: #94a3b8;             /* Wheelhouse comp set / market */
+  --hp: #4f8a8b;               /* market high performers (listing drawer) */
+  --ink: #334155;
+  --muted: #94a3b8;
+  --muted-2: #64748b;
+  --page: #f8fafc;
+  --card: #ffffff;
+  --line: #e2e8f0;
+  --line-soft: #f1f5f9;
+  --track: #f1f5f9;
+  --head-soft: #fafbfc;
+  --good: #16a34a;
+  --bad: #dc2626;
+  --warn: #d97706;
+  --bad-wash: rgba(220,38,38,0.03);
+  --warn-wash: rgba(217,119,6,0.03);
+  --on-brand: #ffffff;
+  --on-brand-dim: rgba(255,255,255,0.6);
+  --scrim: rgba(15,23,42,0.35);
+  --seg-rent: #7B1E2B; --seg-lease: #b4636f; --seg-clean: #4f8a8b; --seg-tax: #c0913f;
+  --seg-chan: #64748b; --seg-none: #cbd5e1;
+  --font: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --brand: #8a2433; --brand-text: #e58a98; --brand-soft: rgba(229,138,152,0.10);
+    --last: #8c5c66; --comp: #64748b; --hp: #5fa3a4;
+    --ink: #e2e8f0; --muted: #8391a7; --muted-2: #a3b0c2;
+    --page: #0e1116; --card: #161a22; --line: #2a303b; --line-soft: #1f242d; --track: #222833;
+    --head-soft: #1a1f28; --good: #34c26b; --bad: #f05252; --warn: #f0a232;
+    --bad-wash: rgba(240,82,82,0.06); --warn-wash: rgba(240,162,50,0.06);
+    --scrim: rgba(0,0,0,0.55);
+    --seg-rent: #b23a4c; --seg-lease: #d88a96; --seg-clean: #5fa3a4; --seg-tax: #d4a95a; --seg-chan: #8391a7; --seg-none: #3a4250;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --brand: #8a2433; --brand-text: #e58a98; --brand-soft: rgba(229,138,152,0.10);
+  --last: #8c5c66; --comp: #64748b; --hp: #5fa3a4;
+  --ink: #e2e8f0; --muted: #8391a7; --muted-2: #a3b0c2;
+  --page: #0e1116; --card: #161a22; --line: #2a303b; --line-soft: #1f242d; --track: #222833;
+  --head-soft: #1a1f28; --good: #34c26b; --bad: #f05252; --warn: #f0a232;
+  --bad-wash: rgba(240,82,82,0.06); --warn-wash: rgba(240,162,50,0.06);
+  --scrim: rgba(0,0,0,0.55);
+  --seg-rent: #b23a4c; --seg-lease: #d88a96; --seg-clean: #5fa3a4; --seg-tax: #d4a95a; --seg-chan: #8391a7; --seg-none: #3a4250;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 13px; }
+button, select { font-family: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* header */
+.top { background: var(--brand); padding: 14px 22px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+.brandname { color: var(--on-brand); font-size: 18px; font-weight: 800; letter-spacing: -0.02em; }
+.brandsub { color: var(--on-brand-dim); font-size: 11px; margin-top: 1px; }
+.controls { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.controls select { padding: 7px 10px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.25); background: rgba(255,255,255,0.12); color: var(--on-brand); font-size: 13px; font-weight: 500; cursor: pointer; max-width: 220px; }
+.controls select option { color: #333; background: #fff; }
+.controls select:focus-visible, .seg button:focus-visible, .x:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+.prow:focus-visible, .link:focus-visible, .rhead button:focus-visible { outline: 2px solid var(--brand-text); outline-offset: -2px; }
+.seg { display: flex; background: rgba(255,255,255,0.15); border-radius: 7px; overflow: hidden; }
+.seg button { padding: 7px 14px; font-size: 12px; font-weight: 600; border: 0; cursor: pointer; background: transparent; color: rgba(255,255,255,0.85); }
+.seg button[aria-pressed="true"] { background: #fff; color: #7B1E2B; }
+
+.wrap { max-width: 1200px; margin: 0 auto; padding-inline: 16px; padding-block: 20px 60px; display: flex; flex-direction: column; gap: 16px; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; }
+.foot { font-size: 11px; color: var(--muted); text-align: center; line-height: 1.6; }
+.note { font-size: 11px; color: var(--muted-2); line-height: 1.5; }
+.lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.up { color: var(--good); } .down { color: var(--bad); } .flat { color: var(--muted); }
+.delta { font-weight: 600; font-size: 12px; white-space: nowrap; }
+.link { all: unset; cursor: pointer; font-weight: 600; }
+.link:hover { text-decoration: underline; }
+
+/* KPI tiles */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.kpi { padding: 16px 18px; }
+.kpi .v { font-size: 24px; font-weight: 700; line-height: 1.1; margin-top: 4px; }
+.kpi .cmp { margin-top: 6px; display: flex; flex-direction: column; gap: 1px; font-size: 11px; color: var(--muted); }
+
+/* flag legend */
+.legend { overflow: hidden; }
+.legend .cap { padding: 8px 14px; border-bottom: 1px solid var(--line); font-size: 11px; color: var(--muted); background: var(--head-soft); }
+.legend .cap b { color: var(--ink); }
+.tablebox { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 11px; }
+th { padding: 8px 14px; text-align: left; font-weight: 600; color: var(--brand-text); font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; background: var(--brand-soft); white-space: nowrap; }
+td { padding: 8px 14px; border-bottom: 1px solid var(--line-soft); }
+td.or { text-align: center; color: var(--muted); font-size: 10px; width: 20px; }
+.dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.dot.red { background: var(--bad); box-shadow: 0 0 0 2px rgba(220,38,38,0.18); }
+.dot.amber { background: var(--warn); box-shadow: 0 0 0 2px rgba(217,119,6,0.18); }
+.fl { display: inline-flex; align-items: center; gap: 5px; font-weight: 600; }
+.fl.red { color: var(--bad); } .fl.amber { color: var(--warn); }
+
+/* flagged list */
+.flagged { padding: 14px 18px; }
+.flagged h3 { margin: 0 0 10px; font-size: 14px; font-weight: 700; display: flex; align-items: center; gap: 6px; }
+.flagcols { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 12px 24px; }
+.flagcols .hd { font-size: 11px; font-weight: 700; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
+.flagcols .it { font-size: 12px; padding-left: 13px; margin-bottom: 2px; }
+.flagcols .it span { color: var(--muted); }
+.flagcols summary { font-size: 11px; color: var(--brand-text); font-weight: 600; cursor: pointer; padding: 4px 0 4px 13px; }
+
+/* property rows */
+.rows { overflow: hidden; }
+.rhead, .prow { display: grid; grid-template-columns: 170px repeat(5, minmax(0, 1fr)); column-gap: 14px; align-items: center; padding: 10px 16px; }
+.rhead { border-bottom: 1px solid var(--line); background: var(--brand-soft); font-size: 10px; font-weight: 700; color: var(--brand-text); text-transform: uppercase; letter-spacing: 0.04em; }
+.rhead button { all: unset; cursor: pointer; }
+.rhead button[aria-pressed="true"]::after { content: " ▾"; }
+.prow { border-bottom: 1px solid var(--line-soft); border-left: 3px solid transparent; cursor: pointer; }
+.prow:hover { background: var(--head-soft); }
+.prow.red { border-left-color: var(--bad); background: var(--bad-wash); }
+.prow.amber { border-left-color: var(--warn); background: var(--warn-wash); }
+.pname { min-width: 0; }
+.pname .n { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; }
+.pname .n span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pname .s { font-size: 10px; color: var(--muted); }
+.metric { min-width: 0; }
+.metric .top2 { display: flex; justify-content: space-between; gap: 6px; margin-bottom: 3px; }
+.metric .top2 b { font-size: 12px; }
+.mlabel { display: none; font-size: 9px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.bars { display: flex; flex-direction: column; gap: 2px; }
+.bar { display: grid; grid-template-columns: 26px 1fr; align-items: center; gap: 4px; }
+.bar i { font-style: normal; font-size: 8px; color: var(--muted); text-align: right; }
+.track { background: var(--track); border-radius: 3px; height: 9px; overflow: hidden; }
+.fill { height: 100%; border-radius: 3px; }
+.fill.this { background: var(--brand); } .fill.last { background: var(--last); } .fill.comp { background: var(--comp); }
+.na { font-size: 11px; color: var(--muted); }
+.scroller { max-height: 640px; overflow-y: auto; }
+
+/* trends */
+.panel { padding: 16px 18px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.panel h2 { margin: 0; font-size: 14px; font-weight: 700; text-wrap: balance; }
+.keys { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11px; color: var(--muted-2); }
+.keys span { display: inline-flex; align-items: center; gap: 5px; }
+.sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+.chartbox { overflow-x: auto; }
+.chartbox svg { display: block; width: 100%; min-width: 620px; height: auto; }
+svg text { fill: var(--muted-2); font-family: var(--font); }
+svg text.lab { fill: var(--ink); font-weight: 600; }
+.two { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.mt td, .mt th { text-align: right; } .mt td:first-child, .mt th:first-child { text-align: left; }
+.mt td { font-size: 12px; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pace { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 10px; }
+.pace .card { padding: 12px 14px; }
+.pace .v { font-size: 18px; font-weight: 700; margin-top: 2px; }
+.defs { margin: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(min(320px, 100%), 1fr)); gap: 10px 24px; }
+.defs dt { font-size: 12px; font-weight: 700; }
+.defs dd { margin: 2px 0 0; font-size: 12px; color: var(--muted-2); line-height: 1.5; max-width: 65ch; }
+.mover { display: grid; grid-template-columns: minmax(0, 150px) 1fr 64px; gap: 8px; align-items: center; }
+.mover .link { font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mover .delta { text-align: right; }
+
+/* owner */
+.ohead { padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+.ohead .nm { font-size: 17px; font-weight: 700; }
+.ohead .sub { font-size: 12px; color: var(--muted); }
+.ototals { display: flex; gap: 28px; flex-wrap: wrap; }
+.ototals > div { text-align: right; }
+.ototals .v { font-size: 22px; font-weight: 800; }
+.ototals .v.pay { color: var(--brand-text); }
+.ocards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
+.ocard { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
+.ocard h3 { margin: 0; font-size: 15px; font-weight: 700; }
+.ostats { display: flex; gap: 16px; flex-wrap: wrap; }
+.ostats > div { flex: 1; min-width: 100px; }
+.ostats .v { font-size: 22px; font-weight: 700; }
+.oblock .hd { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 13px; }
+.oblock .hd b { font-weight: 600; }
+.oblock .bar { grid-template-columns: 32px 1fr; gap: 6px; margin-bottom: 2px; }
+.oblock .bar i { font-size: 10px; }
+.oblock .track { height: 12px; }
+.oblock .vs { display: flex; gap: 10px; font-size: 11px; color: var(--muted); margin-top: 4px; flex-wrap: wrap; }
+.oblock.pay { border-top: 1px solid var(--line); padding-top: 12px; }
+.oblock.pay .hd, .oblock.pay .hd b { color: var(--brand-text); font-weight: 700; }
+
+/* listing drawer */
+.scrim { position: fixed; inset: 0; background: var(--scrim); z-index: 20; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(760px, 100%); background: var(--page); z-index: 21; overflow-y: auto; box-shadow: -12px 0 40px rgba(0,0,0,0.18); }
+.dhead { background: var(--brand); padding: calc(14px + env(safe-area-inset-top, 0px)) 18px 14px; display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; position: sticky; top: 0; z-index: 1; }
+.dhead .t { color: var(--on-brand); font-size: 16px; font-weight: 700; }
+.dhead .m { color: var(--on-brand-dim); font-size: 11px; margin-top: 2px; line-height: 1.5; }
+.x { all: unset; cursor: pointer; color: var(--on-brand); font-size: 22px; line-height: 1; padding: 2px 6px; border-radius: 4px; }
+.dbody { padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+.wh { display: flex; flex-direction: column; }
+.whrow { display: grid; grid-template-columns: 38px 1fr 64px; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px solid var(--line-soft); }
+.whrow .mo { font-size: 11px; color: var(--muted-2); font-weight: 600; }
+.whbars { display: flex; flex-direction: column; gap: 2px; }
+.whbar { position: relative; height: 7px; background: var(--track); border-radius: 2px; }
+.whbar .f { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 2px; }
+.whbar .tick { position: absolute; top: -2px; bottom: -2px; width: 2px; background: var(--ink); border-radius: 1px; }
+.whrow .val { font-size: 11px; text-align: right; font-variant-numeric: tabular-nums; }
+.whrow.future .mo::after { content: " •"; color: var(--warn); }
+
+/* team settings (shared through the artifact's db) */
+.team { padding: 0; overflow: hidden; }
+.team > summary { padding: 12px 18px; cursor: pointer; font-size: 14px; font-weight: 700; list-style-position: inside; }
+.team > summary .meta { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.team .body { padding: 4px 18px 16px; display: flex; flex-direction: column; gap: 12px; }
+.thr { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(230px, 100%), 1fr)); gap: 10px 18px; }
+.thr label { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: var(--muted-2); font-weight: 600; }
+.thr .in { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink); font-weight: 400; }
+.thr input, .tnote textarea { font: inherit; font-size: 13px; color: var(--ink); background: var(--card); border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; }
+.thr input { width: 72px; font-variant-numeric: tabular-nums; }
+.tnote textarea { width: 100%; min-height: 70px; resize: vertical; }
+.thr input:focus-visible, .tnote textarea:focus-visible, .btn:focus-visible { outline: 2px solid var(--brand-text); outline-offset: 1px; }
+.btnrow { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn { font: inherit; font-size: 12px; font-weight: 600; padding: 6px 12px; border-radius: 6px; border: 1px solid var(--line); background: var(--card); color: var(--ink); cursor: pointer; }
+.btn.primary { background: var(--brand); border-color: var(--brand); color: var(--on-brand); }
+.btn:disabled { opacity: 0.5; cursor: default; }
+.chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; padding: 3px 4px 3px 10px; border: 1px solid var(--line); border-radius: 999px; }
+.chip button { all: unset; cursor: pointer; font-size: 11px; font-weight: 600; color: var(--brand-text); padding: 2px 6px; }
+.status { font-size: 11px; color: var(--muted-2); }
+.status.err { color: var(--bad); }
+.pnote { font-size: 10.5px; color: var(--muted-2); margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pnote::before { content: "✎ "; }
+.tnote { display: flex; flex-direction: column; gap: 8px; }
+.tnote .chk { display: flex; align-items: center; gap: 6px; font-size: 12px; }
+
+@media (max-width: 760px) {
+  .top { padding: 12px 16px; }
+  .rhead { display: none; }
+  .prow { grid-template-columns: 1fr; row-gap: 10px; }
+  .mlabel { display: block; }
+  .ototals > div { text-align: left; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .drawer { animation: slide 0.18s ease-out; }
+  @keyframes slide { from { transform: translateX(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+</style>
+
+<header class="top">
+  <div>
+    <div class="brandname">Valta Realty</div>
+    <div class="brandsub">Performance Dashboard · data as of __ASOF__</div>
+  </div>
+  <div class="controls">
+    <select id="f-year" aria-label="Year"></select>
+    <select id="f-q" aria-label="Quarter"></select>
+    <select id="f-m" aria-label="Month"></select>
+    <select id="f-market" aria-label="Market"></select>
+    <select id="f-type" aria-label="Rental type"></select>
+    <select id="f-owner" aria-label="Owner statement"></select>
+    <div class="seg" role="group" aria-label="View">
+      <button type="button" data-view="valta">Valta</button>
+      <button type="button" data-view="trends">Trends</button>
+      <button type="button" data-view="owner">Owner</button>
+    </div>
+  </div>
+</header>
+<main class="wrap" id="main"></main>
+<div id="drawer-root"></div>
+
+<script id="payload" type="application/json">/*__DATA__*/</script>
+<script>
+(function () {
+"use strict";
+const D = JSON.parse(document.getElementById("payload").textContent);
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const ALLM = [1,2,3,4,5,6,7,8,9,10,11,12];
+const QS = { Q1: [1,2,3], Q2: [4,5,6], Q3: [7,8,9], Q4: [10,11,12] };
+const AY = +D.asof.slice(0, 4), AM = +D.asof.slice(5, 7);
+const NOW = AY * 100 + AM;                      // months >= NOW are booked, not finished
+const YEARS = [AY, AY - 1, AY - 2];
+
+// ---------- data index ----------
+const L = D.listings;
+const rows = L.map(() => new Map());
+for (let i = 0; i < D.lm.li.length; i++) {
+  rows[D.lm.li[i]].set(D.lm.ym[i], { rev: D.lm.rev[i] || 0, rocc: D.lm.rocc[i] || 0, nd: D.lm.nd[i] || 0,
+    occ: D.lm.occ[i], adrf: D.lm.adrf[i], lt: D.lm.lt ? D.lm.lt[i] : null, nb: D.lm.nb ? D.lm.nb[i] || 0 : 0 });
+}
+// guest-payment parts per listing-month (itemized from 2026; see revenue_mix.py)
+if (D.lm.mix) D.lm.mix.i.forEach((idx, j) => {
+  const r = rows[D.lm.li[idx]].get(D.lm.ym[idx]); if (!r) return;
+  r.mix = {}; ["rent", "clean", "tax", "channel", "lease", "none", "acc", "pet", "disc", "other", "comm"].forEach(k => r.mix[k] = (D.lm.mix[k] || [])[j] || 0);
+});
+// benchmarks: kind 0 comp set (averaged across a listing's sets), 1 market high performers, 2 whole market
+const bench = L.map(() => [new Map(), new Map(), new Map()]);
+for (let i = 0; i < D.bench.li.length; i++) {
+  const m = bench[D.bench.li[i]][D.bench.k[i]], ym = D.bench.ym[i];
+  const o = D.bench.occ[i], a = D.bench.adr[i];
+  if (o == null || a == null) continue;
+  const cur = m.get(ym) || { o: 0, a: 0, n: 0 };
+  cur.o += o; cur.a += a; cur.n += 1; m.set(ym, cur);
+}
+bench.forEach(ks => ks.forEach(m => m.forEach((v, k) => m.set(k, { occ: v.o / v.n, adr: v.a / v.n }))));
+const benchLt = L.map(() => new Map());
+for (let i = 0; i < D.bench.li.length; i++) {
+  const v = D.bench.lt ? D.bench.lt[i] : null;
+  if (D.bench.k[i] !== 0 || v == null) continue;
+  const m = benchLt[D.bench.li[i]], cur = m.get(D.bench.ym[i]) || [0, 0];
+  cur[0] += v; cur[1] += 1; m.set(D.bench.ym[i], cur);
+}
+benchLt.forEach(m => m.forEach((v, k) => m.set(k, v[0] / v[1])));
+
+const dim = ym => new Date(Math.floor(ym / 100), ym % 100, 0).getDate();
+
+// one listing over a set of months; null when it has no rows there.
+// ADR / RevPAR are on the guest-paid basis (nightly rate + cleaning, = ADR_w_fees),
+// the same basis as Wheelhouse comp-set `adr` and market `adr_w_fees`.
+// Leases have no cleaning fee: their rent per night is used as is.
+function agg(li, months) {
+  let rev = 0, rocc = 0, nd = 0, av = 0, gp = 0, n = 0, done = 0, ltw = 0, nb = 0;
+  for (const ym of months) {
+    const r = rows[li].get(ym); if (!r) continue;
+    n++; if (ym < NOW) done++;
+    rev += r.rev; rocc += r.rocc; nd += r.nd;
+    let a = r.occ > 0 ? r.nd / r.occ : dim(ym);
+    if (Math.abs(a - dim(ym)) < 1.5) a = dim(ym);   // OccRt is rounded; snap to the month
+    av += a; gp += r.adrf != null ? r.adrf * r.nd : r.rocc;
+    if (r.lt != null && r.nb) { ltw += r.lt * r.nb; nb += r.nb; }
+  }
+  if (!n) return null;
+  return { rev, nd, av, gp, occ: av ? nd / av : 0, adr: nd ? gp / nd : null,
+           revpar: av ? gp / av : 0, done, nb, lead: nb ? ltw / nb : null };
+}
+// comp: Wheelhouse comp set, else the whole market at the listing's bedroom size.
+// Both include cleaning fees, like the listing figures from agg().
+function comp(li, months, a) {
+  if (!a) return null;
+  for (const [k, src] of [[0, "set"], [2, "mkt"]]) {
+    const m = bench[li][k]; let o = 0, ad = 0, rp = 0, n = 0;
+    for (const ym of months) {
+      if (!rows[li].has(ym)) continue;
+      const b = m.get(ym); if (!b) continue;
+      o += b.occ; ad += b.adr; rp += b.occ * b.adr; n++;
+    }
+    if (n) {
+      let lt = 0, ln = 0;
+      if (src === "set") for (const ym of months) { const v = benchLt[li].get(ym); if (v != null && rows[li].has(ym)) { lt += v; ln++; } }
+      return { occ: o / n, adr: ad / n, revpar: rp / n, src, lead: ln ? lt / ln : null };
+    }
+  }
+  return null;
+}
+
+// ---------- state ----------
+const store = {
+  get(k, d) { try { const v = localStorage.getItem("valta-dash:" + k); return v == null ? d : JSON.parse(v); } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem("valta-dash:" + k, JSON.stringify(v)); } catch (e) {} }
+};
+const owners = [...new Set(L.map(l => l.p).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+const S = Object.assign({ view: "valta", year: AY, q: "All", m: "All", market: "All", type: "STR", owner: owners[0], sort: "flag" },
+                        store.get("state", {}));
+const hash = (location.hash || "").slice(1);
+if (["valta", "trends", "owner"].includes(hash)) S.view = hash;
+if (!YEARS.includes(S.year)) S.year = AY;
+if (!owners.includes(S.owner)) S.owner = owners[0];
+
+function period() {
+  const y = S.year;
+  let ms, label;
+  if (S.m !== "All" && S.m !== "FY") { ms = [+S.m]; label = MON[+S.m - 1] + " " + y; }
+  else if (S.q !== "All") { ms = QS[S.q]; label = S.q + " " + y; }
+  else if (y === AY && S.m !== "FY") { ms = ALLM.filter(m => m < AM); label = "YTD " + y + " (Jan–" + MON[AM - 2] + ")"; }
+  else { ms = ALLM; label = (y === AY ? "Full year " : "") + y; }
+  const cur = ms.map(m => y * 100 + m), last = ms.map(m => (y - 1) * 100 + m);
+  return { cur, last, label, booked: cur.some(v => v >= NOW), whole: S.q === "All" && (S.m === "All" || S.m === "FY") };
+}
+
+// ---------- formatting ----------
+const usd = n => n == null || !isFinite(n) ? "–" : "$" + Math.round(n).toLocaleString("en-US");
+const usdK = n => Math.abs(n) >= 1e6 ? "$" + (n / 1e6).toFixed(2) + "M" : Math.abs(n) >= 1e3 ? "$" + Math.round(n / 1e3) + "k" : "$" + Math.round(n);
+const pct = v => v == null ? "–" : (v * 100).toFixed(1) + "%";
+const days = v => v == null ? "–" : Math.round(v) + " d";
+// lead time change in days; neutral colour, since booking earlier isn't always better
+function deltaDays(cur, prev) {
+  if (cur == null || prev == null) return '<span class="delta flat">–</span>';
+  const d = Math.round(cur - prev);
+  return `<span class="delta flat">${d > 0 ? "▲" : d < 0 ? "▼" : "–"} ${Math.abs(d)} d</span>`;
+}
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+function delta(cur, prev, pts) {
+  if (cur == null || prev == null || (!pts && !prev)) return '<span class="delta flat">–</span>';
+  const d = pts ? (cur - prev) * 100 : (cur - prev) / prev * 100;
+  const c = d > 0.05 ? "up" : d < -0.05 ? "down" : "flat";
+  const arrow = c === "up" ? "▲" : c === "down" ? "▼" : "–";
+  return `<span class="delta ${c}">${arrow} ${Math.abs(d).toFixed(1)}${pts ? " pts" : "%"}</span>`;
+}
+const fill = (v, max, cls) => `<div class="track"><div class="fill ${cls}" style="width:${Math.max(0, Math.min(100, (v || 0) / (max || 1) * 100))}%"></div></div>`;
+function bars(items, max) {
+  return '<div class="bars">' + items.map(([lab, v, cls]) =>
+    v == null ? "" : `<div class="bar"><i>${lab}</i>${fill(v, max, cls)}</div>`).join("") + "</div>";
+}
+function niceStep(raw) {
+  const p = Math.pow(10, Math.floor(Math.log10(raw || 1))), f = raw / p;
+  return (f <= 1 ? 1 : f <= 2 ? 2 : f <= 2.5 ? 2.5 : f <= 5 ? 5 : 10) * p;
+}
+const typeLabel = () => S.type === "All" ? "All types" : S.type === "STR" ? "Short-term" : "Long-term leases";
+
+// ---------- flags (the layout's rules) ----------
+// thresholds in the units people type (percent); team settings can change them
+const FLAG_DEFAULT = { occRed: 60, occAmber: 65, revRed: 15, revAmber: 10, rpRed: 10, rpAmber: 5 };
+let FLAG = {};
+function setFlags(t) {
+  const v = Object.assign({}, FLAG_DEFAULT, t || {});
+  FLAG = { occRed: v.occRed / 100, occAmber: v.occAmber / 100, revRed: -v.revRed / 100, revAmber: -v.revAmber / 100,
+           rpRed: -v.rpRed / 100, rpAmber: -v.rpAmber / 100, raw: v };
+}
+setFlags();
+function flagsFor(r) {
+  const out = [];
+  if (r.t === "STR" && r.a.done > 0) {
+    if (r.a.occ < FLAG.occRed) out.push(["red", "Low occupancy"]);
+    else if (r.a.occ < FLAG.occAmber) out.push(["amber", "Below-avg occupancy"]);
+  }
+  if (r.p && r.p.rev > 0) {
+    const d = (r.a.rev - r.p.rev) / r.p.rev;
+    if (d < FLAG.revRed) out.push(["red", "Revenue down " + Math.round(-d * 100) + "%"]);
+    else if (d < FLAG.revAmber) out.push(["amber", "Revenue declining"]);
+  }
+  if (r.t === "STR" && r.c && r.c.revpar > 0) {
+    const d = (r.a.revpar - r.c.revpar) / r.c.revpar;
+    if (d < FLAG.rpRed) out.push(["red", "RevPAR trails comp"]);
+    else if (d < FLAG.rpAmber) out.push(["amber", "RevPAR below comp"]);
+  }
+  const red = out.filter(f => f[0] === "red"), amb = out.filter(f => f[0] === "amber");
+  if (red.length) return { type: "red", reasons: red.map(f => f[1]) };
+  if (amb.length) return { type: "amber", reasons: amb.map(f => f[1]) };
+  return null;
+}
+
+// listings in scope with period figures
+function scope(per) {
+  const out = [];
+  L.forEach((l, li) => {
+    if (S.market !== "All" && l.mk !== S.market) return;
+    if (S.type !== "All" && l.t !== S.type) return;
+    if (TEAM.hidden.has(l.n)) return;
+    const a = agg(li, per.cur); if (!a) return;
+    const p = agg(li, per.last);
+    const r = { li, n: l.n, t: l.t, mk: l.mk, b: l.b, a, p, c: l.t === "STR" ? comp(li, per.cur, a) : null };
+    r.flag = flagsFor(r);
+    out.push(r);
+  });
+  return out;
+}
+// portfolio totals; "vs Comp" uses only listings that have a comp, weighted by available nights
+function portfolio(rs) {
+  const s = k => rs.reduce((t, r) => t + r.a[k], 0);
+  const sp = k => rs.reduce((t, r) => t + (r.p ? r.p[k] : 0), 0);
+  const withC = rs.filter(r => r.c), avC = withC.reduce((t, r) => t + r.a.av, 0);
+  const cw = k => avC ? withC.reduce((t, r) => t + r.c[k] * r.a.av, 0) / avC : null;
+  const tw = k => avC ? withC.reduce((t, r) => t + (r.a[k] || 0) * r.a.av, 0) / avC : null;
+  const av = s("av"), nd = s("nd"), rocc = s("gp"), pav = sp("av"), pnd = sp("nd"), procc = sp("gp");
+  return {
+    rev: s("rev"), prev: sp("rev"),
+    occ: av ? nd / av : null, pocc: pav ? pnd / pav : null,
+    adr: nd ? rocc / nd : null, padr: pnd ? procc / pnd : null,
+    revpar: av ? rocc / av : null, prevpar: pav ? procc / pav : null,
+    cOcc: cw("occ"), cAdr: cw("adr"), cRevpar: cw("revpar"),
+    tOcc: tw("occ"), tAdr: tw("adr"), tRevpar: tw("revpar"), nComp: withC.length,
+    lead: leadW(rs, r => r.a), plead: leadW(rs, r => r.p),
+    tLead: leadW(rs.filter(r => r.c && r.c.lead != null), r => r.a),
+    cLead: (() => { const x = rs.filter(r => r.c && r.c.lead != null && r.a.nb); const w = x.reduce((t, r) => t + r.a.nb, 0);
+                    return w ? x.reduce((t, r) => t + r.c.lead * r.a.nb, 0) / w : null; })()
+  };
+}
+
+function leadW(rs, pick) {
+  let s = 0, w = 0;
+  rs.forEach(r => { const a = pick(r); if (a && a.lead != null && a.nb) { s += a.lead * a.nb; w += a.nb; } });
+  return w ? s / w : null;
+}
+
+// ---------- controls ----------
+const $ = id => document.getElementById(id);
+function opts(el, list, val) {
+  el.innerHTML = list.map(([v, t]) => `<option value="${esc(v)}"${String(v) === String(val) ? " selected" : ""}>${esc(t)}</option>`).join("");
+}
+function syncControls() {
+  opts($("f-year"), YEARS.map(y => [y, y]), S.year);
+  opts($("f-q"), [["All", "All Quarters"], ...Object.keys(QS).map(q => [q, q])], S.q);
+  const ms = S.q === "All" ? ALLM : QS[S.q];
+  if (S.m !== "All" && S.m !== "FY" && !ms.includes(+S.m)) S.m = "All";
+  if ((S.q !== "All" || S.year !== AY) && S.m === "FY") S.m = "All";
+  const first = S.q !== "All" ? [["All", "Full Quarter"]]
+    : S.year === AY ? [["All", "Year to date"], ["FY", "Full year (incl. booked)"]] : [["All", "Full Year"]];
+  opts($("f-m"), [...first, ...ms.map(m => [m, MON[m - 1] + (S.year * 100 + m >= NOW ? " (booked)" : "")])], S.m);
+  const mkts = [...new Set(L.map(l => l.mk).filter(Boolean))].sort();
+  opts($("f-market"), [["All", "All Markets"], ...mkts.map(m => [m, m])], S.market);
+  opts($("f-type"), [["STR", "Short-term"], ["LTR", "Long-term leases"], ["All", "All Types"]], S.type);
+  opts($("f-owner"), owners.map(o => [o, o]), S.owner);
+  $("f-market").hidden = S.view === "owner";
+  $("f-type").hidden = S.view === "owner";
+  $("f-owner").hidden = S.view !== "owner";
+  document.querySelectorAll(".seg button").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.view === S.view)));
+}
+const bind = (id, key, num) => $(id).addEventListener("change", e => {
+  S[key] = num ? +e.target.value : e.target.value;
+  if (key === "year") { S.q = "All"; S.m = "All"; }
+  if (key === "q") S.m = "All";
+  render();
+});
+bind("f-year", "year", true); bind("f-q", "q"); bind("f-m", "m"); bind("f-market", "market"); bind("f-type", "type"); bind("f-owner", "owner");
+document.querySelectorAll(".seg button").forEach(b => b.addEventListener("click", () => {
+  S.view = b.dataset.view;
+  try { history.replaceState(null, "", "#" + S.view); } catch (e) {}
+  render();
+}));
+
+// ---------- Valta view ----------
+function kpi(label, val, cur, prev, compCur, compVal, pts, fmt) {
+  return `<div class="card kpi"><div class="lbl">${label}</div><div class="v num">${fmt(val)}</div><div class="cmp">
+    <div>vs Last: ${delta(cur, prev, pts)}</div>
+    ${compVal != null ? `<div>vs Comp: ${delta(compCur, compVal, pts)}</div>` : ""}</div></div>`;
+}
+function legend() {
+  return `<div class="card legend"><div class="cap">Flags trigger when <b>any one</b> of the following conditions is met. Occupancy counts only finished months; RevPAR applies to short-term listings with a comp.</div>
+  <div class="tablebox"><table><thead><tr><th>Flag</th><th>Occupancy</th><th></th><th>Revenue vs Last</th><th></th><th>RevPAR vs Comp</th></tr></thead>
+  <tbody><tr><td><span class="fl red"><span class="dot red"></span>Needs Attention</span></td><td>Below ${FLAG.raw.occRed}%</td><td class="or">or</td><td>Dropped ${FLAG.raw.revRed}%+</td><td class="or">or</td><td>${FLAG.raw.rpRed}%+ below comp</td></tr>
+  <tr><td><span class="fl amber"><span class="dot amber"></span>Watch</span></td><td>Below ${FLAG.raw.occAmber}%</td><td class="or">or</td><td>Dropped ${FLAG.raw.revAmber}%+</td><td class="or">or</td><td>${FLAG.raw.rpAmber}%+ below comp</td></tr></tbody></table></div></div>`;
+}
+function flaggedList(rs) {
+  const red = rs.filter(r => r.flag && r.flag.type === "red"), amb = rs.filter(r => r.flag && r.flag.type === "amber");
+  if (!red.length && !amb.length) return "";
+  const item = r => `<div class="it"><button type="button" class="link" data-li="${r.li}">${esc(r.n)}</button> — <span>${esc(r.flag.reasons.join(", "))}</span></div>`;
+  const SHOW = 12;   // longer lists fold so the property rows stay near the top
+  const col = (list, cls, title) => !list.length ? "" : `<div><div class="hd fl ${cls}"><span class="dot ${cls}"></span>${title} · ${list.length}</div>
+    ${list.slice(0, SHOW).map(item).join("")}
+    ${list.length > SHOW ? `<details><summary>Show all ${list.length}</summary>${list.slice(SHOW).map(item).join("")}</details>` : ""}</div>`;
+  return `<div class="card flagged"><h3><span aria-hidden="true">⚑</span> Flagged Properties</h3><div class="flagcols">${col(red, "red", "Needs attention")}${col(amb, "amber", "Watch")}</div></div>`;
+}
+function sortRows(rs) {
+  const score = f => f && f.type === "red" ? 2 : f && f.type === "amber" ? 1 : 0;
+  const by = {
+    flag: (a, b) => score(b.flag) - score(a.flag) || b.a.occ - a.a.occ,
+    rev: (a, b) => b.a.rev - a.a.rev,
+    occ: (a, b) => b.a.occ - a.a.occ,
+    adr: (a, b) => (b.a.adr || 0) - (a.a.adr || 0),
+    lead: (a, b) => (b.a.lead ?? -1) - (a.a.lead ?? -1),
+    revpar: (a, b) => b.a.revpar - a.a.revpar,
+    name: (a, b) => a.n.localeCompare(b.n)
+  }[S.sort] || (() => 0);
+  return rs.slice().sort(by);
+}
+// hover text for one metric cell: values only (this period, last year, comp)
+function tip(name, fmt, cur, last, cmp, cmpLabel) {
+  const parts = [`${name}: ${fmt(cur)}`];
+  if (last != null) parts.push(`Last year: ${fmt(last)}`);
+  if (cmp != null) parts.push(`${cmpLabel === "Mkt" ? "Market" : "Comp set"}: ${fmt(cmp)}`);
+  return esc(parts.join(" · "));
+}
+function propertyRows(rs) {
+  const maxRev = Math.max(1, ...rs.map(r => Math.max(r.a.rev, r.p ? r.p.rev : 0))) * 1.05;
+  const maxRp = Math.max(1, ...rs.map(r => Math.max(r.a.revpar, r.p ? r.p.revpar : 0, r.c ? r.c.revpar : 0))) * 1.05;
+  const maxLead = Math.max(1, ...rs.map(r => Math.max(r.a.lead || 0, r.p ? r.p.lead || 0 : 0, r.c ? r.c.lead || 0 : 0))) * 1.05;
+  const maxAdr = Math.max(1, ...rs.map(r => Math.max(r.a.adr || 0, r.p ? r.p.adr || 0 : 0, r.c ? r.c.adr : 0))) * 1.05;
+  const hb = (k, t) => `<button type="button" data-sort="${k}" aria-pressed="${S.sort === k}">${t}</button>`;
+  const body = sortRows(rs).map(r => {
+    const f = r.flag, cl = r.c ? (r.c.src === "set" ? "Comp" : "Mkt") : null;
+    const occItems = [["This", r.a.occ, "this"], ["Last", r.p ? r.p.occ : null, "last"]];
+    const adrItems = [["This", r.a.adr, "this"], ["Last", r.p ? r.p.adr : null, "last"]];
+    const rpItems = [["This", r.a.revpar, "this"], ["Last", r.p ? r.p.revpar : null, "last"]];
+    const ltItems = [["This", r.a.lead, "this"], ["Last", r.p ? r.p.lead : null, "last"]];
+    if (r.c && r.c.lead != null) ltItems.push(["Comp", r.c.lead, "comp"]);
+    if (r.c) { occItems.push([cl, r.c.occ, "comp"]); adrItems.push([cl, r.c.adr, "comp"]); rpItems.push([cl, r.c.revpar, "comp"]); }
+    return `<div class="prow ${f ? f.type : ""}" tabindex="0" role="button" data-li="${r.li}" aria-label="Open ${esc(r.n)}">
+      <div class="pname" title="${esc(r.n + (f ? " — " + f.reasons.join(", ") : "") + " · click for monthly detail")}"><div class="n">${f ? `<span class="dot ${f.type}"></span>` : ""}<span>${esc(r.n)}</span></div>
+        <div class="s">${esc([r.mk, r.b !== "" ? r.b + " BR" : "", r.t === "LTR" ? "Lease" : ""].filter(Boolean).join(" · "))}</div>
+        ${TEAM.notes.get(r.n) ? `<div class="pnote" title="${esc(TEAM.notes.get(r.n).text)}">${esc(TEAM.notes.get(r.n).text)}</div>` : ""}</div>
+      <div class="metric" title="${tip("Revenue", usd, r.a.rev, r.p ? r.p.rev : null, null)}"><div class="mlabel">Revenue</div><div class="top2"><b class="num">${usd(r.a.rev)}</b>${delta(r.a.rev, r.p ? r.p.rev : null)}</div>
+        ${bars([["This", r.a.rev, "this"], ["Last", r.p ? r.p.rev : null, "last"]], maxRev)}</div>
+      <div class="metric" title="${tip("Occupancy", pct, r.a.occ, r.p ? r.p.occ : null, r.c ? r.c.occ : null, cl)}"><div class="mlabel">Occupancy</div><div class="top2"><b class="num">${pct(r.a.occ)}</b>${delta(r.a.occ, r.p ? r.p.occ : null, true)}</div>
+        ${bars(occItems, 1)}</div>
+      <div class="metric" title="${tip("ADR (incl. cleaning)", usd, r.a.adr, r.p ? r.p.adr : null, r.c ? r.c.adr : null, cl)}"><div class="mlabel">ADR</div><div class="top2"><b class="num">${usd(r.a.adr)}</b>${delta(r.a.adr, r.p ? r.p.adr : null)}</div>
+        ${bars(adrItems, maxAdr)}</div>
+      <div class="metric" title="${tip("RevPAR", usd, r.a.revpar, r.p ? r.p.revpar : null, r.c ? r.c.revpar : null, cl)}"><div class="mlabel">RevPAR</div><div class="top2"><b class="num">${usd(r.a.revpar)}</b>${delta(r.a.revpar, r.p ? r.p.revpar : null)}</div>
+        ${bars(rpItems, maxRp)}</div>
+      <div class="metric" title="${tip("Lead time", days, r.a.lead, r.p ? r.p.lead : null, r.c ? r.c.lead : null, "Comp") + (r.a.nb ? ` · ${r.a.nb} bookings` : "")}"><div class="mlabel">Lead time</div><div class="top2"><b class="num">${days(r.a.lead)}</b>${deltaDays(r.a.lead, r.p ? r.p.lead : null)}</div>
+        ${r.a.lead == null ? '<span class="na">No bookings</span>' : bars(ltItems, maxLead)}</div></div>`;
+  }).join("");
+  return `<div class="card rows"><div class="rhead"><div>${hb("name", "Property")} · ${hb("flag", "Flagged")}</div><div>${hb("rev", "Revenue")}</div><div>${hb("occ", "Occupancy")}</div><div>${hb("adr", "ADR")}</div><div>${hb("revpar", "RevPAR")}</div><div>${hb("lead", "Lead time")}</div></div>
+    <div class="scroller">${body || '<div class="prow"><span class="na">No listings with data for this period.</span></div>'}</div></div>`;
+}
+function viewValta(per) {
+  const rs = scope(per), P = portfolio(rs);
+  const head = `<div class="kpis">
+    ${kpi("Total Revenue", P.rev, P.rev, P.prev, null, null, false, usd)}
+    ${kpi("Occupancy", P.occ, P.occ, P.pocc, P.tOcc, P.cOcc, true, pct)}
+    ${kpi("ADR", P.adr, P.adr, P.padr, P.tAdr, P.cAdr, false, usd)}
+    ${kpi("RevPAR", P.revpar, P.revpar, P.prevpar, P.tRevpar, P.cRevpar, false, usd)}
+    <div class="card kpi"><div class="lbl">Lead Time</div><div class="v num">${days(P.lead)}</div><div class="cmp">
+      <div>vs Last: ${deltaDays(P.lead, P.plead)}</div>${P.cLead != null ? `<div>vs Comp: ${deltaDays(P.tLead, P.cLead)}</div>` : ""}</div></div></div>`;
+  const booked = per.booked ? `<div class="note">This period includes months that haven't finished. Their figures are bookings on the books as of ${D.asof}, compared with last year's final numbers.</div>` : "";
+  return head + booked + legend() + teamPanel() + flaggedList(rs) + propertyRows(rs) +
+    `<div class="foot">${rs.length} properties · ${S.market === "All" ? "All markets" : esc(S.market)} · ${typeLabel()} · ${per.label}<br>
+    Revenue is counted in the month the nights fall in: a stay that crosses a month end is split by nights. ADR and RevPAR include the cleaning fee (what the guest pays per night), the same basis Wheelhouse uses for comps. Comp = the listing's Wheelhouse comp set, or the whole market at the same bedroom count ("Mkt") when it has none. Comp occupancy is Wheelhouse's adjusted occupancy, which leaves out blocked nights; ours counts every calendar night. Lead time = days from booking confirmation to check-in, averaged over bookings checking in during the period (comp: Wheelhouse comp set). Click a property for its monthly detail.</div>`;
+}
+
+// ---------- Trends view ----------
+const YCOL = ["var(--comp)", "var(--last)", "var(--brand)"];   // two years ago, last year, selected year
+const inFilter = l => (S.market === "All" || l.mk === S.market) && (S.type === "All" || l.t === S.type) && !TEAM.hidden.has(l.n);
+function monthlyTotals(y) {
+  const t = ALLM.map(() => ({ rev: 0, n: 0 }));
+  L.forEach((l, li) => {
+    if (!inFilter(l)) return;
+    for (let m = 1; m <= 12; m++) { const r = rows[li].get(y * 100 + m); if (r && (r.rev || r.nd)) { t[m - 1].rev += r.rev; t[m - 1].n++; } }
+  });
+  return t;
+}
+function revenueChart() {
+  const ys = [S.year - 2, S.year - 1, S.year];
+  const data = ys.map(monthlyTotals);
+  const W = 900, H = 300, ml = 52, mr = 10, mt = 18, mb = 44, iw = W - ml - mr, ih = H - mt - mb;
+  const max = Math.max(1, ...data.flat().map(d => d.rev));
+  const step = niceStep(max / 4), top = Math.ceil(max / step) * step;
+  const sy = v => mt + ih - Math.max(0, v) / top * ih, gw = iw / 12, bw = (gw - 10) / 3;
+  let g = "";
+  for (let v = 0; v <= top + 1; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" stroke-width="1"/><text x="${ml - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11">${usdK(v)}</text>`;
+  data.forEach((yr, yi) => yr.forEach((d, m) => {
+    if (!d.rev) return;
+    const x = ml + m * gw + 5 + yi * bw, booked = ys[yi] * 100 + m + 1 >= NOW;
+    g += `<rect x="${x}" y="${sy(d.rev)}" width="${bw - 1}" height="${mt + ih - sy(d.rev)}" rx="2" fill="${YCOL[yi]}"${booked ? ` fill-opacity="0.18" stroke="${YCOL[yi]}" stroke-width="1.5" stroke-dasharray="3 2"` : ""}><title>${MON[m]} ${ys[yi]}: ${usd(d.rev)} · ${d.n} listings${booked ? " (on the books)" : ""}</title></rect>`;
+    if (yi === 2) g += `<text class="lab" x="${x + bw / 2}" y="${sy(d.rev) - 4}" text-anchor="middle" font-size="9.5">${usdK(d.rev)}</text>`;
+  }));
+  MON.forEach((mo, m) => {
+    g += `<text x="${ml + m * gw + gw / 2}" y="${H - mb + 16}" text-anchor="middle" font-size="11">${mo}</text>`;
+    const n = data[2][m].n; if (n) g += `<text x="${ml + m * gw + gw / 2}" y="${H - mb + 30}" text-anchor="middle" font-size="9.5">${n} active</text>`;
+  });
+  const keys = ys.slice().reverse().map((y, i) => `<span><i class="sw" style="background:${YCOL[2 - i]}"></i>${y}</span>`).join("");
+  const tot = data.map(yr => yr.reduce((t, d) => t + d.rev, 0));
+  return `<div class="card panel"><h2>Revenue by month</h2>
+    <div class="keys">${keys}<span><i class="sw" style="background:transparent;border:1.5px dashed var(--brand)"></i>Not finished yet: on the books as of ${D.asof}</span></div>
+    <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Monthly revenue ${ys.join(", ")}">${g}</svg></div>
+    <div class="note">Year totals: ${ys.map((y, i) => `${y} ${usd(tot[i])}`).join(" · ")}. Counts under each month are listings with a booking or lease that month in ${S.year}.</div></div>`;
+}
+function paceCards() {
+  const cards = [];
+  for (let k = 0; k < 3; k++) {
+    let y = AY, m = AM + k; if (m > 12) { m -= 12; y++; }
+    const cur = y * 100 + m, prev = (y - 1) * 100 + m; let a = 0, b = 0;
+    L.forEach((l, li) => { if (!inFilter(l)) return; const r = rows[li].get(cur), q = rows[li].get(prev); if (r) a += r.rev; if (q) b += q.rev; });
+    cards.push(`<div class="card"><div class="lbl">${MON[m - 1]} ${y} on the books</div><div class="v num">${usd(a)}</div><div class="note">${MON[m - 1]} ${y - 1} final ${usd(b)} · ${delta(a, b)}</div></div>`);
+  }
+  return `<div class="card panel"><h2>Pacing for the next three months</h2><div class="note">Revenue already booked, against the same month last year after it had finished.</div><div class="pace">${cards.join("")}</div></div>`;
+}
+function marketTable(per) {
+  const rs = scope(per), by = new Map();
+  rs.forEach(r => { const k = r.mk || "Other"; if (!by.has(k)) by.set(k, []); by.get(k).push(r); });
+  const lines = [...by.entries()].map(([k, list]) => [k, list, portfolio(list)]).sort((a, b) => b[2].rev - a[2].rev);
+  const tr = lines.map(([k, list, P]) => `<tr><td>${esc(k)}</td><td>${list.length}</td><td>${usd(P.rev)}</td><td>${delta(P.rev, P.prev)}</td>
+    <td>${pct(P.occ)}</td><td>${delta(P.occ, P.pocc, true)}</td><td>${usd(P.adr)}</td><td>${usd(P.revpar)}</td>
+    <td>${P.nComp ? delta(P.tRevpar, P.cRevpar) : '<span class="delta flat">–</span>'}</td></tr>`).join("");
+  return `<div class="card panel"><h2>Markets · ${per.label}</h2><div class="tablebox"><table class="mt"><thead><tr><th>Market</th><th>Listings</th><th>Revenue</th><th>vs Last</th><th>Occupancy</th><th>vs Last</th><th>ADR</th><th>RevPAR</th><th>RevPAR vs Comp</th></tr></thead><tbody>${tr || '<tr><td colspan="9" class="na">No data for this period.</td></tr>'}</tbody></table></div></div>`;
+}
+function topMovers(per) {
+  const rs = scope(per).filter(r => r.p && r.p.rev > 0).map(r => ({ r, d: r.a.rev - r.p.rev }));
+  const up = rs.filter(x => x.d > 0).sort((a, b) => b.d - a.d).slice(0, 6);
+  const dn = rs.filter(x => x.d < 0).sort((a, b) => a.d - b.d).slice(0, 6);
+  const max = Math.max(1, ...up.concat(dn).map(x => Math.abs(x.d)));
+  const list = (xs, cls) => xs.length ? xs.map(x => `<div class="mover">
+      <button type="button" class="link" data-li="${x.r.li}" title="${esc(x.r.n)}">${esc(x.r.n)}</button>
+      ${fill(Math.abs(x.d), max, cls)}
+      <span class="num delta ${x.d >= 0 ? "up" : "down"}">${x.d >= 0 ? "+" : "−"}${usdK(Math.abs(x.d))}</span></div>`).join("") : '<span class="na">None this period.</span>';
+  return `<div class="two"><div class="card panel"><h2>Biggest gains vs last year</h2>${list(up, "this")}</div>
+    <div class="card panel"><h2>Biggest drops vs last year</h2>${list(dn, "last")}</div></div>`;
+}
+// measure definitions shown at the top of Trends
+const DEFS = [
+  ["Revenue", "What the booking pays Valta: Guesty host payout (guest total minus the channel's host fee; channel-remitted taxes excluded). Leases use received rent from the rent roll. Owner stays and $0-fare bookings are left out."],
+  ["Revenue in a month", "Each booking's revenue is split evenly over its nights, and each night counts in the month it falls in. A stay that crosses a month end counts in both months."],
+  ["Occupancy", "Nights booked ÷ nights in the period (onboarding months count from the first available day). Wheelhouse comp occupancy is adjusted occupancy, which leaves out blocked nights."],
+  ["ADR", "Average daily rate including cleaning: (accommodation fare + cleaning fee) ÷ nights. That is the guest's price before channel fees, the same basis Wheelhouse uses for comps."],
+  ["RevPAR", "Revenue per available night = ADR × occupancy (incl. cleaning, so it compares with Wheelhouse)."],
+  ["Lead time", "Days from booking confirmation to check-in, averaged over bookings checking in during the period."],
+  ["Comp", "The listing's Wheelhouse comp set; when it has none, the whole market at the same bedroom count (\"Mkt\"). Market high performers = top-performing listings in that market and size."],
+  ["Last", "The same months one year earlier, for the same listing."],
+  ["Booked months", "Months that haven't finished (dashed outline bars) show bookings on the books as of the data date, not final results."],
+];
+function definitions() {
+  return `<div class="card panel"><h2>Measure definitions</h2><dl class="defs">${DEFS.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join("")}</dl></div>`;
+}
+const SEGS = [["rent", "Rent", "var(--seg-rent)"], ["lease", "Lease rent", "var(--seg-lease)"], ["clean", "Cleaning fee", "var(--seg-clean)"],
+              ["tax", "Tax", "var(--seg-tax)"], ["channel", "Channel fee", "var(--seg-chan)"], ["none", "Not itemized", "var(--seg-none)"]];
+function mixChart() {
+  const y = S.year, K = ["rent", "clean", "tax", "channel", "lease", "none", "acc", "pet", "disc", "other", "comm"];
+  const mon = ALLM.map(() => Object.fromEntries([...K, "payout"].map(k => [k, 0])));
+  let any = false;
+  L.forEach((l, li) => {
+    if (!inFilter(l)) return;
+    ALLM.forEach(m => { const r = rows[li].get(y * 100 + m); if (!r || !r.mix) return; any = true;
+      K.forEach(k => mon[m - 1][k] += r.mix[k]); mon[m - 1].payout += r.rev; });
+  });
+  if (!any) return `<div class="card panel"><h2>Guest payments by month · ${y}</h2><div class="note">The breakdown into rent, cleaning, tax and channel fee starts in 2026, the first year pulled from the Guesty API. Pick 2026 to see it.</div></div>`;
+  const tot = d => SEGS.reduce((t, [k]) => t + d[k], 0);
+  const W = 900, H = 300, ml = 52, mr = 10, mt = 20, mb = 30, iw = W - ml - mr, ih = H - mt - mb;
+  const max = Math.max(1, ...mon.map(d => Math.max(tot(d), d.payout)));
+  const step = niceStep(max / 4), top = Math.ceil(max / step) * step;
+  const sy = v => mt + ih - Math.max(0, v) / top * ih, gw = iw / 12, bw = gw * 0.56;
+  let g = "";
+  for (let v = 0; v <= top + 1; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)"/><text x="${ml - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11">${usdK(v)}</text>`;
+  mon.forEach((d, i) => {
+    const T = tot(d); if (!T) return;
+    const x = ml + i * gw + (gw - bw) / 2, booked = y * 100 + i + 1 >= NOW;
+    const tip = [`${MON[i]} ${y}${booked ? " (on the books)" : ""} · guests paid ${usd(T)}`,
+      ...SEGS.filter(([k]) => d[k]).map(([k, lab]) => `${lab}: ${usd(d[k])} (${(d[k] / T * 100).toFixed(0)}%)`),
+      d.rent ? `  Rent = accommodation ${usd(d.acc)} + pet ${usd(d.pet)} + discounts ${usd(d.disc)} + other add-ons ${usd(d.other)} − channel commission taken from it ${usd(d.comm)}` : "",
+      `Revenue (host payout): ${usd(d.payout)}`].filter(Boolean).join("\n");
+    let acc = 0;
+    SEGS.forEach(([k, , col]) => { const v = Math.max(0, d[k]); if (!v) return;
+      g += `<rect x="${x}" y="${sy(acc + v)}" width="${bw}" height="${sy(acc) - sy(acc + v)}" fill="${col}"><title>${esc(tip)}</title></rect>`;
+      acc += v; });
+    if (booked) g += `<rect x="${x - 2}" y="${sy(T) - 2}" width="${bw + 4}" height="${sy(0) - sy(T) + 2}" fill="none" stroke="var(--ink)" stroke-width="1.2" stroke-dasharray="3 2"/>`;
+    g += `<line x1="${x - 4}" x2="${x + bw + 4}" y1="${sy(d.payout)}" y2="${sy(d.payout)}" stroke="var(--ink)" stroke-width="2"><title>${esc(tip)}</title></line>`;
+    g += `<text class="lab" x="${x + bw / 2}" y="${sy(T) - 5}" text-anchor="middle" font-size="9.5">${usdK(T)}</text>`;
+    g += `<text x="${x + bw / 2}" y="${H - 10}" text-anchor="middle" font-size="11">${MON[i]}</text>`;
+  });
+  const yt = Object.fromEntries([...K, "payout"].map(k => [k, mon.reduce((t, d) => t + d[k], 0)])), YT = tot(yt);
+  const keys = SEGS.filter(([k]) => yt[k]).map(([k, lab, col]) => `<span><i class="sw" style="background:${col}"></i>${lab} ${usdK(yt[k])} · ${(yt[k] / YT * 100).toFixed(0)}%</span>`).join("");
+  return `<div class="card panel"><h2>Guest payments by month · ${y}</h2>
+    <div class="keys">${keys}<span><i class="sw" style="background:var(--ink);height:2px"></i>Revenue (host payout) ${usdK(yt.payout)}</span></div>
+    <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Guest payments by month, split into rent, cleaning, tax and channel fee">${g}</svg></div>
+    <div class="note">Each bar is what guests paid, split by nights into the month they fall in. Rent = accommodation + pet fee + discounts + other add-ons. Fees follow Owner_statement_whole's payment structure (the same rules as the owner statements): Airbnb, Hopper, Marriott, Whimstay and Blueground use the commission the channel actually took; Booking 15%, VRBO 5% + its 10% guest fee, Expedia 18%, Trip.com 15%; direct bookings' service fee. Mainland Airbnb tax is estimated from each property's tax rate. Not itemized = bookings on deactivated listings or that checked in before 2026 (payout only). Dashed outlines mark months that haven't finished (on the books). Hover a bar for the detail.</div></div>`;
+}
+function viewTrends(per) {
+  return definitions() + revenueChart() + mixChart() + (S.year === AY ? paceCards() : "") + marketTable(per) + topMovers(per) +
+    `<div class="foot">${S.market === "All" ? "All markets" : esc(S.market)} · ${typeLabel()} · data as of ${D.asof}</div>`;
+}
+
+// ---------- Owner view ----------
+function oblock(label, curV, lastV, compV, max, fmt, pts, cls) {
+  const items = [["This", curV, "this"], ["Last", lastV, "last"]];
+  if (compV != null) items.push(["Comp", compV, "comp"]);
+  return `<div class="oblock ${cls || ""}"><div class="hd"><b>${label}</b><span class="num">${fmt(curV)}</span></div>
+    ${items.map(([l, v, c]) => v == null ? "" : `<div class="bar"><i>${l}</i>${fill(v, max, c)}</div>`).join("")}
+    <div class="vs"><span>vs Last: ${delta(curV, lastV, pts)}</span>${compV != null ? `<span>vs Comp: ${delta(curV, compV, pts)}</span>` : ""}</div></div>`;
+}
+function paySum(prop, yms) {
+  const m = D.pay[prop]; if (!m) return null; let s = 0, n = 0;
+  yms.forEach(ym => { if (m[ym] != null) { s += m[ym]; n++; } });
+  return n ? s : null;
+}
+function viewOwner(per) {
+  const prop = S.owner;
+  const rs = L.map((l, li) => [l, li]).filter(([l]) => l.p === prop).map(([l, li]) => {
+    const a = agg(li, per.cur); if (!a) return null;
+    const p = agg(li, per.last);
+    return { li, n: l.n, t: l.t, mk: l.mk, a, p, c: l.t === "STR" ? comp(li, per.cur, a) : null };
+  }).filter(Boolean).sort((a, b) => a.n.localeCompare(b.n));
+  const rev = rs.reduce((t, r) => t + r.a.rev, 0), prev = rs.reduce((t, r) => t + (r.p ? r.p.rev : 0), 0);
+  let pay = paySum(prop, per.cur), ppay = paySum(prop, per.last), payNote = "";
+  const yearly = (D.payY || {})[prop];
+  if (pay == null && yearly && per.whole && yearly[S.year] != null) {
+    // monthly payouts aren't recorded for this statement; use the yearly distribution
+    pay = yearly[S.year];
+    ppay = S.year < AY ? (yearly[S.year - 1] ?? null) : null;
+    payNote = S.year === AY ? "Year to date, through the latest statement" : "Full-year distribution";
+  }
+  const mkts = [...new Set(rs.map(r => r.mk).filter(Boolean))].join(", ");
+  const single = rs.length === 1;
+  const cards = rs.map(r => {
+    const rpMax = Math.max(r.a.revpar, r.p ? r.p.revpar : 0, r.c ? r.c.revpar : 0) * 1.1 || 1;
+    const rvMax = Math.max(r.a.rev, r.p ? r.p.rev : 0) * 1.05 || 1;
+    const payBlock = single && pay != null ? oblock("Owner Payout", pay, ppay, null, Math.max(pay, ppay || 0) * 1.05, usd, false, "pay") : "";
+    return `<div class="card ocard"><h3><button type="button" class="link" data-li="${r.li}">${esc(r.n)}</button></h3>
+      <div class="ostats"><div><div class="lbl">Revenue</div><div class="v num">${usd(r.a.rev)}</div>${delta(r.a.rev, r.p ? r.p.rev : null)}</div>
+        <div><div class="lbl">Nights Sold</div><div class="v num">${Math.round(r.a.nd)}</div><span class="note">ADR ${usd(r.a.adr)}</span></div></div>
+      ${oblock("Occupancy", r.a.occ, r.p ? r.p.occ : null, r.c ? r.c.occ : null, 1, pct, true)}
+      ${r.t === "STR" ? oblock("RevPAR", r.a.revpar, r.p ? r.p.revpar : null, r.c ? r.c.revpar : null, rpMax, usd) : ""}
+      ${oblock("Total Revenue", r.a.rev, r.p ? r.p.rev : null, null, rvMax, usd)}
+      ${payBlock}</div>`;
+  }).join("");
+  return `<div class="card ohead"><div><div class="lbl">Owner statement</div><div class="nm">${esc(prop)}</div>
+      <div class="sub">${rs.length} ${rs.length === 1 ? "listing" : "listings"}${mkts ? " · " + esc(mkts) : ""} · ${per.label}</div></div>
+    <div class="ototals"><div><div class="lbl">Combined Revenue</div><div class="v num">${usd(rev)}</div>${delta(rev, prev)}</div>
+      <div><div class="lbl">Combined Owner Payout</div><div class="v num pay">${pay == null ? "–" : usd(pay)}</div>${pay == null ? '<span class="note">No payouts recorded for this period</span>' : (ppay == null ? `<span class="note">${payNote}</span>` : delta(pay, ppay))}</div></div></div>
+    <div class="ocards">${cards || '<div class="card ocard"><span class="na">No activity for this owner in this period.</span></div>'}</div>
+    <div class="foot">Owner payouts are recorded through the latest statement month. Comp = Wheelhouse comp set.<br>Prepared by Valta Realty · contact@valtarealty.com · 425-578-9494</div>`;
+}
+
+// ---------- listing drawer ----------
+function whCard(li, title, year, getL, getB, fmt, maxFixed) {
+  const vals = ALLM.map(m => {
+    const ym = year * 100 + m;
+    return { m, ym, me: getL(ym), last: getL((year - 1) * 100 + m), set: getB(0, ym), hp: getB(1, ym) };
+  });
+  let max = maxFixed || Math.max(0, ...vals.flatMap(v => [v.me, v.last, v.set, v.hp].filter(x => x != null))) * 1.08 || 1;
+  const w = v => Math.max(0, Math.min(100, v / max * 100));
+  const b = (val, col, tick) => `<div class="whbar">${val != null ? `<div class="f" style="width:${w(val)}%;background:${col}"></div>` : ""}${tick != null ? `<div class="tick" style="left:calc(${w(tick)}% - 1px)"></div>` : ""}</div>`;
+  const body = vals.filter(v => v.me != null || v.set != null || v.hp != null).map(v =>
+    `<div class="whrow ${v.ym >= NOW ? "future" : ""}" title="${MON[v.m - 1]} ${year}: listing ${fmt(v.me)} · comp set ${fmt(v.set)} · market high performers ${fmt(v.hp)} · listing last year ${fmt(v.last)}">
+      <span class="mo">${MON[v.m - 1]}</span><div class="whbars">${b(v.me, "var(--brand)", v.last)}${b(v.set, "var(--comp)")}${b(v.hp, "var(--hp)")}</div>
+      <span class="val">${fmt(v.me)}</span></div>`).join("");
+  return `<div class="card panel"><h2>${title.replace("{y}", year)}</h2>
+    <div class="keys"><span><i class="sw" style="background:var(--brand)"></i>This listing</span><span><i class="sw" style="background:var(--comp)"></i>Comp set</span><span><i class="sw" style="background:var(--hp)"></i>Market high performers</span><span><i class="sw" style="background:var(--ink);width:3px"></i>Listing last year</span></div>
+    <div class="wh">${body || '<span class="na">No data.</span>'}</div></div>`;
+}
+function openListing(li) {
+  const l = L[li], y = S.year, per = period();
+  const a = agg(li, per.cur), p = agg(li, per.last), c = l.t === "STR" && a ? comp(li, per.cur, a) : null;
+  const sets = (l.sets || []).map(i => D.setNames[i]).join(" | ");
+  const ys = [y, y - 1];
+  const W = 700, H = 210, ml = 48, mr = 8, mt = 16, mb = 26, iw = W - ml - mr, ih = H - mt - mb;
+  const revs = ys.map(yy => ALLM.map(m => { const r = rows[li].get(yy * 100 + m); return r ? r.rev : null; }));
+  const max = Math.max(1, ...revs.flat().filter(v => v != null)), step = niceStep(max / 3), top = Math.ceil(max / step) * step;
+  const sy = v => mt + ih - Math.max(0, v) / top * ih, gw = iw / 12, bw = (gw - 8) / 2;
+  let g = "";
+  for (let v = 0; v <= top + 1; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)"/><text x="${ml - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11">${usdK(v)}</text>`;
+  [1, 0].forEach((yi, k) => revs[yi].forEach((v, m) => {
+    if (v == null) return;
+    const x = ml + m * gw + 4 + k * bw, booked = ys[yi] * 100 + m + 1 >= NOW;
+    g += `<rect x="${x}" y="${sy(v)}" width="${bw - 1}" height="${mt + ih - sy(v)}" rx="2" fill="${yi === 0 ? "var(--brand)" : "var(--last)"}"${booked ? ` fill-opacity="0.18" stroke="${yi === 0 ? "var(--brand)" : "var(--last)"}" stroke-width="1.5" stroke-dasharray="3 2"` : ""}><title>${MON[m]} ${ys[yi]}: ${usd(v)}</title></rect>`;
+    if (yi === 0 && v > 0) g += `<text class="lab" x="${x + bw / 2}" y="${sy(v) - 3}" text-anchor="middle" font-size="9">${usdK(v)}</text>`;
+  }));
+  MON.forEach((mo, m) => g += `<text x="${ml + m * gw + gw / 2}" y="${H - 8}" text-anchor="middle" font-size="11">${mo}</text>`);
+  const getL = k => ym => { const r = rows[li].get(ym); if (!r) return null; return k === "occ" ? r.occ : r.adrf != null ? r.adrf : (r.nd ? r.rocc / r.nd : null); };
+  const getB = k => (kind, ym) => { const bm = bench[li][kind].get(ym); return bm ? bm[k] : null; };
+  const kp = a ? `<div class="kpis">
+      ${kpi("Revenue · " + per.label, a.rev, a.rev, p ? p.rev : null, null, null, false, usd)}
+      ${kpi("Occupancy", a.occ, a.occ, p ? p.occ : null, a.occ, c ? c.occ : null, true, pct)}
+      ${kpi("ADR (including cleaning fee)", a.adr, a.adr, p ? p.adr : null, a.adr, c ? c.adr : null, false, usd)}
+      ${kpi("RevPAR", a.revpar, a.revpar, p ? p.revpar : null, a.revpar, c ? c.revpar : null, false, usd)}</div>` : `<div class="note">No data for ${per.label}.</div>`;
+  const str = l.t === "STR";
+  const meta = [l.mk, l.b !== "" ? l.b + " BR" : "", str ? "Short-term" : "Long-term lease", l.p ? "Owner statement: " + l.p : ""].filter(Boolean).join(" · ");
+  $("drawer-root").innerHTML = `<div class="scrim" data-close></div>
+    <aside class="drawer" role="dialog" aria-modal="true" aria-label="${esc(l.n)}">
+      <div class="dhead"><div><div class="t">${esc(l.n)}</div><div class="m">${esc(meta)}${sets ? "<br>Comp set: " + esc(sets) : ""}</div></div>
+        <button type="button" class="x" data-close aria-label="Close">×</button></div>
+      <div class="dbody">${drawerTeam(l)}${kp}
+        <div class="card panel"><h2>Revenue by month</h2><div class="keys"><span><i class="sw" style="background:var(--brand)"></i>${y}</span><span><i class="sw" style="background:var(--last)"></i>${y - 1}</span><span><i class="sw" style="background:transparent;border:1.5px dashed var(--brand)"></i>Not finished yet: on the books</span></div>
+          <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" style="min-width:520px" role="img" aria-label="Revenue by month">${g}</svg></div></div>
+        ${str ? whCard(li, "Occupancy {y}", y, getL("occ"), getB("occ"), v => v == null ? "–" : Math.round(v * 100) + "%", 1) : ""}
+        ${str ? whCard(li, "ADR {y} (including cleaning fee)", y, getL("adr"), getB("adr"), v => v == null ? "–" : usd(v)) : ""}
+        <div class="note">${str ? "ADR includes the cleaning fee for the listing, comp set and market high performers alike. Months marked • haven't finished." : "Lease income comes from the rent roll. Wheelhouse comps cover short-term listings only."}</div>
+      </div></aside>`;
+  document.querySelector(".drawer .x").focus();
+}
+function closeDrawer() { $("drawer-root").innerHTML = ""; }
+document.addEventListener("click", e => {
+  if (e.target.closest("[data-close]")) return closeDrawer();
+  const s = e.target.closest("[data-sort]"); if (s) { S.sort = s.dataset.sort; render(); return; }
+  const r = e.target.closest("[data-li]"); if (r) openListing(+r.dataset.li);
+});
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape") closeDrawer();
+  if ((e.key === "Enter" || e.key === " ") && e.target.classList && e.target.classList.contains("prow")) { e.preventDefault(); openListing(+e.target.dataset.li); }
+});
+
+// ---------- team settings: shared through the artifact's db ----------
+// settings/team {flags:{...percent}, hidden:[listing names], by, at}
+// notes/<key>   {listing, text, by, at}     (key = listing name made path-safe)
+const TEAM = { db: null, user: null, ready: false, canWrite: null, flags: null, hidden: new Set(),
+               notes: new Map(), by: null, at: null, status: "", err: false, names: {} };
+const noteKey = n => n.replace(/[^A-Za-z0-9_.~:@+-]/g, c => "~" + c.charCodeAt(0).toString(16));
+const fmtAt = t => { try { return new Date(t).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }); } catch (e) { return ""; } };
+const who = id => (id && TEAM.names[id] && TEAM.names[id].name) || "someone";
+async function resolveNames() {
+  if (!TEAM.user) return;
+  const ids = [TEAM.by, ...[...TEAM.notes.values()].map(n => n.by)].filter(Boolean);
+  if (!ids.length) return;
+  try { TEAM.names = await TEAM.user.profiles([...new Set(ids)]); } catch (e) {}
+}
+function editing() { const a = document.activeElement; return !!(a && a.closest && a.closest(".team, .tnote")); }
+let pending = false;
+function refresh() { if (editing()) { pending = true; return; } pending = false; resolveNames().then(() => { render(); }); }
+document.addEventListener("focusout", () => setTimeout(() => { if (pending && !editing()) refresh(); }, 0));
+
+function teamPanel() {
+  const f = FLAG.raw, ro = !TEAM.db || TEAM.canWrite === false, dis = ro ? " disabled" : "";
+  const meta = !TEAM.db ? "available on the published page when you're signed in"
+    : TEAM.by ? `last changed by ${esc(who(TEAM.by))}, ${esc(fmtAt(TEAM.at))}` : "defaults";
+  const inp = (k, lab, unit) => `<div class="in"><input id="thr-${k}" type="number" min="0" max="100" step="1" value="${f[k]}"${dis} aria-label="${lab}"> ${unit}</div>`;
+  const hidden = [...TEAM.hidden].sort();
+  return `<details class="card team" id="team-panel"${S.teamOpen ? " open" : ""}>
+    <summary>Team settings <span class="meta">${meta}</span></summary>
+    <div class="body">
+      <div class="note">Changes here are shared: everyone who opens this dashboard sees them. ${ro && TEAM.db ? "You have view-only access, so these are read-only. Ask the owner for Contributor access to change them." : ""}</div>
+      <div class="thr">
+        <label>Occupancy below (red / watch)<span class="btnrow">${inp("occRed", "Red occupancy threshold", "%")}${inp("occAmber", "Watch occupancy threshold", "%")}</span></label>
+        <label>Revenue down vs last year (red / watch)<span class="btnrow">${inp("revRed", "Red revenue drop", "%")}${inp("revAmber", "Watch revenue drop", "%")}</span></label>
+        <label>RevPAR below comp (red / watch)<span class="btnrow">${inp("rpRed", "Red RevPAR gap", "%")}${inp("rpAmber", "Watch RevPAR gap", "%")}</span></label>
+      </div>
+      <div class="btnrow"><button type="button" class="btn primary" data-act="save-flags"${dis}>Save thresholds</button>
+        <button type="button" class="btn" data-act="reset-flags"${dis}>Reset to defaults (60/65, 15/10, 10/5)</button>
+        <span class="status${TEAM.err ? " err" : ""}" role="status">${esc(TEAM.status)}</span></div>
+      <div><div class="lbl">Hidden listings</div>
+        ${hidden.length ? `<div class="chips">${hidden.map(n => `<span class="chip">${esc(n)}<button type="button" data-act="unhide" data-name="${esc(n)}"${dis}>Show</button></span>`).join("")}</div>`
+          : `<div class="note">None. Hide a listing from its pop-up (click its row).</div>`}</div>
+    </div></details>`;
+}
+function drawerTeam(l) {
+  const n = TEAM.notes.get(l.n), ro = !TEAM.db || TEAM.canWrite === false, dis = ro ? " disabled" : "";
+  if (!TEAM.db) return "";
+  return `<div class="card panel tnote"><h2>Team note</h2>
+    <textarea id="note-text" placeholder="e.g. comp set looks wrong, check in Wheelhouse"${dis}>${esc(n ? n.text : "")}</textarea>
+    <label class="chk"><input type="checkbox" id="note-hide"${TEAM.hidden.has(l.n) ? " checked" : ""}${dis}> Hide this listing from the dashboard</label>
+    <div class="btnrow"><button type="button" class="btn primary" data-act="save-note" data-name="${esc(l.n)}"${dis}>Save</button>
+      <span class="status" id="note-status" role="status">${n && n.by ? `Note by ${esc(who(n.by))}, ${esc(fmtAt(n.at))}` : ""}</span></div></div>`;
+}
+function readOnlyAfter(e) {
+  if (e && (e.code === "invalid_argument" || e.code === "not_granted")) TEAM.canWrite = false;
+}
+async function saveTeam(patch, okMsg) {
+  const db = TEAM.db; if (!db) return;
+  const me = TEAM.user ? await TEAM.user.id() : null;
+  const body = { flags: FLAG.raw && TEAM.flags ? TEAM.flags : null, hidden: [...TEAM.hidden], ...patch, by: me, at: new Date().toISOString() };
+  if (!body.flags) delete body.flags;
+  try { await db.doc("settings/team").set(body); TEAM.status = okMsg; TEAM.err = false; }
+  catch (e) { readOnlyAfter(e); TEAM.status = e && e.code === "quota_exceeded" ? "Couldn't save: the dashboard's storage is full." : "Couldn't save. You may not have permission to change team settings."; TEAM.err = true; }
+  refresh();
+}
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-act]"); if (!b || b.disabled) return;
+  e.stopPropagation();
+  const act = b.dataset.act;
+  if (act === "save-flags" || act === "reset-flags") {
+    let v = { ...FLAG_DEFAULT };
+    if (act === "save-flags") for (const k of Object.keys(FLAG_DEFAULT)) {
+      const x = Number($("thr-" + k).value);
+      if (!isFinite(x) || x < 0 || x > 100) { TEAM.status = "Use numbers from 0 to 100."; TEAM.err = true; return refresh(); }
+      v[k] = Math.round(x * 10) / 10;
+    }
+    if (v.occAmber < v.occRed || v.revAmber > v.revRed || v.rpAmber > v.rpRed) {
+      TEAM.status = "The watch level must be milder than red (higher occupancy, smaller drop)."; TEAM.err = true; return refresh();
+    }
+    TEAM.flags = v; setFlags(v);
+    return saveTeam({ flags: v }, act === "reset-flags" ? "Reset to defaults." : "Saved.");
+  }
+  if (act === "unhide") { TEAM.hidden.delete(b.dataset.name); return saveTeam({ hidden: [...TEAM.hidden] }, `${b.dataset.name} is back on the dashboard.`); }
+  if (act === "save-note") {
+    const name = b.dataset.name, text = ($("note-text").value || "").trim().slice(0, 2000), hide = $("note-hide").checked;
+    const st = $("note-status"); st.textContent = "Saving…";
+    try {
+      const me = TEAM.user ? await TEAM.user.id() : null, ref = TEAM.db.doc("notes/" + noteKey(name));
+      const cur = TEAM.notes.get(name);
+      if (text && (!cur || cur.text !== text)) await ref.set({ listing: name, text, by: me, at: new Date().toISOString() });
+      else if (!text && cur) await ref.delete();
+      if (hide !== TEAM.hidden.has(name)) { hide ? TEAM.hidden.add(name) : TEAM.hidden.delete(name); await saveTeam({ hidden: [...TEAM.hidden] }, hide ? `${name} hidden.` : `${name} shown.`); }
+      st.textContent = "Saved."; refresh();
+    } catch (err) { readOnlyAfter(err); st.textContent = "Couldn't save. You may not have permission to change team notes."; st.className = "status err"; }
+  }
+}, true);
+document.addEventListener("toggle", e => { if (e.target.id === "team-panel") { S.teamOpen = e.target.open; store.set("state", S); } }, true);
+
+(async function initTeam() {
+  if (!window.claude || typeof window.claude.use !== "function") return;   // local preview: defaults only
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([window.claude.use("db"), window.claude.use("user")]); } catch (e) {}
+  if (!db) return;
+  TEAM.db = db; TEAM.user = user;
+  try { TEAM.canWrite = user ? await user.can("data.write") : null; } catch (e) {}
+  db.doc("settings/team").onSnapshot(snap => {
+    const d = snap.exists ? snap.data() : null;
+    TEAM.flags = d && d.flags ? d.flags : null; setFlags(TEAM.flags);
+    TEAM.hidden = new Set(d && Array.isArray(d.hidden) ? d.hidden : []);
+    TEAM.by = d ? d.by : null; TEAM.at = d ? d.at : null;
+    refresh();
+  }, () => {});
+  db.collection("notes").onSnapshot(q => {
+    TEAM.notes = new Map(q.docs.filter(x => x.exists).map(x => { const v = x.data(); return [v.listing, v]; }));
+    refresh();
+  }, () => {});
+  refresh();
+})();
+
+// ---------- render ----------
+function render() {
+  syncControls();
+  store.set("state", S);
+  const per = period();
+  $("main").innerHTML = S.view === "trends" ? viewTrends(per) : S.view === "owner" ? viewOwner(per) : viewValta(per);
+}
+render();
+})();
+</script>

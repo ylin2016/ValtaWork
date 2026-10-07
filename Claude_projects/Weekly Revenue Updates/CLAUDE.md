@@ -11,35 +11,59 @@ cd "/Users/ylin/ValtaWork/Claude_projects/Weekly Revenue Updates"
 /Users/ylin/ValtaWork/.venv/bin/python run_weekly.py --publish  # + overwrite Drive copies
 ```
 
-Steps: `fetch_guesty.py` → Wheelhouse `src.run_weekly --only market` (its own
-venv, subprocess) → `build_report.py`. `--skip-guesty` / `--skip-market` rebuild
+Steps: `fetch_guesty.py` → Wheelhouse `src.run_weekly --only report` (its own
+venv, subprocess: set listings + set monthly metrics + market data — `--only
+market` alone leaves the comp sets empty) → `build_report.py` → `build_artifact.py`.
+The Wheelhouse pull takes ~3.5 min: calls run 6 in parallel at the ~55/min rate
+limit (~180 calls), and only the current year of market data is fetched — earlier
+months are copied from the previous snapshot (`market_incremental` in its config). `--skip-guesty` / `--skip-market` rebuild
 from existing pulls. Paths are all in `paths.py`.
 
-## Dashboard
+## Dashboard (Claude Artifact — the only dashboard)
 
-```bash
-/Users/ylin/ValtaWork/.venv/bin/streamlit run dashboard.py   # http://localhost:8501
-```
+The user shares the dashboard as a Claude Artifact; there is no local/Streamlit
+dashboard (removed 2026-10-07).
 
-Reads `output/<date>/dash_listing_monthly.csv`, `dash_benchmarks.csv` (written
-by `build_report.py`) and the `yearly` sheet of that run's report. Tabs:
-Company (revenue by month 2024–26, YTD by market), Listing (revenue by month; Wheelhouse-style ADR + Occupancy cards for
-this listing / comp set / market at its bedroom size — per month, bar = selected
-year, tick = same month last year, badge = headline month YoY; occupancy track
-fixed 0–100%), Portfolio (YTD per listing vs benchmarks).
-Comp sets come from Wheelhouse dynamic sets (Wheelhouse listing name = Guesty
-nickname; a listing can be in 2 sets). ADR caveat: market ADR is
-`adr_w_fees` (incl. fees), set ADR is nightly — hence the "nightly rate +
-cleaning" toggle. Neutral gray theme in `.streamlit/config.toml`. After every
-rebuild, restart Streamlit.
-
-## Shareable dashboard (Artifact)
+Team settings (2026-10-07): the artifact declares `capabilities: {db: {}, user:
+{scopes: ["profile"]}}` (a redeploy that omits `capabilities` keeps them). Shared db:
+`settings/team` = {flags: {occRed, occAmber, revRed, revAmber, rpRed, rpAmber} in
+percent, hidden: [listing names], by: user id, at} and `notes/<listing key>` =
+{listing, text, by, at} (key = name with unsafe chars as `~hex`). Default rules:
+Contributor (`interact`) and up write, Viewers read only. Hidden listings drop out of
+the Valta and Trends views (not Owner). Read them with ArtifactData if needed.
 
 `build_artifact.py` (run by `run_weekly.py`) writes one self-contained page —
 `artifact_template.html` + the run's data embedded as JSON — to
 `output/<date>/revenue_dashboard.html` and the stable copy
-`output/revenue_dashboard.html`. Same views/logic as `dashboard.py`, computed in
-the browser. Published 2026-10-06 as https://claude.ai/artifact/Pcwts2dWwSjRyzhnDgbcqy
+`output/revenue_dashboard.html`. Layout is the user's design (str-dashboard-v2.jsx,
+2026-10-07): burgundy header with Year / Quarter / Month / Market / Type filters and
+Valta | Trends | Owner views. Valta = KPI tiles (vs last year, vs comp), flag legend
++ flagged list (rules in `FLAG` at the top of the script: occ <60/65%, revenue
+-15/-10% vs last, RevPAR -10/-5% vs comp), property rows (This/Last/Comp bars);
+Trends = monthly revenue 3 years, pacing for the next 3 months, markets table, top
+movers; Owner = per owner statement (`Property`) with combined revenue + payout
+(monthly `Payout`, else the yearly `payout` sheet). Clicking a listing opens a drawer
+with monthly revenue and Wheelhouse-style ADR/occupancy rows. Comp = comp set, else
+whole market at the bedroom size; ADR/RevPAR on the incl.-cleaning basis throughout.
+Comp sets come from Wheelhouse dynamic sets (Wheelhouse listing name = Guesty
+nickname; a listing can be in 2 sets). ADR basis: Wheelhouse market ADR is
+`adr_w_fees` and comp-set `adr` also includes fees (checked 2026-10-07: set `adr`
+tracks the set's daily `adr_w_fees`, no cleaning-sized gap), so the listing side uses
+`ADR_w_fees` ((accommodation fare + cleaning) / nights), not `ADR` (nightly) or
+`Revenue_occ` (Guesty EARNINGS, incl. cleaning, net of host fees).
+Revenue on the page is `Revenue_month` (each booking split over its nights, so a stay
+crossing a month end counts in both months); the Excel report's `Revenue` still puts
+short-term bookings in the check-in month. Lead time = confirmation → check-in, by
+check-in month (`LeadTime`, `Bookings`); comp lead time = Wheelhouse set `lead_time`.
+Trends also stacks each 2026 month's guest payments into rent / lease rent /
+cleaning / tax / channel fee / not itemized, with the host payout as a line
+(`revenue_mix.py`, `Mix_*` columns). ALL fee rules come from Owner_statement_whole:
+`fetch_guesty.py` saves each API booking's itemization with
+its `build_summary_frame` to `data/guesty/Guesty_summary_2026-<date>.csv`, and
+`revenue_mix.py` runs its `payment_model.compute_breakdown` (= its user-owned
+`config/payment_structure.xlsx`) with its `config/_listing_tax_rates.csv`. Bookings on
+deactivated listings (UI supplement) and pre-2026 check-ins are "not itemized". The previous
+design is kept in `artifact_template_v1.html`. Published 2026-10-06 as https://claude.ai/artifact/Pcwts2dWwSjRyzhnDgbcqy
 (private). Each week: run, then ask Claude to republish
 `output/revenue_dashboard.html` (same path / `url`) so the link stays the same.
 
@@ -47,7 +71,7 @@ the browser. Published 2026-10-06 as https://claude.ai/artifact/Pcwts2dWwSjRyzhn
 
 - **Guesty** (`fetch_guesty.py`): confirmed reservations, check-in >= 2026-01-01,
   written in the Guesty UI export layout to `data/guesty/` so
-  `DataProcessing.format_reservation` is unchanged. Reuses GuestyFinancials'
+  `DataProcessing.format_reservation` is unchanged. Uses Owner_statement_whole's
   client + cached token (5 tokens/24h — never force-refresh).
   - Deactivated listings are excluded by the Open API. They are **filled from a
     Guesty UI export** dropped in `data/guesty/Guesty_UI_bookings_*.csv` (newest
