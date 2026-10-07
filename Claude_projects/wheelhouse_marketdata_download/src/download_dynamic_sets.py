@@ -51,8 +51,14 @@ def collect_associated_listings(client, conn, cfg, snapshot_date, limit=None):
         set_ids = set_ids[:limit]
 
     real, assoc_total = {}, 0
-    for sid in set_ids:
-        cnt, light = _pull_associated(client, conn, cfg, snapshot_date, sid)
+    path = ep["dynamic_set_associated_listings"]
+    bodies = client.fetch_many([(path.format(set_id=sid), None, f"ds_associated:{sid}")
+                                for sid in set_ids])
+    for sid, (body, err) in zip(set_ids, bodies):
+        if err is not None:
+            print(f"    ds_associated:{sid} skipped: {err}")
+            continue
+        cnt, light = _store_associated(conn, snapshot_date, sid, body)
         assoc_total += cnt
         for rl in light:
             real.setdefault(rl["listing_id"], rl)
@@ -146,12 +152,10 @@ def _safe(client, path, ref, params=None):
         return None
 
 
-def _pull_associated(client, conn, cfg, snapshot_date, sid):
+def _store_associated(conn, snapshot_date, sid, body):
     """Store the set's associated (our real) listings. Returns (row_count, light)
     where light lists {listing_id, channel, market_id, name, bedrooms} per listing,
     keyed by wheelhouse_id (the numeric id the per-listing endpoints expect)."""
-    body = _safe(client, cfg["endpoints"]["dynamic_set_associated_listings"].format(set_id=sid),
-                 f"ds_associated:{sid}")
     if body is None:
         return 0, []
     rows, light = [], []
@@ -190,9 +194,31 @@ def _pull_members(client, conn, cfg, snapshot_date, sid):
     return db.upsert(conn, "dynamic_set_members", rows)
 
 
+def download_set_metrics(client, conn, cfg, snapshot_date, set_ids):
+    """Monthly aggregated metrics for each set (what the revenue report compares
+    against), fetched in parallel. Returns rows stored."""
+    p = cfg.get("params", {})
+    start_date, end_date = year_window(snapshot_date, p.get("history_years", 2))
+    path = cfg["endpoints"]["dynamic_set_aggregated_metrics"]
+    bodies = client.fetch_many([(path.format(set_id=sid), None, f"ds_agg:{sid}")
+                                for sid in set_ids])
+    total = 0
+    for sid, (body, err) in zip(set_ids, bodies):
+        if err is not None:
+            print(f"    ds_agg:{sid} skipped: {err}")
+            continue
+        total += _store_aggregated(conn, cfg, snapshot_date, sid, body, start_date, end_date)
+    print(f"  dynamic_set_aggregated_metrics: {total} rows for {len(set_ids)} sets")
+    return total
+
+
 def _pull_aggregated(client, conn, cfg, snapshot_date, sid, start_date, end_date):
     body = _safe(client, cfg["endpoints"]["dynamic_set_aggregated_metrics"].format(set_id=sid),
                  f"ds_agg:{sid}")
+    return _store_aggregated(conn, cfg, snapshot_date, sid, body, start_date, end_date)
+
+
+def _store_aggregated(conn, cfg, snapshot_date, sid, body, start_date, end_date):
     if body is None:
         return 0
     # aggregated_metrics is a monthly series: {data:[{start_date,end_date,occupancy,

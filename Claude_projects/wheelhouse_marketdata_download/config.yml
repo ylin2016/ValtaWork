@@ -10,6 +10,9 @@ api:
   base_url: "https://api.usewheelhouse.com/ss_api/v1"
   # Stay comfortably under the ~60 req/min rate limit.
   requests_per_minute: 55
+  # Parallel requests. Market time-series calls take ~6 s each server-side, so
+  # one-at-a-time manages ~10/min; 6 workers reach the rate limit above instead.
+  concurrency: 6
   timeout_seconds: 60
   max_retries: 5
   # Log every raw API payload into raw_responses (debug only; large). Off = lean.
@@ -47,6 +50,10 @@ params:
   # Window = Jan 1 of (current year - history_years) .. Dec 31 of the current year.
   # history_years: 2 in 2026 -> 2024-01-01 .. 2026-12-31 (last 2 years + this year).
   history_years: 2
+  # Market data: fetch only the current year and copy earlier months from the
+  # newest stored snapshot (a market/segment with no stored history gets the
+  # full window). false = re-fetch the whole window every run.
+  market_incremental: true
   # Distribution histograms are per-month; pull this many months starting with
   # the snapshot's month (first-of-month is what the API expects).
   distribution_months: 3
@@ -60,7 +67,7 @@ params:
   metrics:
     time_series:  ["adr_w_fees", "occupancy_adjusted", "revpar_w_fees"]
     distribution: ["adr_w_fees", "occupancy_adjusted", "revpar_w_fees"]
-    aggregated:   ["adr", "occupancy_adjusted", "revpar"]
+    aggregated:   ["adr", "occupancy_adjusted", "revpar", "lead_time"]
 
   # Market-report segmentation. The API takes ONE performance and ONE bedrooms
   # value per request, so every combination below is a separate call, stored

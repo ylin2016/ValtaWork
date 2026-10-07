@@ -8,6 +8,8 @@ Usage:
   python -m src.run_weekly --only market        # just market reports
   python -m src.run_weekly --only dynamic_sets  # just dynamic sets
   python -m src.run_weekly --only listings      # /listings demo (auth smoke test)
+  python -m src.run_weekly --only report        # what the weekly revenue report reads:
+                                                #   set listings + set monthly metrics + market
   python -m src.run_weekly --snapshot-date 2026-07-20
   python -m src.run_weekly --limit 3            # cap items per group (dev)
   python -m src.run_weekly --no-export
@@ -20,7 +22,8 @@ from . import db
 from .wheelhouse_client import WheelhouseClient
 from .download_listings import download_listings
 from .download_market_data import download_markets
-from .download_dynamic_sets import download_dynamic_sets, collect_associated_listings
+from .download_dynamic_sets import (download_dynamic_sets, collect_associated_listings,
+                                    download_set_metrics)
 from .export_csv import export_snapshot
 
 
@@ -28,7 +31,7 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(description="Download Wheelhouse market data & dynamic sets.")
     p.add_argument("--snapshot-date", default=date.today().isoformat(),
                    help="Snapshot date tag (YYYY-MM-DD). Default: today.")
-    p.add_argument("--only", choices=["listings", "market", "dynamic_sets"],
+    p.add_argument("--only", choices=["listings", "market", "dynamic_sets", "report"],
                    help="Run only one part of the pull.")
     p.add_argument("--limit", type=int, default=None,
                    help="Cap items per group (markets/sets) — for dev/testing.")
@@ -62,11 +65,14 @@ def main(argv=None) -> int:
         print("Dynamic sets...")
         download_dynamic_sets(client, conn, cfg, snapshot_date, limit=args.limit)
 
-    if do_all or args.only == "market":
+    if do_all or args.only in ("market", "report"):
         # A market-only run still needs to know which markets our listings are in,
         # so harvest them (lists sets + associated listings; no heavy detail).
-        if args.only == "market":
-            collect_associated_listings(client, conn, cfg, snapshot_date, limit=args.limit)
+        if args.only in ("market", "report"):
+            set_ids, _, _ = collect_associated_listings(
+                client, conn, cfg, snapshot_date, limit=args.limit)
+        if args.only == "report":
+            download_set_metrics(client, conn, cfg, snapshot_date, set_ids)
         print("Market data...")
         download_markets(client, conn, cfg, snapshot_date, limit=args.limit)
 

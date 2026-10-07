@@ -71,16 +71,43 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
     print(f"    segments ({len(segments)}): {seg_desc}")
 
     want_dist = (cfg.get("pull") or {}).get("market_distribution", False)
-    ts_total = dist_total = 0
+
+    # Incremental: past years don't change, so only the current year is fetched and
+    # earlier months are copied from the newest stored snapshot. A market/segment
+    # with no stored history gets the full window. (Call time is ~6 s whatever the
+    # range — the saving that matters is fetch_many running calls in parallel.)
+    cutoff = f"{snapshot_date[:4]}-01-01"
+    incremental = p.get("market_incremental", True) and start_date < cutoff
+    jobs, keys, carried = [], [], 0
     for mid in targets:
         for seg in segments:
-            ts_total += _pull_market_monthly(
-                client, conn, cfg, snapshot_date, mid, start_date, end_date, seg)
-            if want_dist:
+            s = start_date
+            if incremental:
+                n = _carry_history(conn, snapshot_date, mid, seg, start_date[:7], cutoff[:7])
+                if n is not None:
+                    carried += n
+                    s = cutoff
+            jobs.append(_ts_job(cfg, mid, seg, s, end_date))
+            keys.append((mid, seg))
+    if incremental:
+        print(f"    incremental: {sum(j[1]['start_date'] == cutoff for j in jobs)}/{len(jobs)} "
+              f"segments fetch {cutoff[:4]} only; {carried} earlier rows carried forward")
+
+    ts_total = 0
+    for (mid, seg), (body, err) in zip(keys, client.fetch_many(jobs)):
+        if err is not None:
+            print(f"    market {mid} monthly [{_seg_label(seg)}] skipped: {err}")
+            continue
+        ts_total += _store_market_monthly(conn, snapshot_date, mid, seg, body)
+
+    dist_total = 0
+    if want_dist:
+        for mid in targets:
+            for seg in segments:
                 for month in months:
                     dist_total += _pull_market_distribution(
                         client, conn, cfg, snapshot_date, mid, month, seg)
-    msg = f"  market_monthly: {ts_total} rows"
+    msg = f"  market_monthly: {ts_total} rows fetched"
     if want_dist:
         msg += f"; market_distributions: {dist_total} rows"
     print(msg)
@@ -195,22 +222,47 @@ def _explicit_markets(listed, p):
     return list(dict.fromkeys(matched))
 
 
-def _pull_market_monthly(client, conn, cfg, snapshot_date, mid, start_date,
-                         end_date, seg=("", "")):
-    """Fetch the daily market series and store only the monthly averages.
-
-    The API returns daily rows; we roll them up to a per-month mean per metric so
-    the DB stays small (this is all any export needs)."""
+def _ts_job(cfg, mid, seg, start_date, end_date):
+    """(path, params, ref_id) for one market time-series request."""
     path = cfg["endpoints"]["market_time_series"].format(market_id=mid)
     params = {"start_date": start_date, "end_date": end_date}
     params.update(_metric_param(cfg, "time_series"))
     params.update(_seg_params(seg))
-    try:
-        body = client.get_json(path, params=params,
-                               ref_id=f"market_ts:{mid}:{_seg_label(seg)}")
-    except WheelhouseError as exc:
-        print(f"    market {mid} monthly [{_seg_label(seg)}] skipped: {exc}")
+    return path, params, f"market_ts:{mid}:{_seg_label(seg)}"
+
+
+def _carry_history(conn, snapshot_date, mid, seg, from_month, before_month):
+    """Copy months [from_month, before_month) for one market/segment from the newest
+    snapshot (<= snapshot_date) that has them into snapshot_date.
+
+    Returns rows copied (0 when they're already in this snapshot), or None when no
+    snapshot has that history -> the caller fetches the full window instead."""
+    perf, bed = seg
+    row = conn.execute(
+        "SELECT MAX(snapshot_date) FROM market_monthly WHERE snapshot_date <= ? "
+        "AND market_id = ? AND performance = ? AND bedrooms = ? AND month >= ? AND month < ?",
+        (snapshot_date, mid, perf, bed, from_month, before_month)).fetchone()
+    src = row[0] if row else None
+    if src is None:
+        return None
+    if src == snapshot_date:
         return 0
+    cur = conn.execute(
+        "INSERT OR REPLACE INTO market_monthly "
+        "(snapshot_date, market_id, performance, bedrooms, month, metric, value, days_in_avg) "
+        "SELECT ?, market_id, performance, bedrooms, month, metric, value, days_in_avg "
+        "FROM market_monthly WHERE snapshot_date = ? AND market_id = ? AND performance = ? "
+        "AND bedrooms = ? AND month >= ? AND month < ?",
+        (snapshot_date, src, mid, perf, bed, from_month, before_month))
+    conn.commit()
+    return cur.rowcount
+
+
+def _store_market_monthly(conn, snapshot_date, mid, seg, body):
+    """Roll the daily market series up to per-month means and store them.
+
+    The API returns daily rows; we keep only the monthly average per metric so
+    the DB stays small (this is all any export needs)."""
     if not body:
         return 0
     perf, bed = seg

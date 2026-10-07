@@ -34,6 +34,8 @@ python -m src.run_weekly
 # Run one part only
 python -m src.run_weekly --only market          # market reports for configured cities
 python -m src.run_weekly --only dynamic_sets     # portfolio comp sets
+python -m src.run_weekly --only report           # what the weekly revenue report reads
+                                                 # (set listings + set monthly metrics + market)
 python -m src.run_weekly --only listings --limit 3   # /listings demo (auth smoke test)
 
 # Other flags
@@ -61,6 +63,12 @@ Outputs:
 
 Re-running the same `--snapshot-date` is **idempotent** (every row's primary key
 includes the snapshot date, so it overwrites rather than duplicates).
+
+Speed: requests run in parallel (`api.concurrency`, default 6) under the shared
+rate limit — market time-series calls take ~6 s each server-side regardless of date
+range. With `params.market_incremental: true`, market data fetches only the current
+year and copies earlier months from the newest stored snapshot (full window for a
+market/segment with no history).
 
 ## How it works
 

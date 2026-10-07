@@ -1,5 +1,7 @@
 import json
+import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 import requests
@@ -15,7 +17,9 @@ class WheelhouseClient:
     """Thin client for the Wheelhouse Revenue Management API.
 
     - Auth via the X-Integration-Api-Key header.
-    - Throttles to stay under the ~60 req/min rate limit.
+    - Throttles to stay under the ~60 req/min rate limit (shared across threads).
+    - fetch_many() runs independent GETs in parallel: market calls take ~6 s each
+      server-side, so one-at-a-time never gets near the rate limit.
     - Retries 429 and 5xx with exponential backoff.
     - Optionally logs every raw response into the raw_responses table.
     """
@@ -27,6 +31,8 @@ class WheelhouseClient:
         self.max_retries = api.get("max_retries", 5)
         self.min_interval = 60.0 / max(1, api.get("requests_per_minute", 55))
         self._last_call = 0.0
+        self._lock = threading.Lock()
+        self.workers = max(1, int(api.get("concurrency", 6)))
 
         self.conn = conn
         self.snapshot_date = snapshot_date
@@ -39,25 +45,34 @@ class WheelhouseClient:
                 "Create an RM API key in your Wheelhouse profile and add it to .env."
             )
 
-        self.session = requests.Session()
-        self.session.headers.update(
-            {
-                "X-Integration-Api-Key": self.api_key,
-                "Accept": "application/json",
-            }
-        )
+        self._local = threading.local()   # one requests.Session per thread
+
+    @property
+    def session(self) -> requests.Session:
+        s = getattr(self._local, "session", None)
+        if s is None:
+            s = requests.Session()
+            s.headers.update({"X-Integration-Api-Key": self.api_key,
+                              "Accept": "application/json"})
+            self._local.session = s
+        return s
 
     # -- internal ----------------------------------------------------------
 
     def _throttle(self) -> None:
-        elapsed = time.monotonic() - self._last_call
-        if elapsed < self.min_interval:
-            time.sleep(self.min_interval - elapsed)
-        self._last_call = time.monotonic()
+        # Reserve the next send slot under the lock, sleep outside it.
+        with self._lock:
+            now = time.monotonic()
+            slot = max(now, self._last_call + self.min_interval)
+            self._last_call = slot
+        if slot > now:
+            time.sleep(slot - now)
 
     def _log_raw(self, endpoint: str, ref_id: str, status: int, body) -> None:
         if not self.log_raw or self.conn is None or self.snapshot_date is None:
             return
+        if threading.current_thread() is not threading.main_thread():
+            return   # sqlite connection belongs to the main thread
         self.conn.execute(
             "INSERT OR REPLACE INTO raw_responses "
             "(snapshot_date, endpoint, ref_id, status, json, pulled_at) "
@@ -124,6 +139,21 @@ class WheelhouseClient:
         raise WheelhouseError(
             f"Gave up on {path} after {self.max_retries} retries: {last_exc}"
         )
+
+    def fetch_many(self, jobs):
+        """Run GETs in parallel. jobs = [(path, params, ref_id), ...].
+        Returns [(body, error), ...] in job order; error is a WheelhouseError or None.
+        Callers do all DB writes on the main thread."""
+        def one(job):
+            path, params, ref = job
+            try:
+                return self.get_json(path, params=params, ref_id=ref), None
+            except WheelhouseError as exc:
+                return None, exc
+        if self.workers == 1 or len(jobs) < 2:
+            return [one(j) for j in jobs]
+        with ThreadPoolExecutor(max_workers=self.workers) as pool:
+            return list(pool.map(one, jobs))
 
     def get_paginated(
         self, path: str, params: dict | None = None, ref_id: str = "", per_page: int = 100
