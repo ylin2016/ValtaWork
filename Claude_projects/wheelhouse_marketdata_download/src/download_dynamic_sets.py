@@ -194,6 +194,27 @@ def _pull_members(client, conn, cfg, snapshot_date, sid):
     return db.upsert(conn, "dynamic_set_members", rows)
 
 
+def download_set_members(client, conn, cfg, snapshot_date, set_ids):
+    """Comp listings of each set (with lat/long, for the dashboard's comp map),
+    fetched in parallel. Returns rows stored."""
+    path = cfg["endpoints"]["dynamic_set_listings"]
+    bodies = client.fetch_many([(path.format(set_id=sid), None, f"ds_members:{sid}")
+                                for sid in set_ids])
+    total = 0
+    for sid, (body, err) in zip(set_ids, bodies):
+        if err is not None:
+            print(f"    ds_members:{sid} skipped: {err}")
+            continue
+        rows = [
+            {"snapshot_date": snapshot_date, "set_id": sid, "member_listing_id": lid,
+             "status": status, "raw_json": dumps(item) if isinstance(item, dict) else None}
+            for (status, lid, item) in flatten_members(body)
+        ]
+        total += db.upsert(conn, "dynamic_set_members", rows)
+    print(f"  dynamic_set_members: {total} rows for {len(set_ids)} sets")
+    return total
+
+
 def download_set_metrics(client, conn, cfg, snapshot_date, set_ids):
     """Monthly aggregated metrics for each set (what the revenue report compares
     against), fetched in parallel. Returns rows stored."""

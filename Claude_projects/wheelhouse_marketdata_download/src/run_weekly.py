@@ -23,7 +23,7 @@ from .wheelhouse_client import WheelhouseClient
 from .download_listings import download_listings
 from .download_market_data import download_markets
 from .download_dynamic_sets import (download_dynamic_sets, collect_associated_listings,
-                                    download_set_metrics)
+                                    download_set_metrics, download_set_members)
 from .export_csv import export_snapshot
 
 
@@ -73,6 +73,7 @@ def main(argv=None) -> int:
                 client, conn, cfg, snapshot_date, limit=args.limit)
         if args.only == "report":
             download_set_metrics(client, conn, cfg, snapshot_date, set_ids)
+            download_set_members(client, conn, cfg, snapshot_date, set_ids)
         print("Market data...")
         download_markets(client, conn, cfg, snapshot_date, limit=args.limit)
 

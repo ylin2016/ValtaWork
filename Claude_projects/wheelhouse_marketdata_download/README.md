@@ -35,7 +35,7 @@ python -m src.run_weekly
 python -m src.run_weekly --only market          # market reports for configured cities
 python -m src.run_weekly --only dynamic_sets     # portfolio comp sets
 python -m src.run_weekly --only report           # what the weekly revenue report reads
-                                                 # (set listings + set monthly metrics + market)
+                                                 # (set listings + set monthly metrics + set members + market)
 python -m src.run_weekly --only listings --limit 3   # /listings demo (auth smoke test)
 
 # Other flags
