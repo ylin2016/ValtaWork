@@ -44,16 +44,21 @@ Language dictates how to run — there is no top-level entry point.
 
 ## Sub-project CLAUDE.md files — defer to these
 
-Two Python projects under `Claude_projects/` are mature, self-contained, and carry
+Active Python projects under `Claude_projects/` carry
 their **own** CLAUDE.md with commands, architecture, and hard-won business rules.
 **Read the local file before touching either — the business logic there is subtle
 (channel-specific net-revenue math, PM-fee sourcing, idempotent rebuilds) and easy to
 break:**
 
-- `Claude_projects/owner_statement_mvp/CLAUDE.md` — QBO + Guesty → monthly owner
-  statements (SQLite pipeline, Excel output, Streamlit dashboard).
-- `Claude_projects/GuestReview/CLAUDE.md` — Streamlit analytics over Guesty guest
-  reviews (per-channel score normalization, cumulative Airbnb rating).
+- `Claude_projects/Owner_statement_whole/CLAUDE.md` — QBO + Guesty API → monthly owner
+  statements (SQLite pipeline, Excel/PDF output, Streamlit dashboard); the rules it
+  inherited from the archived owner_statement_mvp are in its
+  `docs/inherited_rules_owner_statement_mvp.md`.
+
+Projects in `Claude_projects/_archive/` (owner_statement_mvp, GuestReview,
+GuestyFinancials, wheelhouse_marketdata_download, …) are retired: never read, run or
+import from them for active work — anything still needed has been copied into an
+active project.
 
 ## Directory map
 
@@ -77,7 +82,9 @@ break:**
 - **QBO** — QuickBooks Online; source of expenses, fees, and taxes. QBO fee amounts
   are stored **negative** (costs).
 - **Listing / nickname / Property** — a listing is keyed on its canonicalized
-  `nickname`, not the frequently-empty `Property` field (see GuestReview CLAUDE.md).
+  `nickname` (trim, collapse whitespace, casefold), not the frequently-empty `Property`
+  field — in the Guesty reviews file `Property` is filled on only ~589 Airbnb rows and
+  null for all Booking/Vrbo/Expedia rows, so grouping by it drops ~88% of reviews.
   Parent/child listing relationships exist for occupancy/revenue rollups.
 - **PM fee** — property-management commission; the authoritative rate is per-property
   in contract/mapping data, and hardcoded fallbacks elsewhere can drift.

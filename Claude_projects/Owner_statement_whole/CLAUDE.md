@@ -5,7 +5,7 @@ Guidance for Claude Code working in this project.
 ## What this is
 
 The **unified owner-statement pipeline** for Valta Realty vacation rentals. It is the
-successor to `../owner_statement_mvp` (the SQLite + QBO statement engine) with its Guesty
+successor to `owner_statement_mvp` (the SQLite + QBO statement engine, now archived) with its Guesty
 data-ingestion switched from a **manual UI CSV export** to an **automated Guesty Open API
 pull**. This project is the single home of the Guesty client, the fetch and the fee
 breakdown — other projects import them from here.
@@ -13,7 +13,8 @@ breakdown — other projects import them from here.
 Output: per-owner Excel + PDF statements and a Streamlit dashboard.
 
 Most business logic is inherited wholesale from `owner_statement_mvp` — read
-`../owner_statement_mvp/CLAUDE.md` for the deep rules (net-revenue channel math, rollups,
+`docs/inherited_rules_owner_statement_mvp.md` (a copy of its CLAUDE.md; the MVP itself is
+archived, never read or import from `_archive/`) for the deep rules (net-revenue channel math, rollups,
 PM-rate single-source, `owner_pays_cleaning/taxes`, central supplies, OSBR-RV, refund
 offsets, penny reconciliation, LTR/deferred import). This file documents what is **new or
 different here**.
@@ -1055,7 +1056,7 @@ in the sibling project, which owns the shared token store:
 ## Deploy package (`deploy/` — dashboard-only, display-only)
 
 A self-contained, **read-only** copy of the dashboard for hosting (Streamlit Cloud / Render),
-mirroring `../owner_statement_mvp/deploy/`. The heavy pipeline runs locally; its result is
+following the archived owner_statement_mvp's deploy design. The heavy pipeline runs locally; its result is
 **baked in** and the deploy only reads + renders.
 
 - **Layout mirrors the main project ROOTED AT `deploy/`** — `src/paths.py` is copied **verbatim**
