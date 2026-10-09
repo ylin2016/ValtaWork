@@ -149,14 +149,17 @@ Guesty has a budget of **5 API tokens / 24h** shared across projects, so the sto
 exports under `inputs/<period>/` are the only affordable source of stay dates.
 **Do not add a Guesty API pull here.**
 
-## The OAuth token: one copy, owned here
+## The OAuth token: one copy, in shared/secrets (the flow runs here)
 
 Intuit rotates the refresh token on every refresh. Two copies on disk invalidate
-each other, so `config/secrets/qbo_tokens.json` is the single store and
-Owner_statement_whole's `paths.QBO_TOKENS` points into this project. It may refresh
-(that mutates the token, not the books) — it writes back to the same file.
+each other, so `Claude_projects/shared/secrets/qbo_tokens.json` is the single store
+(moved there 2026-10-09, with the shared `.env`); this project's `paths.QBO_TOKENS`,
+Owner_statement_whole's and qbo_reservation_bookkeeping's (through this project's
+config) all point at it. Any of them may refresh (that mutates the token, not the
+books) — each writes back to the same file.
 
-**Never duplicate that file**, and never add a token path to the statement project.
+**Never duplicate that file.** `mapping_classes.yml` also moved to
+`shared/reference/` (`paths.MAPPING_CLASSES`; `bridge.mapping_classes()` returns it).
 
 ## Bank-feed undos are the owner's job
 

@@ -88,7 +88,7 @@ Both siblings call their package `src`; `src/bridge.py` loads them as `qbo_ops` 
 ## Owner decisions (2026-10-02 / 03) — these override VRP's behaviour
 
 1. **Lives here, writes through QBO_operations' connection.** Do NOT copy
-   `../QBO_operations/config/secrets/qbo_tokens.json` or `.env`: Intuit rotates the refresh
+   `../shared/secrets/qbo_tokens.json` or `.env` (the one shared copy, since 2026-10-09): Intuit rotates the refresh
    token on every refresh, so two copies invalidate each other. Import/borrow
    `QBO_operations/src/qbo_client.py` + `config.client()` (or point a client at that token
    path). QBO_operations' CLAUDE.md still says it is the only writer — update it to name this
@@ -117,12 +117,12 @@ Both siblings call their package `src`; `src/bridge.py` loads them as `qbo_ops` 
   Commission base = Accommodation fare + Markup − any channel-commission line on the invoice;
   each fee Bill gives back `rate × fee` as a "Deduction" pair.
 - **Channel + Stripe fees**: `config/payment_structure.xlsx`, as transcribed in
-  `../Owner_statement_whole/src/breakdown/payment_model.py` (`compute_breakdown`, `RATE`,
+  `../shared/valta_common/fees/payment_model.py` (`compute_breakdown`, `RATE`,
   Stripe 2.9%/4.4% + $0.30 per charge + Guesty 1%, and the per-reservation override tables
   `STRIPE_FEE_OVERRIDES`, `NO_PROCESSING_FEE_CODES`, … — reuse them, never duplicate).
 - **Supplies**: `0.9 × guests × min(nights, 60)` (`run_month_close.supply_charge`) for listings
-  with `Supplies='central'` in `../Owner_statement_whole/config/Listing_contacts.csv`.
-- **Class / listing mapping**: Owner_statement_whole `config/mapping_classes.yml` — but the map
+  with `Supplies='central'` in `../shared/reference/Listing_contacts.csv`.
+- **Class / listing mapping**: `../shared/reference/mapping_classes.yml` — but the map
   is **not proof a class exists** (some entries are one level too shallow). Resolve every class
   against the live company file, as QBO_operations' `Resolver.klass_fqn` does.
 
@@ -153,8 +153,10 @@ drift the moment a listing is renamed.
 ## Guesty API budget
 
 Guesty allows **5 tokens / 24h shared across all projects**. Reuse the cached token in
-`../Owner_statement_whole/config/secrets/guesty_token.json` through that project's
-`src/guesty/client.py`; do not request new tokens in a loop. One pull should cover all
+`../shared/secrets/guesty_token.json` through the shared `valta_common.guesty.client`
+(`bridge.guesty_client()`); do not request new tokens in a loop. The fee model and summary
+frame are `valta_common.fees.payment_model` / `valta_common.guesty.summary` (see
+`../shared/README.md`). One pull should cover all
 reservations created or updated in the window (future check-ins included — VRP invoiced a
 booking as soon as it appeared).
 

@@ -3,9 +3,9 @@
     python -m src.auth url                  # print the consent URL, open it
     python -m src.auth exchange --code XXX  # trade the redirect code for tokens
 
-Tokens land in config/secrets/qbo_tokens.json, which Owner_statement_whole reads
-too.  Intuit rotates the refresh token on every refresh, so there is exactly one
-copy on disk and both projects share it -- never duplicate this file.
+Tokens land in Claude_projects/shared/secrets/qbo_tokens.json, which every project
+reads.  Intuit rotates the refresh token on every refresh, so there is exactly one
+copy on disk and all projects share it -- never duplicate this file.
 """
 from __future__ import annotations
 

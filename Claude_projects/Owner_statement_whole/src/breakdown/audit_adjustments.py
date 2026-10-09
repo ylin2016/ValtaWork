@@ -23,14 +23,13 @@ import sys
 
 import pandas as pd
 
+from valta_common.fees.payment_model import (MANUAL_SERVICE_FEES, NO_PROCESSING_FEE_CODES,
+                                             STRIPE_FEE_OVERRIDES)
+
 try:
     from .. import paths
-    from .payment_model import (MANUAL_SERVICE_FEES, NO_PROCESSING_FEE_CODES,
-                                STRIPE_FEE_OVERRIDES)
 except ImportError:  # flat run
     import paths
-    from breakdown.payment_model import (MANUAL_SERVICE_FEES, NO_PROCESSING_FEE_CODES,
-                                         STRIPE_FEE_OVERRIDES)
 
 
 def _stored_rows():

@@ -1,13 +1,14 @@
 """Central path resolution for QBO_operations.
 
 This project OWNS the QuickBooks connection for realm 9130356236278636: the OAuth
-flow runs here and ``config/secrets/qbo_tokens.json`` is the one token store.
-Owner_statement_whole reads that same file (see its ``paths.QBO_TOKENS``) rather
-than keeping a copy -- Intuit rotates the refresh token on every refresh, so two
-independent copies invalidate each other.
+flow runs here. The one token store is the shared
+``Claude_projects/shared/secrets/qbo_tokens.json`` (with the shared ``.env``), which
+Owner_statement_whole and qbo_reservation_bookkeeping read too -- Intuit rotates the
+refresh token on every refresh, so two independent copies invalidate each other.
 
     config/            -- config.yml (realm) + accounts.yml (named QBO account Ids)
-    config/secrets/    -- .env, qbo_tokens.json (git-ignored)
+    ../shared/secrets/ -- .env, qbo_tokens.json (git-ignored; shared by every project)
+    ../shared/reference/mapping_classes.yml -- property_id -> QBO class (read-only here)
     inputs/JE/         -- channel payout exports (Airbnb / Booking.com CSVs)
     inputs/Invoice_payment/ -- the Zelle payment tracking workbook
     inputs/owner_payout/    -- the monthly owner-payout sheet (one row per bank line)
@@ -21,7 +22,8 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
 CONFIG_DIR  = PROJECT_ROOT / "config"
-SECRETS_DIR = CONFIG_DIR / "secrets"
+SHARED_DIR  = PROJECT_ROOT.parent / "shared"          # Claude_projects/shared (see its README)
+SECRETS_DIR = SHARED_DIR / "secrets"
 INPUTS_DIR  = PROJECT_ROOT / "inputs"
 JE_INPUTS   = INPUTS_DIR / "JE"
 INVOICE_INPUTS = INPUTS_DIR / "Invoice_payment"
@@ -33,6 +35,7 @@ ACCOUNTS_YML = CONFIG_DIR / "accounts.yml"
 PAYEES_YML   = CONFIG_DIR / "payees.yml"
 PAYOUT_CLASSES_YML = CONFIG_DIR / "payout_classes.yml"
 BOOKING_IDS  = CONFIG_DIR / "booking_Id.csv"
+MAPPING_CLASSES = SHARED_DIR / "reference" / "mapping_classes.yml"   # maintained by Owner_statement_whole
 
 ENV_FILE   = SECRETS_DIR / ".env"
 QBO_TOKENS = SECRETS_DIR / "qbo_tokens.json"

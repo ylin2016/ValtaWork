@@ -31,7 +31,7 @@ class GuestyClient:
         if not self.client_id or not self.client_secret:
             raise RuntimeError(
                 "Missing GUESTY_CLIENT_ID / GUESTY_CLIENT_SECRET. "
-                "Copy .env.example to .env and fill in your credentials."
+                "Fill them in Claude_projects/shared/secrets/.env (see .env.example there)."
             )
 
     # ----- token handling -------------------------------------------------

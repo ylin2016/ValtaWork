@@ -10,7 +10,8 @@ GUESTY_INPUTS = INPUTS_DIR / "guesty"     # stored Guesty pulls (5 tokens / 24h 
 QBO_INPUTS = INPUTS_DIR / "qbo"           # read-only snapshots of what VRP / we already posted
 REVIEW_DIR = PROJECT_ROOT / "review"
 
-# Siblings -- read through src/bridge.py only, never copied.
+# Siblings -- read through src/bridge.py only, never copied. Shared code, reference
+# tables and secrets come from Claude_projects/shared/ (valta_common).
 QBO_OPS_ROOT = CLAUDE_PROJECTS / "QBO_operations"
 STATEMENTS_ROOT = CLAUDE_PROJECTS / "Owner_statement_whole"
 

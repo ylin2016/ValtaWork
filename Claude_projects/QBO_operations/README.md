@@ -14,12 +14,13 @@ method but GET).
 python3 -m venv venv && venv/bin/pip install -r requirements.txt
 ```
 
-Secrets live in `config/secrets/` (git-ignored): `.env` with `QBO_CLIENT_ID` /
-`QBO_CLIENT_SECRET` / `QBO_REDIRECT_URI`, and `qbo_tokens.json`.
+Secrets live in the shared `Claude_projects/shared/secrets/` (git-ignored; one copy for
+every project): `.env` with `QBO_CLIENT_ID` / `QBO_CLIENT_SECRET` / `QBO_REDIRECT_URI`, and
+`qbo_tokens.json`. See `../shared/README.md`.
 
 ```bash
 python -m src.auth url                          # open it, approve
-python -m src.auth exchange --code <CODE>       # tokens land in config/secrets/
+python -m src.auth exchange --code <CODE>       # tokens land in ../shared/secrets/
 python -m src.verify_accounts                   # every Id in accounts.yml still resolves
 ```
 
@@ -102,7 +103,8 @@ One direction only, and every crossing goes through `src/bridge.py`:
 
 Every consumer takes `--statements-root` to override the default sibling path.
 
-**The OAuth token goes the other way**: this project owns
-`config/secrets/qbo_tokens.json`, and Owner_statement_whole reads that same file.
+**The OAuth token is shared**: this project runs the OAuth flow, and the one token file
+`../shared/secrets/qbo_tokens.json` is read by Owner_statement_whole and
+qbo_reservation_bookkeeping too.
 Intuit rotates the refresh token on every refresh, so there is exactly **one** copy
 on disk — never duplicate it.

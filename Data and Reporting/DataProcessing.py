@@ -156,7 +156,7 @@ def format_reservation(df, startdate, enddate):
 def import_data(guesty_current_path=None):
     """guesty_current_path: 2026+ confirmed reservations in the Guesty UI export
     layout. Default = the manual export dated today; the weekly script passes
-    the API pull (Claude_projects/Weekly Revenue Updates/fetch_guesty.py)."""
+    the API pull (Claude_projects/weekly_revenue/fetch_guesty.py)."""
     filepath = "/Users/ylin/Google Drive/My Drive/Data and Reporting/"
     platforms = pd.read_excel(filepath+"Data/Revenue/Source_Platform.xlsx")
 

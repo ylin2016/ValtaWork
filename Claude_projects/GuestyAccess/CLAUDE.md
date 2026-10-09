@@ -55,6 +55,15 @@ break:**
   inherited from the archived owner_statement_mvp are in its
   `docs/inherited_rules_owner_statement_mvp.md`.
 
+**Shared things live in `Claude_projects/shared/`** (registry: `shared/README.md`):
+`valta_common` (the Guesty client, fee rules `payment_model`, Wheelhouse client, shared
+paths — `pip install -e shared`), `reference/` (Listing_contacts.csv, mapping_classes.yml,
+listing_tax_rates.csv, maintained by Owner_statement_whole), `secrets/` (ONE `.env` and
+ONE Guesty + QBO token cache for every project — this project's client uses them too),
+and `data/` (`guesty.sqlite`, `wheelhouse.sqlite`, refreshed weekly by weekly_revenue).
+Read the databases read-only instead of re-pulling when weekly freshness is enough.
+Never copy a shared file into a project; import or read it from `shared/`.
+
 Projects in `Claude_projects/_archive/` (owner_statement_mvp, GuestReview,
 GuestyFinancials, wheelhouse_marketdata_download, …) are retired: never read, run or
 import from them for active work — anything still needed has been copied into an

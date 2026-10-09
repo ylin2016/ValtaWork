@@ -7,8 +7,12 @@ Guidance for Claude Code working in this project.
 The **unified owner-statement pipeline** for Valta Realty vacation rentals. It is the
 successor to `owner_statement_mvp` (the SQLite + QBO statement engine, now archived) with its Guesty
 data-ingestion switched from a **manual UI CSV export** to an **automated Guesty Open API
-pull**. This project is the single home of the Guesty client, the fetch and the fee
-breakdown — other projects import them from here.
+pull**. Since 2026-10-09 the Guesty client, the summary frame and the fee model
+(`payment_model`) live in the shared `Claude_projects/shared/valta_common/` (installed in
+`venv/` with `pip install -e ../shared`), so every project runs the same code; this
+project still owns the fetch (`breakdown/fetch_month`) and the statements. The reference
+tables it maintains (`Listing_contacts.csv`, `mapping_classes.yml`, tax rates) and the
+secrets live in `shared/` too — see `../shared/README.md`.
 
 Output: per-owner Excel + PDF statements and a Streamlit dashboard.
 
@@ -22,11 +26,14 @@ different here**.
 ## Folder layout (config vs data separated — owner requirement)
 
 ```
-config/                       # human-maintained, rarely changes
-  mapping_classes.yml, mapping_accounts.yml, Listing_contacts.csv
+config/                       # this project's own config, rarely changes
+  mapping_accounts.yml, config.yml
   payment_structure.xlsx      # SOURCE OF TRUTH for the Section-1 fee model (see below)
-  config.yml, _listing_tax_rates.csv
-  secrets/                    # git-ignored: .env (QBO+Guesty creds), qbo_tokens.json, guesty_token.json
+../shared/reference/          # SHARED tables this project maintains (paths.REFERENCE_DIR):
+  Listing_contacts.csv, mapping_classes.yml, listing_tax_rates.csv
+../shared/secrets/            # git-ignored, ONE copy for all projects: .env (QBO+Guesty+
+                              #   Wheelhouse), qbo_tokens.json, guesty_token.json
+../shared/valta_common/       # shared code: guesty/ (client, financials, summary), fees/payment_model
 inputs/<period>/              # per-month inputs (YYYY-MM)
   Guesty_booking_<period>.csv       # Task 1 output A (UI-export shaped)
   payment_breakdown_<period>.csv    # Task 1 output B (Section-1 fee waterfall)
@@ -47,8 +54,8 @@ src/
   deploy_pack.py      # PACKAGE FOR DEPLOY — re-packs deploy/ from the latest build
   common/     # shared infra:       db, config, utils, mappings, income_rules (QBO INCOME classification)
   scope/      # STATEMENT SCOPE:    listing_filter (which statements exist + rollups), pm_rate (commission rate)
-  guesty/     # ACCESS GUESTY API:  client, config, reservation_financials, reservations_batch
-  breakdown/  # BOOKINGS BREAKDOWN: payment_model, fetch_month, deactivated, convert_export, adapter
+  breakdown/  # BOOKINGS BREAKDOWN: fetch_month, deactivated, convert_export, adapter, audit_adjustments
+              #   (the Guesty client + payment_model are in ../shared/valta_common/)
   ltr/        # LTR BOOKING SOURCE: import_ltr (pull LTR/deferred rent → ledger), records (display)
   netrevenue/ # BUILD NET REVENUE:  engine (was statement_engine)
   expense/    # EXPORT EXPENSE:     qbo_client, qbo_sync, owner_costs
@@ -59,7 +66,7 @@ src/
   onetime/    # one-time & maintenance scripts (quarantined; see src/onetime/README.md)
 ```
 
-**Booking sources** are parallel: `guesty/` (Open-API pull, → `breakdown/`) and `ltr/` (LTR CSV
+**Booking sources** are parallel: `valta_common.guesty` (Open-API pull, → `breakdown/`) and `ltr/` (LTR CSV
 → ledger via `import_ltr`; `ltr/records.py` reads them back for display). **`scope/` sets up the
 statement scope** — `listing_filter` decides which statements exist AND which listings roll
 into each (see "Statement scope" below), `pm_rate` the commission rate — resolved up front by
@@ -126,11 +133,16 @@ are now no CSV-only corrections left: `STRIPE_FEE_OVERRIDES` absorbed the last t
   `STRIPE_FEE_OVERRIDES`): QBO's actual charge outranks the recomputation. `has_processing`
   still outranks the override, so a code in `NO_PROCESSING_FEE_CODES` stays at $0.
 
-### Task 1 — Guesty API ingestion (`src/guesty/` + `src/breakdown/`)
+### Task 1 — Guesty API ingestion (`valta_common.guesty` + `src/breakdown/`)
 
-**`src/guesty/`** (access the API), all paths through `paths`:
-`client.py`, `config.py` (endpoints are constants; token cached to
-`config/secrets/guesty_token.json`), `reservation_financials.py`, `reservations_batch.py`.
+**`valta_common.guesty`** (access the API; moved out of `src/guesty/` 2026-10-09, in
+`../shared/valta_common/guesty/`): `client.py`, `config.py` (endpoints are constants;
+token cached to the shared `../shared/secrets/guesty_token.json`),
+`reservation_financials.py`, `reservations_batch.py`, `summary.py` (`build_summary_frame`;
+`fetch_month` re-exports it). CLI: `python -m valta_common.guesty.reservation_financials <code>`.
+**`payment_model`** is `valta_common.fees.payment_model`
+(`../shared/valta_common/fees/payment_model.py`) — everything below that says
+`payment_model.py` means that file.
 **`src/breakdown/`** (bookings breakdown) holds the fee-waterfall + ingestion adapters:
 
 - **`payment_model.py`** — `compute_breakdown(summary_df, tax_rates_csv)`; a faithful,
@@ -203,12 +215,12 @@ stub that points at `QBO_operations`. Everything the monthly close needs is a re
 `qbo_sync`, `reporting/qbo_adjustments`, `reporting/exception_bookings`,
 `onetime/list_classes`, `onetime/export_class_stubs`.
 
-**The OAuth token lives over there** — `paths.QBO_TOKENS` points into
-`../QBO_operations/config/secrets/`. Intuit rotates the refresh token on every
-refresh, so two copies invalidate each other and there is exactly ONE on disk;
-this project still refreshes it (that mutates the token, not the books) and writes
-back to the same file. Never add a local `qbo_tokens.json`. `.env` is duplicated in
-both projects, which is safe because the client id/secret are static.
+**The OAuth token is the shared one** — `paths.QBO_TOKENS` points at
+`../shared/secrets/qbo_tokens.json` (moved there 2026-10-09; QBO_operations still runs
+the OAuth flow). Intuit rotates the refresh token on every refresh, so two copies
+invalidate each other and there is exactly ONE on disk; this project still refreshes
+it (that mutates the token, not the books) and writes back to the same file. Never add
+a local `qbo_tokens.json`. The `.env` is the shared one too.
 
 `QBO_operations` reads back from here — `mapping_classes.yml`, the stored Guesty
 exports, `ltr.labels.to_property_id`, the ledger DB — all through its single
@@ -225,7 +237,10 @@ See dashboard notes below. Net-revenue math lives in `netrevenue/engine.py` (was
 `statement_engine.py`); property scope + commission rate come from `scope/`
 (`listing_filter`, `pm_rate`); `run_month_close.py` (root) conducts all tasks.
 
-## Statement scope: `config/Listing_contacts.csv` is the standard (Listing / Property)
+## Statement scope: `Listing_contacts.csv` is the standard (Listing / Property)
+
+(It lives in `../shared/reference/` since 2026-10-09 — `paths.LISTING_CONTACTS`; this
+project still maintains it, and `deploy/config/` gets a copy at each pack.)
 
 The contacts file is the SINGLE source for **which statements exist** and **which listings
 roll into each one**. Two identity columns:
@@ -247,7 +262,7 @@ Beachwood / OSBR / Bellevue 2323 / Burien 14407 / Seattle 7434 rollups.
   (`Seattle 10057` → `seattle_10057`) — deliberately no alias, or `Seattle 906` would fold
   into the Lower unit instead of getting its own shared statement.
 - A Property that is NOT itself a QBO class needs a **statement-only parent** row in
-  `config/mapping_classes.yml` with a `synthetic:<pid>` qbo_class_id + `pm_fee_rate`
+  `mapping_classes.yml` (`../shared/reference/`) with a `synthetic:<pid>` qbo_class_id + `pm_fee_rate`
   (`seattle_10057`, `seattle_906`). Without it the Property resolves to nothing and its
   units drop out of scope entirely. Nothing in `src/` reads the `synthetic:` prefix — it is
   simply an id no QBO ClassRef can match.
@@ -1051,7 +1066,7 @@ before handing the folder to anyone.
 First-time setup: `python -m src.run_month_close init-db` then `sync-mappings`. QBO OAuth runs
 in the sibling project, which owns the shared token store:
 `cd ../QBO_operations && python -m src.auth url`, then `python -m src.auth exchange --code <CODE>`
-(tokens → `QBO_operations/config/secrets/qbo_tokens.json`, which this project reads).
+(tokens → `../shared/secrets/qbo_tokens.json`, which this project reads).
 
 ## Deploy package (`deploy/` — dashboard-only, display-only)
 
@@ -1082,11 +1097,11 @@ following the archived owner_statement_mvp's deploy design. The heavy pipeline r
 
 ## Guesty token budget
 
-5 tokens / 24h / client, shared with every project on this client (`GuestyAccess`, and
-`qbo_reservation_bookkeeping`, `yacinde_expense`, `VRMA_AI revenue analysis`, which all
-import this project's client and token). This project caches
-its own token at `config/secrets/guesty_token.json` and reuses it (≈1 mint/day). **Do not
-force-refresh in a loop.**
+5 tokens / 24h / client, shared with every project on this client. Since 2026-10-09
+there is ONE token cache for all of them — `../shared/secrets/guesty_token.json`, used by
+`valta_common.guesty.client` (this project, `qbo_reservation_bookkeeping`,
+`yacinde_expense`, `vrma_pricing`, `weekly_revenue`) and by `GuestyAccess`'s own client —
+so the whole workspace mints ≈1 token/day. **Do not force-refresh in a loop.**
 
 ## Working principles
 

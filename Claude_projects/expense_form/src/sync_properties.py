@@ -1,4 +1,5 @@
-"""Regenerate config/properties.csv from Owner_statement_whole's mapping_classes.yml.
+"""Regenerate config/properties.csv from the shared mapping_classes.yml
+(Claude_projects/shared/reference/, maintained by Owner_statement_whole).
 
 mapping_classes.yml is the source of truth for property names and QBO class IDs (the owner
 statement pipeline and QBO_operations use the same names), so this file is generated, not edited.
@@ -21,7 +22,7 @@ from pathlib import Path
 import yaml
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = ROOT.parent / "Owner_statement_whole" / "config" / "mapping_classes.yml"
+SOURCE = ROOT.parent / "shared" / "reference" / "mapping_classes.yml"
 TARGET = ROOT / "config" / "properties.csv"
 EXCLUDE = ROOT / "config" / "properties_exclude.txt"
 

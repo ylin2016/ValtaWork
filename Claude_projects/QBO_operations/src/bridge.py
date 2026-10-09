@@ -8,9 +8,10 @@ CLI flag.
 
 What crosses, and why it is not copied:
 
-  * ``mapping_classes.yml``   -- property_id -> QBO class.  Maintained by the
-    statement pipeline from ``Listing_contacts.csv``; a copy would go stale the
-    first time a listing is added.
+  * ``mapping_classes.yml``   -- property_id -> QBO class.  Lives in the shared
+    ``Claude_projects/shared/reference/`` (maintained by the statement pipeline from
+    ``Listing_contacts.csv``); ``mapping_classes()`` returns it so callers keep one entry
+    point.
   * the Guesty exports under ``inputs/<period>/`` -- check-in/check-out dates for
     JE descriptions.  Guesty allows 5 API tokens/24h, so the stored exports are the
     only affordable source.
@@ -26,7 +27,7 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-from .paths import STATEMENTS_ROOT
+from .paths import MAPPING_CLASSES, STATEMENTS_ROOT
 
 
 def statements_root(override: str | None = None) -> Path:
@@ -39,7 +40,9 @@ def statements_root(override: str | None = None) -> Path:
 
 
 def mapping_classes(override: str | None = None) -> Path:
-    return statements_root(override) / "config" / "mapping_classes.yml"
+    """The shared class map. `override` (--statements-root) only moves the ledger and
+    the stored exports; the map always comes from shared/reference/."""
+    return MAPPING_CLASSES
 
 
 def ledger_db(override: str | None = None) -> Path:

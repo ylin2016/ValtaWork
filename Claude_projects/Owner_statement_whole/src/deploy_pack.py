@@ -7,7 +7,8 @@ the latest local build. One command does everything that used to be manual:
 
   1. VACUUM the ledger DB into ``deploy/db/`` (compact read-only snapshot).
   2. Copy the period's display CSVs (payment_breakdown, guesty_converted, LTR).
-  3. Copy the human-maintained config (mapping_classes, config.yml, Listing_contacts).
+  3. Copy the human-maintained config (mapping_classes, config.yml, Listing_contacts;
+     the first and last come from Claude_projects/shared/reference/).
   4. Sync the display-only code bundle: ``paths``/``listing_filter``/``ltr_records``/
      ``pm_rate`` verbatim, and ``dashboard.py`` with the deploy-only PASSWORD GATE
      re-injected after ``set_page_config`` (the step that was easy to forget by hand).
@@ -47,8 +48,12 @@ DISPLAY_PACKAGES = {
 # Stale flat modules from the pre-scope/ltr layout — removed if a prior pack left them.
 _STALE_FLAT = ["listing_filter.py", "ltr_records.py", "pm_rate.py"]
 
-# Human-maintained config the dashboard / listing_filter read.
-CONFIG_FILES = ["mapping_classes.yml", "config.yml", "Listing_contacts.csv"]
+# Human-maintained config the dashboard / listing_filter read, by its packaged name.
+# Two of them live in Claude_projects/shared/reference/ locally; the deploy has no
+# shared/, so they ship in deploy/config/ (where the copied paths.py looks for them).
+CONFIG_FILES = {"mapping_classes.yml": paths.MAPPING_CLASSES,
+                "config.yml": paths.CONFIG_YML,
+                "Listing_contacts.csv": paths.LISTING_CONTACTS}
 
 # Tables no deploy/src code reads — stripped from the snapshot to keep the
 # committed DB small. `exceptions` is raw pipeline diagnostics (~68% of the file);
@@ -187,8 +192,8 @@ def pack(periods) -> None:
             _copy(paths.inputs_dir(period) / name, DEPLOY / "inputs" / period / name, "input")
 
     # 3. Config.
-    for name in CONFIG_FILES:
-        _copy(paths.CONFIG_DIR / name, DEPLOY / "config" / name, "config")
+    for name, src in CONFIG_FILES.items():
+        _copy(src, DEPLOY / "config" / name, "config")
 
     # 4. Display-only code: verbatim helpers + dashboard.py with the gate re-injected.
     for name in _STALE_FLAT:  # drop leftovers from the old flat layout

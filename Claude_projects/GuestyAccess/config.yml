@@ -7,9 +7,10 @@ base_url: https://open-api.guesty.com/v1
 token_url: https://open-api.guesty.com/oauth2/token
 scope: open-api
 
-# Where the 24h access token is cached (git-ignored). Guesty allows only
-# 5 tokens / 24h / client, so we reuse this until it is near expiry.
-token_path: ./data/guesty_token.json
+# Where the 24h access token is cached: the ONE shared cache every project uses
+# (git-ignored). Guesty allows only 5 tokens / 24h / client, so all projects reuse it
+# until it is near expiry.
+token_path: ../shared/secrets/guesty_token.json
 
 # Refresh the token this many seconds BEFORE it actually expires.
 token_refresh_buffer_seconds: 3600

@@ -112,3 +112,9 @@ Claude_projects/_archive/wheelhouse_marketdata_download/data/
 Guesty_booking_2026-05.csv
 Claude_projects/VRMA_AI revenue analysis/data/
 Claude_projects/VRMA_AI revenue analysis/output/
+
+# Shared Claude_projects folder: databases and credentials never go to git
+Claude_projects/shared/data/
+Claude_projects/shared/secrets/*
+!Claude_projects/shared/secrets/.env.example
+**/guesty_token.json

@@ -5,11 +5,15 @@ put on sys.path. Each is loaded once under an alias -- ``qbo_ops`` (QBO_operatio
 ``osw`` (Owner_statement_whole) -- which keeps their relative imports working.
 
 What crosses, and why it is borrowed rather than copied:
-  * QBO_operations' client + token (Intuit rotates the refresh token: two copies on disk
-    invalidate each other) and its Resolver / accounts.yml.
-  * Owner_statement_whole's Guesty client + cached token (5 tokens / 24h, shared), the
-    PM-rate resolver over owner_contracts, the payment model (channel / Stripe fees and
-    their per-reservation override tables), the class map and Listing_contacts.csv.
+  * QBO_operations' client (on the ONE shared token, Claude_projects/shared/secrets/) and
+    its Resolver / accounts.yml.
+  * Owner_statement_whole's PM-rate resolver over owner_contracts, its listing_filter
+    label normalisation and to_property_id, and its ledger DB (read-only).
+
+The rest is shared code / data in Claude_projects/shared/ (valta_common), not a sibling:
+the Guesty client + its one cached token (5 tokens / 24h for every project), the payment
+model (channel / Stripe fees and their per-reservation override tables), the summary
+frame it reads, and the reference tables (class map, Listing_contacts.csv, tax rates).
 """
 from __future__ import annotations
 
@@ -20,6 +24,7 @@ import sys
 from functools import lru_cache
 
 import yaml
+from valta_common import paths as shared
 
 from .paths import QBO_OPS_ROOT, STATEMENTS_ROOT
 
@@ -55,23 +60,30 @@ def resolver(qbo):
     return _sub("qbo_ops", QBO_OPS_ROOT, "resolver").Resolver(qbo)
 
 
-# --- Owner_statement_whole --------------------------------------------------------
+# --- shared (valta_common) -------------------------------------------------------
 def guesty_client():
-    return _sub("osw", STATEMENTS_ROOT, "guesty.client").GuestyClient()
+    from valta_common.guesty.client import GuestyClient
+    return GuestyClient()
 
 
 def guesty_financials():
-    return _sub("osw", STATEMENTS_ROOT, "guesty.reservation_financials")
+    return importlib.import_module("valta_common.guesty.reservation_financials")
 
 
-def fetch_month():
-    return _sub("osw", STATEMENTS_ROOT, "breakdown.fetch_month")
+def guesty_summary():
+    """build_summary_frame: the per-reservation fee-category frame payment_model reads."""
+    return importlib.import_module("valta_common.guesty.summary")
 
 
 def payment_model():
-    return _sub("osw", STATEMENTS_ROOT, "breakdown.payment_model")
+    return importlib.import_module("valta_common.fees.payment_model")
 
 
+def tax_rates_csv():
+    return shared.LISTING_TAX_RATES
+
+
+# --- Owner_statement_whole --------------------------------------------------------
 def pm_rate():
     return _sub("osw", STATEMENTS_ROOT, "scope.pm_rate")
 
@@ -80,10 +92,6 @@ def to_property_id(nickname: str) -> str:
     """Guesty listing nickname -> property_id: the statement project's Guesty mapper,
     whose _NICKNAME_ALIASES folds bare building nicknames ("Seattle 7434") onto a unit."""
     return _sub("osw", STATEMENTS_ROOT, "breakdown.convert_export").to_property_id(nickname)
-
-
-def tax_rates_csv():
-    return STATEMENTS_ROOT / "config" / "_listing_tax_rates.csv"
 
 
 def statements_db():
@@ -95,7 +103,7 @@ def statements_db():
 @lru_cache(maxsize=1)
 def class_map() -> dict[str, dict]:
     """property_id -> mapping_classes.yml entry."""
-    items = yaml.safe_load((STATEMENTS_ROOT / "config" / "mapping_classes.yml").read_text())
+    items = yaml.safe_load(shared.MAPPING_CLASSES.read_text())
     return {it["property_id"]: it for it in items if it.get("property_id")}
 
 
@@ -109,7 +117,7 @@ def listing_contacts() -> dict[str, dict]:
     does (listing_filter._norm/_alias), so "Cottage 11 (tiny)" -> osbr_11."""
     lf = _sub("osw", STATEMENTS_ROOT, "scope.listing_filter")
     out = {}
-    with (STATEMENTS_ROOT / "config" / "Listing_contacts.csv").open(encoding="utf-8-sig") as fh:
+    with shared.LISTING_CONTACTS.open(encoding="utf-8-sig") as fh:
         for r in csv.DictReader(fh):
             label = (r.get("Listing") or r.get("Property") or "").strip()
             if label:

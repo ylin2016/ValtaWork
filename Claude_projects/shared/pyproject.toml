@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "valta-common"
+version = "0.1.0"
+description = "Code shared by the Valta Claude_projects (Guesty, fee rules, Wheelhouse, shared paths)"
+requires-python = ">=3.10"
+dependencies = ["pandas", "numpy", "requests", "python-dotenv", "PyYAML"]
+
+[tool.setuptools.packages.find]
+include = ["valta_common*"]
+
+[tool.setuptools.package-data]
+valta_common = ["wheelhouse/config.yml"]

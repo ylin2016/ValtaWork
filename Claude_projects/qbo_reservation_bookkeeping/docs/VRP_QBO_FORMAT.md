@@ -106,7 +106,7 @@ see QBO_operations `fixes/passthrough_tot`). QBO_operations `je/build_airbnb` al
 ## 5. Open questions for the owner
 
 1. ~~Where does this code live?~~ **Decided 2026-10-02:** own folder; borrows QBO_operations'
-   client + `config/secrets/qbo_tokens.json` (never copied). QBO_operations' CLAUDE.md to name this
+   client + the shared `../shared/secrets/qbo_tokens.json` (never copied). QBO_operations' CLAUDE.md to name this
    project as the second permitted writer.
 2. ~~$0 Bills?~~ **Decided 2026-10-02:** create only the Bills that apply (commission, supplies, and
    the one channel/Stripe fee Bill), same DocNumber/vendor/account format.

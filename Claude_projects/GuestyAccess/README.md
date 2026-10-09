@@ -13,7 +13,7 @@ from a prepared Excel sheet. Built to feed the other Valta downstream projects.
 | `src/listing_mapper.py` | Maps one Excel row → a Guesty `POST /listings` payload. |
 | `src/create_listings.py` | Reads the sheet → creates listings (with a `--dry-run` mode). |
 | `config.yml` | Base URLs, token cache path, per-field defaults, create delay. |
-| `.env` | Your credentials (git-ignored; copy from `.env.example`). |
+| `../shared/secrets/.env` | Credentials, shared by every project (git-ignored; see `.env.example` there). |
 
 ## 1. Get Guesty Open API credentials
 
@@ -32,9 +32,9 @@ from a prepared Excel sheet. Built to feed the other Valta downstream projects.
 ## 2. Configure & install
 
 ```bash
-cd Claude_projects/guesty_api
-cp .env.example .env
-# edit .env and paste GUESTY_CLIENT_ID and GUESTY_CLIENT_SECRET
+cd Claude_projects/GuestyAccess
+# credentials: GUESTY_CLIENT_ID / GUESTY_CLIENT_SECRET in ../shared/secrets/.env
+# (one copy shared by every project; copy ../shared/secrets/.env.example if it is missing)
 
 # use the shared workspace venv (has requests/pandas/openpyxl/…)
 source /Users/ylin/ValtaWork/.venv/bin/activate
@@ -48,9 +48,10 @@ python -m src.guesty_client
 # → "Got access token (…abc123)."  and a listings count
 ```
 
-This mints **one** token and caches it to `data/guesty_token.json`. Guesty
-allows only **5 tokens per 24h per client**, and the token lasts 24h — the
-client reuses the cached token automatically, so don't delete it casually.
+This reuses (or mints **one**) token cached in `../shared/secrets/guesty_token.json` —
+the same cache every project uses. Guesty allows only **5 tokens per 24h per client**,
+and the token lasts 24h — the client reuses the cached token automatically, so don't
+delete it casually.
 
 ## 4. Pull property data
 

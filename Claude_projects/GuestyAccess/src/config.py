@@ -1,6 +1,7 @@
 """Config + environment loading for the Guesty API client.
 
-Reads `config.yml` (non-secret settings) and `.env` (credentials). Both are
+Reads `config.yml` (non-secret settings) and the shared credentials in
+Claude_projects/shared/secrets/.env (the same Guesty app every project uses). Both are
 resolved relative to the project root so scripts work regardless of CWD.
 """
 import os
@@ -11,8 +12,8 @@ from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 
-# Load .env from the project root (no-op if the file is absent).
-load_dotenv(PROJECT_ROOT / ".env")
+# Shared credentials (one copy for every project; no-op if the file is absent).
+load_dotenv(PROJECT_ROOT.parent / "shared" / "secrets" / ".env")
 
 
 def env(name: str, default=None):

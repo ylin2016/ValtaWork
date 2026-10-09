@@ -60,8 +60,8 @@ def load_snapshot(pulled_at: str) -> dict:
 def breakdown_by_code(resvs: list[dict]) -> dict:
     """payment_model's channel / Stripe / Guesty fee per reservation -- the statement's
     own numbers, including its per-reservation override tables."""
-    fm, pm = bridge.fetch_month(), bridge.payment_model()
-    S = fm.build_summary_frame(resvs)
+    gs, pm = bridge.guesty_summary(), bridge.payment_model()
+    S = gs.build_summary_frame(resvs)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         bd, _ = pm.compute_breakdown(S, bridge.tax_rates_csv())

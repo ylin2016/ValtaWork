@@ -1,0 +1,9 @@
+# Wheelhouse API client settings (from the archived wheelhouse_marketdata_download,
+# 2026-10-09). The key is WHEELHOUSE_API_KEY in shared/secrets/.env.
+api:
+  base_url: "https://api.usewheelhouse.com/ss_api/v1"
+  requests_per_minute: 55
+  concurrency: 6
+  timeout_seconds: 60
+  max_retries: 5
+  log_raw_responses: false

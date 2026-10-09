@@ -2,19 +2,18 @@
 
     python -m src.fetch_guesty --checkin-from 2026-06-01 --checkin-to 2026-12-31
 
-Reuses Owner_statement_whole's Guesty client (its config/secrets/.env + cached 24h
-token; Guesty allows only 5 tokens/24h per client, so never force-refresh). Writes the
+Uses the shared Guesty client (valta_common, Claude_projects/shared/: one .env and one
+cached 24h token for every project; Guesty allows only 5 tokens/24h per client, so never
+force-refresh). Writes the
 raw JSON to data/guesty/guesty_reservations.json.
 """
 import argparse
-import importlib
-import importlib.util
 import json
-import sys
 from pathlib import Path
 
+from valta_common.guesty.client import GuestyClient
+
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
-OSW_SRC = PROJECT_ROOT.parent / "Owner_statement_whole" / "src"
 OUT = PROJECT_ROOT / "data" / "guesty" / "guesty_reservations.json"
 
 PAGE = 100
@@ -22,19 +21,6 @@ STATUSES = ["confirmed", "canceled"]
 FIELDS = ("confirmationCode source status checkIn checkOut nightsCount guestsCount "
           "guests listing.nickname listing.title listing.accommodates listingId "
           "guest.fullName createdAt canceledAt")
-
-
-def _load_client():
-    """Import Owner_statement_whole's client under a unique package name (both have `src`).
-    Its .env / token paths resolve through its own src/paths.py, so no chdir is needed."""
-    pkg = "osw"
-    if pkg not in sys.modules:
-        spec = importlib.util.spec_from_file_location(
-            pkg, OSW_SRC / "__init__.py", submodule_search_locations=[str(OSW_SRC)])
-        mod = importlib.util.module_from_spec(spec)
-        sys.modules[pkg] = mod
-        spec.loader.exec_module(mod)
-    return importlib.import_module(f"{pkg}.guesty.client").GuestyClient
 
 
 def fetch(client, dfrom: str, dto: str) -> list[dict]:
@@ -63,7 +49,7 @@ def main():
     ap.add_argument("--checkin-to", default="2026-12-31")
     args = ap.parse_args()
 
-    client = _load_client()()
+    client = GuestyClient()
     res = fetch(client, args.checkin_from, args.checkin_to)
     yac = [x for x in res if "yacinde" in ((x.get("listing") or {}).get("nickname") or "").lower()]
     OUT.parent.mkdir(parents=True, exist_ok=True)

@@ -117,7 +117,7 @@ def fetch_markups(offline: bool) -> dict:
         if not paths.CHANNEL_MARKUPS.exists():
             raise SystemExit(f"--offline but no cache at {paths.CHANNEL_MARKUPS}")
         return json.loads(paths.CHANNEL_MARKUPS.read_text())["markups"]
-    from ..guesty.client import GuestyClient
+    from valta_common.guesty.client import GuestyClient
     acct = GuestyClient().request("GET", "/accounts/me")
     payload = {
         "_source": "Guesty Open API GET /accounts/me -> markups (account level)",
