@@ -102,12 +102,12 @@ htmlcov/
 #Ignore local folders
 
 Offers/
-Claude_projects/owner_statement_mvp/templates/*.csv
+Claude_projects/_archive/owner_statement_mvp/templates/*.csv
 .gitignore
-Claude_projects/owner_statement_mvp/mapping_classes_stub.yml
-Claude_projects/owner_statement_mvp/mapping_classes_stub.yml
-Claude_projects/owner_statement_mvp/data/*.csv
-Claude_projects/wheelhouse_marketdata_download/data/
+Claude_projects/_archive/owner_statement_mvp/mapping_classes_stub.yml
+Claude_projects/_archive/owner_statement_mvp/data/*.csv
+Claude_projects/_archive/owner_statement_mvp/deploy/
+Claude_projects/_archive/wheelhouse_marketdata_download/data/
 .gitignore
 Guesty_booking_2026-05.csv
 Claude_projects/VRMA_AI revenue analysis/data/
