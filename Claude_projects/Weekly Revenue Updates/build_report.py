@@ -3,7 +3,7 @@
 Inputs: the Guesty API pull (fetch_guesty.py), Wheelhouse market data
 (wheelhouse.sqlite, matched per listing on MARKET + BEDROOM bucket), plus the
 same static/manual files the notebook used (pre-2026 bookings, LTR list,
-owner payouts, ratings, Property_Cohost.xlsx).
+owner payouts, ratings, Property_Cohost.xlsx), copied into data/inputs/.
 
     python build_report.py --asof 2026-09-29               # writes to output/
     python build_report.py --asof 2026-09-29 --publish     # also to Google Drive
@@ -20,7 +20,6 @@ Differences from the notebook (intentional):
 import argparse
 import re
 import sqlite3
-import sys
 from calendar import monthrange
 from datetime import date
 from pathlib import Path
@@ -29,14 +28,13 @@ import numpy as np
 import pandas as pd
 from openpyxl.utils import get_column_letter
 
-from paths import (DATA_DIR, OUTPUT_DIR, PUB_OCCUPANCY, PUB_REPORT, PUB_TRACKING_DIR,
-                   RENT_ROLL, REPORTING_CODE, REVENUE_DATA, WHEELHOUSE_DB)
-
-sys.path.insert(0, str(REPORTING_CODE))
-from DataProcessing import format_reservation, import_data, property_input  # noqa: E402
-from RevenueReportHelpers import (build_owner_payout_26, build_owner_payout_2425,  # noqa: E402
-                                  cal_occupancy, days_in_month_from_yearmonth,
-                                  safe_round, yearrecords, yoy_delta)
+from paths import (DATA_DIR, DRIVE, GUESTY_CANCELED, OUTPUT_DIR, OVERALL_RATINGS, PUB_OCCUPANCY,
+                   PUB_REPORT, PUB_TRACKING_DIR, RENT_ROLL, REVIEWS_DIR, SOURCE_PLATFORM,
+                   WHEELHOUSE_DB)
+from reporting.DataProcessing import format_reservation, import_data, property_input
+from reporting.RevenueReportHelpers import (build_owner_payout_26, build_owner_payout_2425,
+                                            cal_occupancy, days_in_month_from_yearmonth,
+                                            safe_round, yearrecords, yoy_delta)
 
 pd.options.mode.chained_assignment = None
 
@@ -615,7 +613,7 @@ def _fmt_rating(val, n):
 
 def add_ratings(yearly_tab, data):
     """Notebook cells 15-19: VA baseline (2025-09-28) + Guesty reviews since."""
-    current = pd.read_excel(REVENUE_DATA / "Property_OverallRatings.xlsx")
+    current = pd.read_excel(OVERALL_RATINGS)
     num_cols = [c for c in current.columns if re.search(r"(Number|Overall)", c)]
     for c in num_cols:
         current[c] = pd.to_numeric(current[c], errors="coerce")
@@ -632,17 +630,15 @@ def add_ratings(yearly_tab, data):
         current["Current_weighted_rating"] = current["Current_weighted_rating"] + current[ncol] * current[ocol]
     current["Current_weighted_rating"] = current["Current_weighted_rating"] / current["Nreview"]
 
-    reviews_dir = (REVENUE_DATA.parents[2] / "** Properties ** -- Valta" / "0_Cohosting" / "1-Reviews"
-                   / "Guesty reviews from Tech team")
-    latest = sorted(reviews_dir.glob("* guesty_reviews.xlsx"))[-1]
+    latest = sorted(REVIEWS_DIR.glob("* guesty_reviews.xlsx"))[-1]
     print(f"  ratings: {latest.name}")
     ratings = pd.read_excel(latest)
 
-    canceled = pd.read_csv(REVENUE_DATA / "GuestyCanceled.csv", na_values=["", " "])
+    canceled = pd.read_csv(GUESTY_CANCELED, na_values=["", " "])
     canceled.columns = [re.sub(" |-|'", ".", c) for c in canceled.columns]
     for col in ["NUMBER.OF.ADULTS", "NUMBER.OF.CHILDREN", "NUMBER.OF.INFANTS", "PET.FEE"]:
         canceled[col] = np.nan
-    platforms = pd.read_excel(REVENUE_DATA / "Source_Platform.xlsx")
+    platforms = pd.read_excel(SOURCE_PLATFORM)
     canceled_fmt = format_reservation(canceled.merge(platforms, on="SOURCE", how="left"),
                                       "2017-01-01", "2025-12-31")
     canceled_fmt["status"] = "canceled"
@@ -767,6 +763,8 @@ def main(argv=None):
     targets = [(local / "RevenueReport_upd.xlsx", local / "Valta_OccupancyRate.xlsx",
                 local / f"RevenuePerformanceTracking_{asof.isoformat()}.xlsx")]
     if args.publish:
+        if not DRIVE.exists():
+            raise SystemExit(f"--publish: no Google Drive folder at {DRIVE} (set VALTA_DRIVE)")
         targets.append((PUB_REPORT, PUB_OCCUPANCY,
                         PUB_TRACKING_DIR / f"RevenuePerformanceTracking_{asof.isoformat()}.xlsx"))
     for rep, occ, trk in targets:

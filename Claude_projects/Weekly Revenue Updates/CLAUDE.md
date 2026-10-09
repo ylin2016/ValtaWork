@@ -3,6 +3,39 @@
 Replaces the manual weekly run of `Data and Reporting/RevenueReport.ipynb`
 (Guesty UI export + 16 hand-downloaded Wheelhouse CSVs).
 
+## Self-contained (2026-10-09)
+
+Everything the run needs is inside this folder, so it can be shared on its own
+(setup for a new person: `README.md`). Nothing imports from another project.
+Copies, each marked "Copied from … (2026-10-09)" at the top:
+
+- `guesty_api/` — Owner_statement_whole's Guesty client (`client`, `config`,
+  `reservation_financials`, `reservations_batch`), `summary.build_summary_frame`
+  (from its `breakdown/fetch_month.py`) and `payment_model` (the fee rules = the
+  user-owned `payment_structure.xlsx`); `config/listing_tax_rates.csv` = its
+  `config/_listing_tax_rates.csv`. **Owner_statement_whole stays the source of the
+  fee rules**: when it changes `payment_model.py` or the tax rates, re-copy them here.
+- `wheelhouse/` — the wheelhouse_marketdata_download package (`config.yml`,
+  `schema.sql`); run in-process by `run_weekly.py` (`--only report --no-export`).
+  Its DB is `data/wheelhouse.sqlite` (copied 2026-10-09) — the live Wheelhouse DB now
+  (the original project is archived); VRMA reads its listing ↔ comp-set roster.
+- `reporting/` — `Data and Reporting/DataProcessing.py` + `RevenueReportHelpers.py`,
+  re-pathed to `data/inputs/` (plot/notebook imports and the unused
+  `build_guesty_2325_and_write` dropped).
+- `data/inputs/` — copies of the Google Drive inputs (pre-2026 bookings, 2023
+  history, LRT list, owner payout workbooks, ratings, canceled, newest reviews,
+  `Property_Cohost.xlsx`, `Source_Platform.xlsx`). `sync_inputs.py` (step 0 of
+  `run_weekly.py`, `--no-sync` skips) copies any changed Drive file over; without
+  Drive the copies are used. The Drive map is `sync_inputs.FILES`.
+- `secrets/` (git-ignored) — `.env` (GUESTY_CLIENT_ID/SECRET, WHEELHOUSE_API_KEY)
+  and the cached Guesty token. This token cache is separate from
+  Owner_statement_whole's, so each project fetches its own token when its copy
+  expires (still within Guesty's 5/24h).
+
+Verified 2026-10-09: rebuilding 2026-10-07 with the self-contained code gave
+byte-identical dash CSVs, rent_roll_applied.csv and dashboard HTML, and
+cell-identical Excel sheets.
+
 ## Run
 
 ```bash
@@ -11,8 +44,8 @@ cd "/Users/ylin/ValtaWork/Claude_projects/Weekly Revenue Updates"
 /Users/ylin/ValtaWork/.venv/bin/python run_weekly.py --publish  # + overwrite Drive copies
 ```
 
-Steps: `fetch_guesty.py` → Wheelhouse `src.run_weekly --only report` (its own
-venv, subprocess: set listings + set monthly metrics + market data — `--only
+Steps: `sync_inputs.py` → `fetch_guesty.py` → `wheelhouse.run_weekly --only report`
+(set listings + set monthly metrics + set members + market data — `--only
 market` alone leaves the comp sets empty) → `build_report.py` → `build_artifact.py`.
 The Wheelhouse pull takes ~3.5 min: calls run 6 in parallel at the ~55/min rate
 limit (~180 calls), and only the current year of market data is fetched — earlier
@@ -64,11 +97,11 @@ short-term bookings in the check-in month. Lead time = confirmation → check-in
 check-in month (`LeadTime`, `Bookings`); comp lead time = Wheelhouse set `lead_time`.
 Trends also stacks each 2026 month's guest payments into rent / lease rent /
 cleaning / tax / channel fee / not itemized, with the host payout as a line
-(`revenue_mix.py`, `Mix_*` columns). ALL fee rules come from Owner_statement_whole:
-`fetch_guesty.py` saves each API booking's itemization with
-its `build_summary_frame` to `data/guesty/Guesty_summary_2026-<date>.csv`, and
-`revenue_mix.py` runs its `payment_model.compute_breakdown` (= its user-owned
-`config/payment_structure.xlsx`) with its `config/_listing_tax_rates.csv`. Bookings on
+(`revenue_mix.py`, `Mix_*` columns). ALL fee rules are Owner_statement_whole's (copied
+into `guesty_api/`): `fetch_guesty.py` saves each API booking's itemization with
+`build_summary_frame` to `data/guesty/Guesty_summary_2026-<date>.csv`, and
+`revenue_mix.py` runs `payment_model.compute_breakdown` (= the user-owned
+`payment_structure.xlsx`) with `config/listing_tax_rates.csv`. Bookings on
 deactivated listings (UI supplement) and pre-2026 check-ins are "not itemized". The previous
 design is kept in `artifact_template_v1.html`. Published 2026-10-06 as https://claude.ai/artifact/Pcwts2dWwSjRyzhnDgbcqy
 (private). Each week: run, then ask Claude to republish
@@ -89,8 +122,8 @@ The artifact can't load tiles itself (CSP), so **republish with the images**: `r
 
 - **Guesty** (`fetch_guesty.py`): confirmed reservations, check-in >= 2026-01-01,
   written in the Guesty UI export layout to `data/guesty/` so
-  `DataProcessing.format_reservation` is unchanged. Uses Owner_statement_whole's
-  client + cached token (5 tokens/24h — never force-refresh).
+  `DataProcessing.format_reservation` is unchanged. Uses the `guesty_api/` client +
+  cached token in `secrets/` (5 tokens/24h — never force-refresh).
   - Deactivated listings are excluded by the Open API. They are **filled from a
     Guesty UI export** dropped in `data/guesty/Guesty_UI_bookings_*.csv` (newest
     used): only listings the API returned NOTHING for are added (so a stale export
@@ -103,7 +136,7 @@ The artifact can't load tiles itself (CSP), so **republish with the images**: `r
   - `ACCOMMODATION FARE` = `fareAccommodation` + MAR + EPF + AFWD items
     (excludes LOSD/GCD/AFD discounts and AFA). Pet fee = invoice items titled
     "Pet". Verified vs the 2026-09-22 UI export: only altered bookings differ.
-- **Wheelhouse**: `occupancy_adjusted` from `wheelhouse.sqlite` `market_monthly`.
+- **Wheelhouse**: `occupancy_adjusted` from `data/wheelhouse.sqlite` `market_monthly`.
   Each listing is matched on **Market + bedroom bucket** (0/1/2/3/4+, from
   Property_Cohost `BEDROOMS`): `Occ_All` = whole market at that size, `Occ_HP` =
   high performers at that size; falls back to the market's all-bedroom figure
@@ -123,7 +156,8 @@ The artifact can't load tiles itself (CSP), so **republish with the images**: `r
   90 added ($335,446), 14 skipped. Fixed Beachwood 3/7 double leases and Mercer 2449
   half rent. Still >100% occ (outside the rent roll): Beachwood 3 Oct-26,
   Bellevue 16237 Jan-26 (1 night), Elektra 809 Dec-25.
-- Still manual/static: pre-2026 bookings, `LRT_bookings.xlsx`, owner payout
+- Still manual/static (maintained on Drive, copied to `data/inputs/` by
+  `sync_inputs.py`): pre-2026 bookings, `LRT_bookings.xlsx`, owner payout
   workbooks, `Property_Cohost.xlsx`, `Property_OverallRatings.xlsx`,
   `GuestyCanceled.csv`, reviews (newest `* guesty_reviews.xlsx` auto-picked).
 

@@ -1,7 +1,8 @@
 """Pull Wheelhouse data for the pricing-error scan.
 
-Reuses wheelhouse_marketdata_download's client, .env key and its listing/set
-roster (latest snapshot in its SQLite). Writes CSVs to data/raw/:
+Wheelhouse client in src/wheelhouse_api/ (key in secrets/.env); the listing/set
+roster is the latest snapshot in the shared Claude_projects/shared_data/wheelhouse.sqlite
+(refreshed weekly by Weekly Revenue Updates). Writes CSVs to data/raw/:
   wh_listings.csv               guesty listing id -> market, bedrooms, set
   wh_neighborhood_pricing.csv   comp low/median/high price per future date
   wh_neighborhood_occupancy.csv comp occupancy per future date (on the books)
@@ -9,21 +10,19 @@ roster (latest snapshot in its SQLite). Writes CSVs to data/raw/:
   wh_market_daily.csv           market adr/occupancy per day x bedroom, 2024-09..horizon
   wh_set_daily.csv              dynamic-set adr/occupancy per day, 2025..horizon
 """
-import os
 import sqlite3
-import sys
 from datetime import date, timedelta
 from pathlib import Path
 
 import pandas as pd
 
-WH = Path("/Users/ylin/ValtaWork/Claude_projects/wheelhouse_marketdata_download")
-sys.path.insert(0, str(WH))
-os.chdir(WH)  # load_dotenv() reads .env from cwd
-from src.config import load_config  # noqa: E402
-from src.wheelhouse_client import WheelhouseClient, WheelhouseError  # noqa: E402
+from wheelhouse_api.config import load_config
+from wheelhouse_api.wheelhouse_client import WheelhouseClient, WheelhouseError
 
-OUT = Path(__file__).resolve().parent.parent / "data" / "raw"
+ROOT = Path(__file__).resolve().parent.parent
+OUT = ROOT / "data" / "raw"
+# listing <-> comp-set roster: the shared DB, refreshed weekly by Weekly Revenue Updates
+WH_DB = ROOT.parent / "shared_data" / "wheelhouse.sqlite"
 TODAY = date(2026, 10, 6)
 HORIZON = TODAY + timedelta(days=179)
 METRICS = {"metric[]": ["adr_w_fees", "occupancy_adjusted"]}
@@ -40,7 +39,7 @@ def get(c, path, params):
 def main():
     OUT.mkdir(parents=True, exist_ok=True)
     c = WheelhouseClient(load_config())
-    db = sqlite3.connect(WH / "data" / "wheelhouse.sqlite")
+    db = sqlite3.connect(f"file:{WH_DB}?mode=ro", uri=True)
     snap = db.execute("select max(snapshot_date) from listings").fetchone()[0]
     lst = pd.read_sql("select listing_id, name, bedrooms, market_id from listings where snapshot_date=?",
                       db, params=[snap])

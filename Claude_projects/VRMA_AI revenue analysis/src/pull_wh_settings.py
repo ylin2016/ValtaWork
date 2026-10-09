@@ -1,17 +1,13 @@
 """Pull each Wheelhouse listing's pricing preferences (min price, adjustment,
 discounts, min stay) -> data/raw/wh_listing_settings.csv."""
-import os
-import sys
 from pathlib import Path
 
 import pandas as pd
 
-WH = Path("/Users/ylin/ValtaWork/Claude_projects/wheelhouse_marketdata_download")
+from wheelhouse_api.config import load_config
+from wheelhouse_api.wheelhouse_client import WheelhouseClient, WheelhouseError
+
 OUT = Path(__file__).resolve().parent.parent / "data" / "raw"
-sys.path.insert(0, str(WH))
-os.chdir(WH)
-from src.config import load_config  # noqa: E402
-from src.wheelhouse_client import WheelhouseClient, WheelhouseError  # noqa: E402
 
 c = WheelhouseClient(load_config())
 rows = []

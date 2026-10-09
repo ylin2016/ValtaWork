@@ -11,17 +11,15 @@ have none, so it runs on **Guesty** (bookings, live calendar) and **Wheelhouse**
 
 ## Run order
 
-Two venvs: Guesty code uses the workspace venv, Wheelhouse code uses the
-wheelhouse project's venv (it holds the API key's dotenv setup).
+Everything runs on the workspace venv.
 
 ```bash
 cd "/Users/ylin/ValtaWork/Claude_projects/VRMA_AI revenue analysis"
 PY=/Users/ylin/ValtaWork/.venv/bin/python
-WHPY=/Users/ylin/ValtaWork/Claude_projects/wheelhouse_marketdata_download/.venv/bin/python
 
 $PY   src/pull_guesty.py          # listings, confirmed reservations, 180-day calendar -> data/raw/
-$WHPY src/pull_wheelhouse.py      # neighborhood pricing/occupancy, price recs, market + comp-set daily (~10 min)
-$WHPY src/pull_wh_settings.py     # min price, base adjustment per listing
+$PY   src/pull_wheelhouse.py      # neighborhood pricing/occupancy, price recs, market + comp-set daily (~10 min)
+$PY   src/pull_wh_settings.py     # min price, base adjustment per listing
 $PY   src/scan.py                 # band every unbooked night, whole portfolio -> data/scan_all.pkl (~1 min)
 $PY   src/report.py config/table_notes.json   # 4-listing pricing-flags PDF + xlsx
 $PY   src/min_price_report.py     # needs data/min_price_check.pkl (built inline in the session; see below)
@@ -44,8 +42,12 @@ Fold it into a script before the next run.
 
 - Guesty: imports `Owner_statement_whole/src/guesty/client.py` (loaded as package `osw`)
   and uses **its token cache** (5 tokens/24h shared across projects). Never force-refresh.
-- Wheelhouse: imports `wheelhouse_marketdata_download/src/*`, `os.chdir`s there so
-  its `.env` loads, and reads its SQLite for the listing ↔ comp-set roster.
+- Wheelhouse: own copy of the API client in `src/wheelhouse_api/` (copied 2026-10-09
+  from wheelhouse_marketdata_download, which is archived — never import from
+  `_archive/`); key = `WHEELHOUSE_API_KEY` in `secrets/.env` (git-ignored). The
+  listing ↔ comp-set roster is read from the shared
+  `Claude_projects/shared_data/wheelhouse.sqlite`, which Weekly Revenue Updates
+  refreshes weekly (`shared_data/README.md`).
 - The Wheelhouse web app needs the user's login. The API exposes only each
   listing's **default** `min_price`, not date-range minimums.
 

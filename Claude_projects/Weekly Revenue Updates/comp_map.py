@@ -6,9 +6,9 @@ the projection the page needs to place pins on it. The artifact can't load map
 tiles itself (its CSP blocks images from other hosts), so the image is published
 next to the page as maps/s<set index>.jpg.
 
-Comp listings come from wheelhouse.sqlite dynamic_set_members (newest snapshot
-on or before the run); our listings' coordinates from Guesty
-(data/guesty/listing_locations.csv, refreshed by fetch_guesty.py).
+Comp listings come from the shared wheelhouse.sqlite dynamic_set_members (newest
+snapshot on or before the run); our listings' coordinates from the shared
+guesty.sqlite `listings` table (refreshed by fetch_guesty.py).
 """
 import io
 import json
@@ -20,9 +20,9 @@ import pandas as pd
 import requests
 from PIL import Image
 
+from guesty_store import listing_locations
 from paths import DATA_DIR, OUTPUT_DIR, WHEELHOUSE_DB
 
-LOCATIONS = DATA_DIR / "guesty" / "listing_locations.csv"
 TILE_DIR = DATA_DIR / "tiles"
 MAP_DIR = OUTPUT_DIR / "maps"          # published next to output/revenue_dashboard.html
 TILE_URL = "https://tile.openstreetmap.org/{z}/{x}/{y}.png"
@@ -92,10 +92,7 @@ def build_maps(run, set_names, listing_sets):
     """set_names: dashboard set list (index = set id on the page).
     listing_sets: {listing name: [set index, ...]}.
     Returns ({set index: map spec}, {listing name: [lat, lng]}, members snapshot)."""
-    loc = {}
-    if LOCATIONS.exists():
-        g = pd.read_csv(LOCATIONS).dropna(subset=["lat", "lng"])
-        loc = {r.nickname: [round(r.lat, 5), round(r.lng, 5)] for r in g.itertuples()}
+    loc = listing_locations()
     snap, rows = _members(run)
     sidx = {n: i for i, n in enumerate(set_names)}
     comps = {}

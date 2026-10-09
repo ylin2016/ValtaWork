@@ -2,10 +2,14 @@
 Guesty UI "export reservations" CSV layout, so DataProcessing.format_reservation
 reads it unchanged (replaces the manual Guesty_bookings_2026-YYYYMMDD.csv).
 
-Uses Owner_statement_whole's Guesty client and its cached token
-(config/secrets/guesty_token.json; 5 tokens/24h/client — never force-refresh). Deactivated listings are silently excluded by the Open
+Uses the Guesty client in guesty_api/ (copied from Owner_statement_whole) and its
+cached token (secrets/guesty_token.json; 5 tokens/24h/client — never force-refresh). Deactivated listings are silently excluded by the Open
 API; they are filled from a Guesty UI export (data/guesty/Guesty_UI_bookings_*.csv,
 newest used) for listings the API returned nothing for. See CLAUDE.md.
+
+The API records (all listings + this pull's confirmed reservations and fee
+itemization) also go to the shared Guesty database other projects read
+(Claude_projects/shared_data/guesty.sqlite, guesty_store.py).
 
     python fetch_guesty.py                       # check-in >= 2026-01-01, as of today
     python fetch_guesty.py --asof 2026-09-29
@@ -13,17 +17,15 @@ newest used) for listings the API returned nothing for. See CLAUDE.md.
 """
 import argparse
 import json
-import sys
 from datetime import date
 from pathlib import Path
 
 import pandas as pd
 
-from paths import DATA_DIR, OWNER_STATEMENT
-
-sys.path.insert(0, str(OWNER_STATEMENT))
-from src.guesty.client import GuestyClient  # noqa: E402  (Owner_statement_whole)
-from src.breakdown.fetch_month import build_summary_frame  # noqa: E402  (Owner_statement_whole)
+from guesty_api.client import GuestyClient
+from guesty_api.summary import build_summary_frame
+import guesty_store
+from paths import DATA_DIR
 
 PAGE = 100
 FIELDS = ("confirmationCode source status checkIn checkOut checkInDateLocalized "
@@ -138,22 +140,18 @@ def latest_ui_export() -> Path | None:
     return files[-1] if files else None
 
 
-def save_locations(client: GuestyClient) -> None:
-    """Listing coordinates for the dashboard's comp-set maps (comp_map.py)."""
-    rows, skip = [], 0
+def fetch_listings(client: GuestyClient) -> list[dict]:
+    """Every listing (active or not), for the shared DB; comp_map.py takes the
+    coordinates from there."""
+    out, skip = [], 0
     while True:
-        d = client.get("/listings", params={"limit": 100, "skip": skip, "fields": "nickname address active"})
+        d = client.get("/listings", params={"limit": 100, "skip": skip,
+                                            "fields": guesty_store.LISTING_FIELDS})
         res = d.get("results", [])
-        for r in res:
-            a = r.get("address") or {}
-            rows.append({"nickname": r.get("nickname"), "lat": a.get("lat"), "lng": a.get("lng"),
-                         "full": a.get("full"), "active": r.get("active")})
+        out.extend(res)
         skip += len(res)
         if not res or skip >= d.get("count", 0):
-            break
-    out = DATA_DIR / "guesty" / "listing_locations.csv"
-    pd.DataFrame(rows).to_csv(out, index=False)
-    print(f"  guesty: {len(rows)} listing locations -> {out}")
+            return out
 
 
 def main(argv=None) -> Path:
@@ -181,13 +179,13 @@ def main(argv=None) -> Path:
     client = GuestyClient()
     raw = fetch_confirmed(client, args.checkin_from)
     try:
-        save_locations(client)
-    except Exception as e:   # maps fall back to the previous file
-        print(f"  guesty: listing locations not refreshed ({e})")
+        guesty_store.write_listings(fetch_listings(client), args.asof)
+    except Exception as e:   # the shared DB keeps the previous listings
+        print(f"  guesty: listings not refreshed ({e})")
     rows = [to_ui_row(r) for r in raw]
     df = pd.DataFrame(rows, columns=UI_COLUMNS)
     # per-booking itemization (fee categories, Stripe payment count, virtual card) in
-    # Owner_statement_whole's summary layout — what its payment model reads
+    # Owner_statement_whole's summary layout — what payment_model reads
     summary = build_summary_frame(raw)
     summary_out = DATA_DIR / "guesty" / f"Guesty_summary_2026-{tag}.csv"
     # The API filters on UTC checkIn, which lets 12-31 local check-ins through;
@@ -197,6 +195,7 @@ def main(argv=None) -> Path:
     dup = df["CONFIRMATION CODE"].duplicated().sum()
     if dup:
         raise RuntimeError(f"{dup} duplicate confirmation codes in the confirmed pull")
+    guesty_store.write_reservations(raw, summary, args.checkin_from, args.asof)
 
     if ui_path:
         df = supplement_from_ui(df, ui_path, args.checkin_from, log_path)

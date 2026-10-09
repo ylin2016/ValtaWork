@@ -1,11 +1,12 @@
 """What each month's guest payments are made of: rent, cleaning, tax, channel fee.
 
-Every fee rule comes from Owner_statement_whole — nothing is re-implemented here:
-`src.breakdown.payment_model.compute_breakdown` (the transcription of the user-owned
-`config/payment_structure.xlsx`) run on the itemization fetch_guesty.py saves with
-Owner_statement_whole's `build_summary_frame`
-(data/guesty/Guesty_summary_2026-<date>.csv), with its `config/_listing_tax_rates.csv`.
-When the sheet changes, Owner_statement_whole's payment_model changes and this follows.
+Every fee rule is Owner_statement_whole's, copied into guesty_api/ so this project
+runs on its own: `guesty_api.payment_model.compute_breakdown` (the transcription of
+the user-owned `payment_structure.xlsx`) run on the itemization fetch_guesty.py saves
+with `guesty_api.summary.build_summary_frame`
+(data/guesty/Guesty_summary_2026-<date>.csv), with `config/listing_tax_rates.csv`.
+When the fee sheet or tax rates change in Owner_statement_whole, re-copy
+payment_model.py / _listing_tax_rates.csv here (see CLAUDE.md).
 
 From each booking's breakdown:
     guest total = guest_pay
@@ -19,16 +20,11 @@ Each booking is split evenly over its nights, like Revenue_month. Only bookings 
 API pull are itemized (check-in 2026+, active listings); everything else in the month
 is "not itemized" (payout only), and leases are rent.
 """
-import sys
-
 import numpy as np
 import pandas as pd
 
-from paths import OWNER_STATEMENT
-
-sys.path.insert(0, str(OWNER_STATEMENT))
-from src.breakdown.payment_model import compute_breakdown  # noqa: E402  (Owner_statement_whole)
-from src.paths import LISTING_TAX_RATES  # noqa: E402  (Owner_statement_whole)
+from guesty_api.payment_model import compute_breakdown
+from paths import LISTING_TAX_RATES
 
 MIX_COLS = ["Mix_rent", "Mix_clean", "Mix_tax", "Mix_channel", "Mix_lease", "Mix_none",
             "Mix_acc", "Mix_pet", "Mix_disc", "Mix_other", "Mix_comm"]
@@ -85,5 +81,5 @@ def monthly_mix(data: pd.DataFrame, summary_csv) -> pd.DataFrame:
     print(f"  revenue mix: {int(itemized.sum())}/{len(itemized)} bookings itemized; channel rows {groups}")
     if groups.get("unknown"):
         print(f"  revenue mix: !! {groups['unknown']} booking(s) on an unmapped channel — "
-              "map them in Owner_statement_whole payment_model._assign_row_group")
+              "map them in guesty_api/payment_model._assign_row_group")
     return out
