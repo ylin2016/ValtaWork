@@ -30,6 +30,18 @@ test('pending name: no pay date, no total (both decided at reimbursement) — us
     description: 'Home Depot_nails', amount: '11.80', ext: 'png' }), 'PENDING_Renton 18823_9.10_Home Depot_nails_11.8.png');
 });
 
+test('pending name carries the reimburse-to name after the property — user example', () => {
+  assert.strictEqual(n.pendingFileName({ purchaseDate: '2026-10-06', propertyName: 'OSBR', reimburseTo: 'Andrea Brannon',
+    description: 'Homedepot_test', amount: '40', ext: 'jpg' }), 'PENDING_OSBR_Andrea Brannon_10.06_Homedepot_test_40.jpg');
+});
+
+test('reimbursed name carries the reimburse-to name after the property — user example', () => {
+  const name = n.expenseFileName({ payDate: '2026-10-09', purchaseDate: '2026-10-06', propertyName: 'OSBR',
+    person: 'Andrea Brannon', description: 'Homedepot_test', amount: '40', total: '324.42', ext: 'jpg' });
+  assert.strictEqual(name, '20261009_OSBR_Andrea Brannon_10.06_Homedepot_test_40_324.42.jpg');
+  assert.deepStrictEqual(qboOperationsParse(name), ['OSBR', '40']);
+});
+
 test('reimbursed: the total is the Zelle total', () => {
   const name = n.expenseFileName({ ...EXP, total: '1110.50' });
   assert.strictEqual(name, '20260914_Renton 18823_9.10_Home Depot_baseboard moulding and nails_302.74_1110.5.jpg');

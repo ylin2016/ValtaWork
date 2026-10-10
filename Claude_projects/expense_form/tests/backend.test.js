@@ -145,7 +145,7 @@ test('"Other — type it": unknown name/property/category kept, flagged, shown t
   assert.strictEqual(row.property_name, 'Tacoma 99 New', 'no _ inside a filename field');
   assert.strictEqual(row.category, 'Pest control');
   assert.strictEqual(row.typed_in, 'property,submitter,category');
-  assert.strictEqual(f.file_name, 'PENDING_Tacoma 99 New_9.10_Home Depot_baseboard moulding_302.74.png');
+  assert.strictEqual(f.file_name, 'PENDING_Tacoma 99 New_New Cleaner_9.10_Home Depot_baseboard moulding_302.74.png');
   complete(g, s);
   g.ctx.sendWeeklyDigest();
   assert.match(g.outbox.pop().htmlBody, /typed in, not in list: property,submitter,category/);
@@ -169,7 +169,7 @@ test('personal expense: waits in Pending/, reimburse_to defaults to the submitte
   const g = fresh();
   const { f } = submitWithFile(g, { ...EXPENSE, money_account: 'personal', txn_date: '2026-09-10' });
   assert.strictEqual(g.tab('submissions')[0].reimburse_to, 'Jing Li');
-  assert.strictEqual(f.file_name, 'PENDING_Renton 18823_9.10_Home Depot_baseboard moulding_302.74.png');
+  assert.strictEqual(f.file_name, 'PENDING_Renton 18823_Jing Li_9.10_Home Depot_baseboard moulding_302.74.png');
   assert.deepStrictEqual(g.filesUnder('Expense_processing/Pending/'), ['Expense_processing/Pending/' + f.file_name]);
   assert.strictEqual(g.filesUnder('2026/').length, 0, 'nothing in the bookkeeping folders until reimbursed');
 });
@@ -189,6 +189,7 @@ test('weekly reimbursement: per-person Zelle totals, receipts renamed to the pay
   const page = g.get({ action: 'reimburse', k: key }).html;
   assert.ok(page.includes('$312.74') && page.includes('$150.00') && page.includes('Camila - service'));
   assert.ok(page.includes('1 more still waiting for review'));
+  assert.ok(page.includes('data-tail="Renton 18823_Jing Li_312.74"'), 'Zelle note = date_property_vendor_total');
   assert.ok(g.get({ action: 'reimburse', k: 'wrong' }).html.includes('Not allowed'));
   assert.throws(() => g.ctx.processReimbursements('wrong', '2026-09-14'), /Not allowed/);
   assert.throws(() => g.ctx.processReimbursements(key, '2099-01-01'), /future/);
@@ -197,14 +198,14 @@ test('weekly reimbursement: per-person Zelle totals, receipts renamed to the pay
   assert.deepStrictEqual(plain(r.payouts.map((p) => [p.person, p.total, p.count])),
                          [['Griselda Ramirez', '150.00', 1], ['Jing Li', '312.74', 2]]);
   assert.deepStrictEqual(g.filesUnder('2026/').sort(), [
-    '2026/2026-09/9967/20260914_Renton 18823_9.10_Home Depot_item 0_302.74_312.74.png',
-    '2026/2026-09/9967/20260914_Renton 18823_9.11_Home Depot_item 2_150_150.png',
-    '2026/2026-09/9967/20260914_Renton 18823_9.12_Home Depot_item 1_10_312.74.png']);
+    '2026/2026-09/9967/20260914_Renton 18823_Griselda Ramirez_9.11_Home Depot_item 2_150_150.png',
+    '2026/2026-09/9967/20260914_Renton 18823_Jing Li_9.10_Home Depot_item 0_302.74_312.74.png',
+    '2026/2026-09/9967/20260914_Renton 18823_Jing Li_9.12_Home Depot_item 1_10_312.74.png']);
   assert.strictEqual(g.filesUnder('Expense_processing/Pending/').length, 1, 'the unreviewed one is still pending');
   const zp = g.tab('zelle_payouts');
   assert.deepStrictEqual(plain(zp.map((p) => [p.payee, p.total, p.paid_from, p.zelle_reference])),
-    [['Camila - service', '150.00', 'chase-9967', '20260914_Camila - service_150'],
-     ['Jing Li', '312.74', 'chase-9967', '20260914_Jing Li_312.74']]);
+    [['Camila - service', '150.00', 'chase-9967', '20260914_Renton 18823_Camila - service_150'],
+     ['Jing Li', '312.74', 'chase-9967', '20260914_Renton 18823_Jing Li_312.74']]);
   const att = g.tab('attachments').find((a) => a.submission_id === '1');
   assert.strictEqual(att.drive_folder_path, '2026-09/9967');
   assert.ok(att.file_name.startsWith('20260914_'));
@@ -224,14 +225,14 @@ test('Drive lagging behind: identical receipts still get distinct names (seen li
   const key = g.props.get('ADMIN_KEY');
   const P = { ...EXPENSE, money_account: 'personal', txn_date: '2026-09-21', description: 'Costco_Supplies', amount: '75.25' };
   const a = submitWithFile(g, P), b = submitWithFile(g, P, PNG2);
-  assert.strictEqual(a.f.file_name, 'PENDING_Renton 18823_9.21_Costco_Supplies_75.25.png');
-  assert.strictEqual(b.f.file_name, 'PENDING_Renton 18823_9.21_Costco_Supplies_75.25-2.png', 'ledger knew the first name');
+  assert.strictEqual(a.f.file_name, 'PENDING_Renton 18823_Jing Li_9.21_Costco_Supplies_75.25.png');
+  assert.strictEqual(b.f.file_name, 'PENDING_Renton 18823_Jing Li_9.21_Costco_Supplies_75.25-2.png', 'ledger knew the first name');
   complete(g, a.s); complete(g, b.s);
   approve(g, [a.s.id, b.s.id]);
   g.ctx.processReimbursements(key, '2026-09-24');
   const names = g.filesUnder('2026/').sort();
-  assert.deepStrictEqual(names, ['2026/2026-09/9967/20260924_Renton 18823_9.21_Costco_Supplies_75.25_150.5-2.png',
-                                 '2026/2026-09/9967/20260924_Renton 18823_9.21_Costco_Supplies_75.25_150.5.png']);
+  assert.deepStrictEqual(names, ['2026/2026-09/9967/20260924_Renton 18823_Jing Li_9.21_Costco_Supplies_75.25_150.5-2.png',
+                                 '2026/2026-09/9967/20260924_Renton 18823_Jing Li_9.21_Costco_Supplies_75.25_150.5.png']);
   const monthFolders = [...g.nodes.values()].filter((n) => n.type === 'folder' && n.name === '2026-09');
   assert.strictEqual(monthFolders.length, 1, 'no duplicate month folder even though lookups lag');
 });
@@ -626,4 +627,13 @@ test('an anonymous visitor cannot run hand-run or trigger functions through goog
   // its own trigger still works with nobody signed in
   const t = g.triggers.find((x) => x.getHandlerFunction() === 'sendWeeklyDigest');
   g.ctx.sendWeeklyDigest({ triggerUid: t.getUniqueId() });
+});
+
+test('manifest grants every scope the code needs (ownerOnly_ reads Session emails)', () => {
+  const fs = require('fs'), path = require('path');
+  const dir = path.join(__dirname, '..', 'apps_script');
+  const scopes = JSON.parse(fs.readFileSync(path.join(dir, 'appsscript.json'), 'utf8')).oauthScopes;
+  const code = fs.readdirSync(dir).filter(f => f.endsWith('.gs')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
+  if (/Session\.get(Active|Effective)User\(\)\.getEmail/.test(code))
+    assert.ok(scopes.includes('https://www.googleapis.com/auth/userinfo.email'), 'userinfo.email scope missing');
 });

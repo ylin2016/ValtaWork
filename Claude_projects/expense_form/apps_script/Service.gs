@@ -215,7 +215,7 @@ function fileTarget_(sub, L, ext) {
       // Not paid yet: wait in Expense_processing/Pending/ for the weekly reimbursement run (Reimburse.gs),
       // which gives the file its final name (pay date first) and moves it into the bookkeeping folders.
       return { fileName: pendingFileName({ purchaseDate: sub.txn_date, propertyName: sub.property_name,
-                 description: sub.description, amount: sub.amount, ext: ext }),
+                 reimburseTo: sub.reimburse_to, description: sub.description, amount: sub.amount, ext: ext }),
                folderPath: [PENDING_FOLDER], rootId: processingFolder_().getId() };
     }
     // Paid at purchase (card / bank / owner): the pay date IS the purchase date; file it final now.

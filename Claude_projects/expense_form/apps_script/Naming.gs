@@ -100,23 +100,29 @@ function monthDay(date) {
   return String(Number(date.slice(5, 7))) + '.' + date.slice(8, 10);
 }
 
-/** o = {payDate, purchaseDate, propertyName, description ('store_stuff'), amount, total?, ext} */
+/** o = {payDate, purchaseDate, propertyName, person?, description ('store_stuff'), amount, total?, ext}
+ *  person = the reimburse-to name on a Zelle-reimbursed receipt (user, 2026-10-09), right after the property:
+ *    20261009_OSBR_Andrea Brannon_10.06_Homedepot_test_40_324.42.jpg
+ *  QBO_operations still finds the property in field 2 and the amount / total in the last two fields. */
 function expenseFileName(o) {
-  var ss = splitStoreStuff(o.description);
-  return buildFileName({ date: o.payDate, propertyName: o.propertyName, payee: monthDay(o.purchaseDate),
-                         middle: [ss.store, ss.stuff], amount: o.amount, total: o.total, ext: o.ext });
+  var ss = splitStoreStuff(o.description), md = monthDay(o.purchaseDate), who = cleanField(o.person || '');
+  return buildFileName({ date: o.payDate, propertyName: o.propertyName, payee: who || md,
+                         middle: (who ? [md] : []).concat([ss.store, ss.stuff]), amount: o.amount, total: o.total, ext: o.ext });
 }
 
 /**
  * A personal receipt before the weekly reimbursement (user, 2026-09-24): no pay date and no total yet,
- * since neither is decided until the reimbursement run —
- *   PENDING_<property>_<purchase M.DD>_<store>_<stuff>_<amount>   e.g. PENDING_Valta Realty_9.21_Costco_Supplies_75.25.jpg
+ * since neither is decided until the reimbursement run; the reimburse-to name follows the property
+ * (user, 2026-10-09) —
+ *   PENDING_<property>_<reimburse to>_<purchase M.DD>_<store>_<stuff>_<amount>
+ *   e.g. PENDING_OSBR_Andrea Brannon_10.06_Homedepot_test_40.jpg
  * The reimbursement run renames it to the final expenseFileName.
  */
 function pendingFileName(o) {
   var ss = splitStoreStuff(o.description);
-  var fields = ['PENDING', cleanField(o.propertyName) || COMPANY_PROPERTY, monthDay(o.purchaseDate),
-                ss.store, ss.stuff.slice(0, FIELD_MAX_LEN).trim(), formatAmount(o.amount)];
+  var who = cleanField(o.reimburseTo || '').slice(0, FIELD_MAX_LEN).trim();
+  var fields = ['PENDING', cleanField(o.propertyName) || COMPANY_PROPERTY].concat(who ? [who] : [], [monthDay(o.purchaseDate),
+                ss.store, ss.stuff.slice(0, FIELD_MAX_LEN).trim(), formatAmount(o.amount)]);
   var ext = String(o.ext || '').replace(/^\./, '').toLowerCase();
   return fields.join('_') + (ext ? '.' + ext : '');
 }

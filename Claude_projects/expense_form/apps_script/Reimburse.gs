@@ -39,6 +39,17 @@ function checkAdmin_(key) {
 
 function cents_(amount) { return Math.round(Number(amount) * 100); }
 
+/** The Zelle note / payout reference (user, 2026-10-09): <YYYYMMDD>_<property>_<QBO vendor>_<total>, e.g.
+ *  20261009_OSBR_Andrea Brannon_324.42. Several properties are joined with "+". The page shows it for the
+ *  Zelle memo; the same text becomes zelle_payouts.zelle_reference (build_zelle's `Zelle content`). */
+function zelleNoteTail_(g) {
+  var props = [];
+  g.items.forEach(function (s) { var p = cleanField(s.property_name || ''); if (p && props.indexOf(p) < 0) props.push(p); });
+  return [props.join('+'), cleanField(g.payee), formatAmount((g.total_cents / 100).toFixed(2))]
+    .filter(function (x) { return x; }).join('_');
+}
+function zelleNote_(paidDate, g) { return paidDate.replace(/-/g, '') + '_' + zelleNoteTail_(g); }
+
 /** Approved, unpaid personal expenses grouped by the person to reimburse. */
 function reimbursementQueue_(L) {
   var personal = Ledger.all('submissions').filter(function (s) {
@@ -68,7 +79,7 @@ function reimbursePage_(key) {
     t.error = '';
     t.waiting = q.waiting_review;
     t.groups = q.groups.map(function (g) {
-      return { person: g.person, payee: g.payee, total: (g.total_cents / 100).toFixed(2),
+      return { person: g.person, payee: g.payee, total: (g.total_cents / 100).toFixed(2), note_tail: zelleNoteTail_(g),
                items: g.items.map(function (s) {
                  return { id: s.id, date: s.txn_date, property: s.property_name, description: s.description,
                           amount: Number(s.amount).toFixed(2) };
@@ -100,7 +111,7 @@ function processReimbursements(key, paidDate) {
     return q.groups.map(function (g) {
       var total = (g.total_cents / 100).toFixed(2);
       var id = Ledger.nextId('zelle_payouts');
-      var reference = [paidDate.replace(/-/g, ''), cleanField(g.payee), formatAmount(total)].join('_');
+      var reference = zelleNote_(paidDate, g);
       Ledger.append('zelle_payouts', { id: id, paid_date: paidDate, payee: g.payee, paid_from: fromCode, total: total,
                                        zelle_reference: reference, created_at: nowIso_(), created_by: 'reimburse page' });
       g.items.forEach(function (s) {
@@ -109,6 +120,7 @@ function processReimbursements(key, paidDate) {
           if (a.upload_status !== 'uploaded') return;
           var ext = (a.file_name.match(/\.([A-Za-z0-9]+)$/) || [])[1] || '';
           var name = expenseFileName({ payDate: paidDate, purchaseDate: s.txn_date, propertyName: s.property_name,
+            person: s.reimburse_to,
             description: s.description, amount: s.amount, total: total, ext: ext });
           var taken = namesFiledIn_(Ledger.all('attachments'), folderPath.join('/'), a._row);
           var moved = moveFile_(layout, a.drive_file_id, rootId, folderPath, name, taken);
