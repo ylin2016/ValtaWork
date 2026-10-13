@@ -14,3 +14,29 @@ properties:
   # way in the past (Bellevue 2323: Whole 4 / ADU 5 / Main 2), so it is not inferable.
   Bellevue 2323: "Listings:Bellevue 2323 Whole"
   Seattle 7434: "Listings:Seattle 7434 Whole"
+  # Spelling-only variants of names that DO have a class; the sheet writes them
+  # this way and the target was checked against the live company file.
+  #   Belleveu 15746 -> Listings:Bellevue 15746 (1000000039)
+  Belleveu 15746: "Listings:Bellevue 15746"
+  # The company itself, for reimbursed company costs (HR, travel).  The sheet has
+  # written it unspaced since 2026-07 (`20260717_Valtarealty_Zexi_...`).
+  Valtarealty: "Valta Realty"
+  # Maria's cleaning workbook renamed five listings mid-2025 and the earlier sheets keep
+  # the old spelling.  Each pair is ONE unit, not two: the old and new names never appear
+  # in the same month's sheet, and each target's unit code is unique in the company file.
+  #   Bellevue C19   -> Listings:Microsoft 14645-C19   (2100000000001492169)
+  #   Bellevue E205  -> Listings:Microsoft 14620-E205  (2100000000001492156)
+  #   Bellevue D303  -> Listings:Microsoft 14615-D303  (2100000000001492166)
+  # The sheet used `Bellevue <unit>` through 2025-04 and `Microsoft <building>-<unit>`
+  # from 2025-05; all three carry 2025 cleaning on the Microsoft class in the register.
+  Bellevue C19: "Listings:Microsoft 14645-C19"
+  Bellevue E205: "Listings:Microsoft 14620-E205"
+  Bellevue D303: "Listings:Microsoft 14615-D303"
+  # A one-off typo: `Seattle 8017` appears in 2025-04 alone, where `Kirkland 8017` runs
+  # 2025-03 .. 2026-08 without a break.  The city is wrong, the number is not.
+  Seattle 8017: "Listings:Kirkland 8017"
+  # A bare `Seattle 906` (2025-05, 2025-06) is the LOWER unit -- the sheet spells it
+  # `Seattle 906 Lower` from 2025-07 on, and in 2025 Lower carries $1,200.00 of cleaning
+  # against Upper's $0.00.  Same call the VRBO builder reached from the register
+  # independently (owner decision 2026-09-28).
+  Seattle 906: "Listings:Seattle 906 Lower"

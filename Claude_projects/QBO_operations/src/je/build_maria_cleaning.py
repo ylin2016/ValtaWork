@@ -102,21 +102,48 @@ def num(v) -> float | None:
     return float(v) if isinstance(v, (int, float)) else None
 
 
+def maria_header(rows: list[tuple]) -> int:
+    """Index of the per-listing header row of MARIA's block.
+
+    Through 2025-06 one sheet carries several cleaning teams stacked one under
+    another -- `Ali team`, `Viktoriia/ Steph team`, `Griselda/ Camila team`,
+    `Maria team`, then `Jing Li Cleaning` -- and only Maria's is paid by the lump
+    Zelle transfers these JEs reclassify.  Reading from row 1 would sum the lot.
+    The `Maria team` marker in column A is what separates them; from 2025-07 the
+    sheet is Maria-only and the header is row 1, so the search simply starts at 0.
+
+    Another team's header also spells `Price for cleaner` (2025-01 r14), so the
+    header is looked for AFTER the marker, never globally.
+    """
+    start = 0
+    for i, r in enumerate(rows):
+        if re.fullmatch(r"maria\s*team", str(r[0] or "").strip(), re.I):
+            start = i + 1
+            break
+    for i in range(start, len(rows)):
+        cells = [str(c or "").strip().lower() for c in rows[i]]
+        if {"price for cleaner", "times", "total for cleaner"} <= set(cells):
+            return i
+    return -1
+
+
 def read_month(ws) -> tuple[list[dict], float, float | None]:
     """(listing rows, residential total, sheet's Total payment) for one month."""
-    header = [str(c or "").strip().lower() for c in next(ws.iter_rows(max_row=1, values_only=True))]
-    try:
-        i_price = header.index("price for cleaner")
-        i_times = header.index("times")
-        i_total = header.index("total for cleaner")
-    except ValueError:
-        raise SystemExit(f"sheet {ws.title!r}: unrecognised header {header}")
+    rows_in = list(ws.iter_rows(values_only=True))
+    h = maria_header(rows_in)
+    if h < 0:
+        raise SystemExit(f"sheet {ws.title!r}: no Maria header; row 1 is "
+                         f"{[str(c or '').strip() for c in (rows_in[0] if rows_in else [])]}")
+    header = [str(c or "").strip().lower() for c in rows_in[h]]
+    i_price = header.index("price for cleaner")
+    i_times = header.index("times")
+    i_total = header.index("total for cleaner")
     rows, residential, sheet_total = [], 0.0, None
-    for r in ws.iter_rows(min_row=2, values_only=True):
+    for r in rows_in[h + 1:]:
         label = str(r[0] or "").strip()
         if not label:
             continue
-        if label.lower() == "total payment":
+        if label.lower().startswith("total payment"):
             sheet_total = num(r[i_total])
             break
         amt = num(r[i_total]) or 0.0
