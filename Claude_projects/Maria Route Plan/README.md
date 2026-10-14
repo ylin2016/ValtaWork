@@ -50,6 +50,7 @@ rather expand `Property Unit(out->in)` into words, say so.
 | `Config.gs`       | Settings: days-ahead, `DRY_RUN` safety switch, skip-untitled, `ROUTING`. |
 | `Routes.gs`       | Maria's daily route plan: geocode → pack into cars → order stops. |
 | `Listings.gs`     | Listing → address / bedrooms / bathrooms (from `data/Listings.xlsx`). |
+| `AddressFinder.gs`| `findListingAddresses`: prints addresses for listings missing from `Listings.gs`, found in the calendars. |
 | `appsscript.json` | Manifest (timezone + OAuth scopes).                              |
 
 ## One-time setup
@@ -232,8 +233,10 @@ the packer places **every B2B before any other job**:
   B2B is never deferred. (In the rare case B2B alone exceed every crew's capacity,
   the plan flags a loud `🚨 B2B OVER CAPACITY — add a crew`.)
 
-Non-B2B jobs then fill the leftover capacity; anything past 3 cars is flagged as
-**over capacity** (non-B2B only).
+Non-B2B jobs then fill the leftover capacity **by area**: starting with the job
+farthest from base, each one joins the car whose stops are nearest (unit count only
+breaks ties), so a crew stays in one part of the map. Anything past 3 cars is
+flagged as **over capacity** (non-B2B only).
 
 **Route order (real driving).** Within each car the stops are ordered to **minimize
 real driving time**, not straight-line distance. Leg times come from the built-in
@@ -246,10 +249,15 @@ geocoding; results are cached, so repeated address-pairs are free.)
 
 **Cleaning-time model** (`CONFIG.ROUTING`, all tunable): turnover = `CLEAN_BASE_MIN`
 (25) + `CLEAN_PER_BEDROOM_MIN` (15) × beds + `CLEAN_PER_BATHROOM_MIN` (20) × baths,
-in clock-minutes for a **`CALIBRATION_CREW`** (2)-person crew — anchored so a
-**1BR/1BA = 1 hour** at 2 people; residential & move-in/out = a flat 2h. The planner
-treats these as labor (time × 2 person-min) and divides by the car's actual crew
-size.
+in clock-minutes for a **`CALIBRATION_CREW`** (2)-person crew, then multiplied by
+`CLEAN_TIME_SCALE` (0.8), so a **1BR/1BA = 48 min** at 2 people (1 hour unscaled);
+residential & move-in/out = the client's own time from `RESIDENTIAL_TIMES` in
+`Listings.gs` (EstMin_2ppl on the Residential tab of `data/Listings.xlsx`, e.g.
+Clyde Hill 8830 = 3h50m, Seattle 2409 = 1h20m), matched by street address, else a
+flat 2h. The planner treats these as labor (time × 2
+person-min) and divides by the car's actual crew size. The 0.8 comes from replaying
+the planner on the 2026 dispatch cards: unscaled, a quarter of the cars crews really
+finished would need over 8 hours. Recalibrate once real finish times are recorded.
 
 **Set these before going live:**
 1. `CONFIG.ROUTING.BASE_ADDRESS` — the office/home base crews start and end at.
@@ -281,12 +289,37 @@ Counts: B2B 3, Next 2, Res 2
 
 Each car shows its crew size and leads with its B2B job; per-stop times reflect the
 crew (Car 1's 3 cleaners clean the 2BR/1BA in 50m, Car 2's 2 clean the 1BR/1BA in 1h).
+The example predates `CLEAN_TIME_SCALE`; at 0.8 those times are 20% shorter.
 Back-to-back listings are marked with a **⚠️** before the name (in the daily reminder
 too, matching its `⚠️ BACK-TO-BACK` section), so the deadline turns stand out.
 
 **Trigger:** function `runMariaRoutes`, **Time-driven → Day timer**, morning (or the
 evening before, matching your daily reminder). Geocoding uses the Maps-service quota
 (a few hundred lookups/day; results are cached, so repeat addresses are free).
+
+## Finding missing listing addresses
+
+`findListingAddresses` (in `AddressFinder.gs`) scans Maria's three calendars from
+`CONFIG.ADDRESS_SCAN.FROM` (default 2026-01-01) to now and looks for the address of
+each name in `MISSING_LISTINGS`, the dispatch-card properties with no address in
+`Listings.gs` (see `data/Listings_missing_2026.xlsx`). It checks each event's
+location, its freeform title and its description for an address starting with the
+listing's street number (`Bellevue 14701` → `14701 SE 42nd ST, Bellevue`).
+
+It prints two tab-separated tables to **Executions / Logs** (copy the lines under
+each `=====` header and paste them into Excel or Sheets):
+- **ADDRESSES**: best address per listing, plus bedrooms, bathrooms and square feet
+  when the matched events state them ("3BR/2BA", "3 bed 2 bath", "Studio",
+  "1,450 sqft"; most common value wins), with a confidence. `high` means the
+  number matched and the city or listing name is on the event. `low` means only the
+  number matched, so check it (Clyde Hill homes often have a Bellevue mailing
+  address, for example). `building` means a unit in Elektra or Beachwood, which takes
+  the building's address from `Listings.gs`. `not found` means no event had it.
+- **UNKNOWN TURNOVER UNITS**: unit names in turnover titles that `Listings.gs`
+  can't resolve, with the event's location when the event holds only that unit.
+
+It only reads the calendars and needs no new permissions. Set `ALL_CALENDARS: true`
+to search every calendar the account can see.
 
 ## Automate the scans (when ready)
 

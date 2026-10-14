@@ -317,6 +317,21 @@ function residentialRow_(job) {
  * segment when that looks like a city/place name. Returns '' if none found.
  */
 function addressFromTitle_(title) {
+  // First: a street address anywhere in the text ("<number> [dir] <name…> <St|Ave|…> [dir]"),
+  // so "Grant (312…) 2409 North 41st Street, 98103 $120" and "Move out cleaning: 16237 NE
+  // 30th St, Bellevue" both work, plus the city when it's the next comma segment.
+  // Words between the number and the street type can't be bare numbers, so "$180 Judy
+  // 12520 NE 23rd Place" starts at 12520, not 180.
+  const street = String(title).match(new RegExp('\\b\\d{1,6}\\s+(?:(?!\\d+\\b)[A-Za-z0-9.]+\\s+){0,4}?' +
+    '(?:st|street|ave|avenue|av|pl|place|dr|drive|rd|road|way|ln|lane|ct|court|blvd|boulevard|pkwy|parkway|' +
+    'loop|ter|terrace|cir|circle|hwy|highway)\\b\\.?(?:\\s+(?:n|s|e|w|ne|nw|se|sw)\\b)?' +
+    '(?:\\s+(?:unit|apt|#)\\s*[A-Za-z0-9-]+)?', 'i'));
+  if (street) {
+    const rest = String(title).slice(street.index + street[0].length);
+    const city = rest.match(new RegExp('^\\s*,?\\s*(' + LOCAL_CITIES_.join('|') + ')\\b', 'i')) ||
+      rest.match(/^\s*,\s*([A-Za-z][A-Za-z '-]*?)\s*(?:[,.(]|$)/);
+    return street[0].trim() + (city ? ', ' + city[1].trim() : '');
+  }
   const seg = splitUnits_(title);            // comma-split + trim + drop blanks
   const streetRe = /^\d{1,6}\s+\S/;          // "14701 SE 42nd ST" yes; "4252833210 Max" no
   const placeRe = /^[A-Za-z][A-Za-z .'-]*$/; // city = the letters-only segment right after the street
@@ -328,6 +343,11 @@ function addressFromTitle_(title) {
   }
   return '';
 }
+
+/** Cities the crews work in, recognized right after a street even without a comma. */
+const LOCAL_CITIES_ = ['Seattle', 'Bellevue', 'Redmond', 'Kirkland', 'Issaquah', 'Sammamish', 'Bothell', 'Medina',
+  'Clyde Hill', 'Mercer Island', 'Renton', 'Newcastle', 'Edmonds', 'Woodinville', 'Mill Creek', 'Mukilteo',
+  'SeaTac', 'Covington', 'Kent', 'Shoreline', 'Lynnwood', 'Burien', 'Tukwila', 'Kenmore'];
 
 /** Drop duplicate comma-separated segments from a location string, preserving order. */
 function dedupeAddress_(loc) {

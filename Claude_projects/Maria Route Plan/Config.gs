@@ -93,8 +93,17 @@ const CONFIG = {
     CLEAN_PER_BEDROOM_MIN: 15,
     CLEAN_PER_BATHROOM_MIN: 20,
 
-    // Residential & move-in/out have only an address (no bed/bath) — fixed minutes
-    // each (2-person clock-time; scaled by crew size like turnovers).
+    // Multiplier on the turnover time above. The 2026 backtest against the real
+    // dispatch cards showed the formula runs slow: at 1.0, a quarter of the cars
+    // crews actually finished would need more than 8 hours. 0.8 fits 90% of real
+    // cars inside the day (a 1BR/1BA becomes 48 min @ 2 people). Set 1 to disable;
+    // recalibrate once real finish times are recorded.
+    CLEAN_TIME_SCALE: 0.8,
+
+    // Residential & move-in/out have only an address (no bed/bath). A client listed in
+    // RESIDENTIAL_TIMES (Listings.gs, from EstMin_2ppl in data/Listings.xlsx) uses its
+    // own minutes; everyone else gets these fixed minutes (2-person clock-time; scaled
+    // by crew size like turnovers; CLEAN_TIME_SCALE does not apply).
     RESIDENTIAL_MIN: 120,       // 2h @ 2 people.
     MOVEINOUT_MIN: 120,         // 2h @ 2 people.
 
@@ -110,5 +119,15 @@ const CONFIG = {
     // Optional: a Google Sheet (columns Listing, Address, Bedrooms, Bathrooms) that
     // overrides/extends the embedded Listings.gs table. '' = use embedded table only.
     LISTINGS_SHEET_ID: '',
+  },
+
+  // ----------------------------------------------------------------------------
+  // findListingAddresses() (AddressFinder.gs): scan calendars for the addresses of
+  // listings missing from Listings.gs. Read-only on the calendars.
+  // ----------------------------------------------------------------------------
+  ADDRESS_SCAN: {
+    FROM: '2026-01-01',     // first day scanned (YYYY-MM-DD).
+    TO: '',                 // last day scanned; '' = up to now.
+    ALL_CALENDARS: false,   // false = Maria's three calendars; true = every calendar this account can see.
   },
 };

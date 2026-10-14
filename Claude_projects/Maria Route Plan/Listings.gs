@@ -84,6 +84,62 @@ const LISTINGS = [
   ['Shoreline 15510', '15510 Meridian Avenue North, Shoreline, Washington 98133', 3, 2],
 ];
 
+/**
+ * Residential / move-in-out clients with a known labor budget, from the Residential
+ * tab of data/Listings.xlsx (EstMin_2ppl = clock-minutes for a 2-person crew, from the
+ * client's own calendar note: "Max 4.5ph", "2 ppl 1hr50 min", …). A job is matched
+ * by its street address (house number + street, see streetKey_), so the address on
+ * the calendar event is enough. Unmatched jobs keep RESIDENTIAL_MIN / MOVEINOUT_MIN.
+ *
+ * Columns: [ name, address, minutes for 2 people ]
+ */
+const RESIDENTIAL_TIMES = [
+  ['Bellevue 12520', '12520 NE 23rd Place, Bellevue, WA 98005', 150],   // address from the calendar; the tab's row still needs fixing
+  ['Bellevue 14701', '14701 SE 42nd ST, Bellevue', 135],
+  ['Bellevue 15647', '15647 SE 54th St, Bellevue, WA 98006', 198],
+  ['Bellevue 1638', '1638 166th Ave NE, Bellevue, WA 98008', 193],
+  ['Bellevue 4616', '4616 95th Ave NE, Bellevue, WA 98004', 60],
+  ['Clyde Hill 8830', '8830 NE 28th St, Clyde Hill, WA 98004', 230],
+  ['Sammamish 21223', '21223 SE 35th Way, Sammamish, WA 98075', 142],
+  ['Sammamish 23718', '23718 SE 4th Pl, Sammamish, WA 98074', 150],
+  ['Seattle 1615', '1615 Belmont Ave unit 315, Seattle 98122', 120],
+  ['Seattle 2409', '2409 N 41st St, Seattle, WA 98103', 80],
+  ['Seattle 6064', '6064 52nd Ave NE, Seattle', 110],
+];
+
+/** Lazily-built streetKey_ → minutes index over RESIDENTIAL_TIMES. */
+var _RESIDENTIAL_INDEX = null;
+
+/** Minutes (2-person clock time) for a residential / move-in-out job address, or null. */
+function residentialMinutes_(address) {
+  if (!_RESIDENTIAL_INDEX) {
+    _RESIDENTIAL_INDEX = {};
+    RESIDENTIAL_TIMES.forEach(function (r) {
+      const k = streetKey_(r[1]);
+      if (k) _RESIDENTIAL_INDEX[k] = Number(r[2]) || null;
+    });
+  }
+  const k = streetKey_(address);
+  return (k && _RESIDENTIAL_INDEX[k]) || null;
+}
+
+/**
+ * House number + the next two street words, normalized, so different spellings of
+ * one address agree: "2409 North 41st Street" and "2409 N 41st St, Seattle" → "2409 n 41st".
+ * '' if the address doesn't start with a house number.
+ */
+function streetKey_(address) {
+  const WORDS = {
+    north: 'n', south: 's', east: 'e', west: 'w', northeast: 'ne', northwest: 'nw', southeast: 'se', southwest: 'sw',
+    street: 'st', avenue: 'ave', av: 'ave', place: 'pl', drive: 'dr', road: 'rd', way: 'way', lane: 'ln', court: 'ct',
+    boulevard: 'blvd', parkway: 'pkwy', loop: 'loop', terrace: 'ter', circle: 'cir',
+  };
+  const t = String(address || '').toLowerCase().replace(/[.,#]/g, ' ').split(/\s+/).filter(String);
+  const i = t.findIndex(function (w) { return /^\d{1,6}$/.test(w); });
+  if (i === -1) return '';
+  return t.slice(i, i + 3).map(function (w) { return WORDS[w] || w; }).join(' ');
+}
+
 /** Lazily-built name → { name, address, beds, baths } index (embedded + optional Sheet). */
 var _LISTING_INDEX = null;
 
