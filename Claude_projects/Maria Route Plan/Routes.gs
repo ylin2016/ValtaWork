@@ -60,7 +60,9 @@ function runRoutesForCleaner_(cleaner, day, dryRun) {
     (s.coord ? geocoded : ungeocoded).push(s);
   });
 
-  const plan = planCars_(base, geocoded);
+  const plan = CONFIG.ROUTING.PLANNER === 'rules'
+    ? planCars_(base, geocoded)
+    : planCarsModel_(base, geocoded, day.start);   // learned from the dispatch cards (ModelPlanner.gs)
   const message = composeRoutePlan_(cleaner.name, dayLabel, plan, built.counts,
     built.unmapped, ungeocoded, !!base);
 

@@ -66,6 +66,14 @@ const CONFIG = {
     // but can't tell you the first/last drive). Full address, e.g. "123 Main St, Bellevue, WA".
     BASE_ADDRESS: '12834 24th Ave S, SeaTac, WA 98168',
 
+    // Which planner builds the cars:
+    //   'model' → the learned planner (ModelPlanner.gs + Model.gs), trained locally on the
+    //             historical dispatch cards with train/train_model.py. It decides the car
+    //             count, which jobs share a car and the crew size the way the dispatchers
+    //             did; the settings below that it doesn't use are ignored.
+    //   'rules' → the hand-set rules (Routes.gs planCars_) using every setting below.
+    PLANNER: 'model',
+
     // Crew size is chosen per car: the planner sizes the day's workload to decide how
     // many cars are needed (up to MAX_CARS), then staffs each with the FEWEST people
     // in [MIN_CREW_PER_CAR, MAX_CREW_PER_CAR] that finish its route within the day.
