@@ -177,6 +177,10 @@ svg text.lab { fill: var(--ink); font-weight: 600; }
 .ohead { padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
 .ohead .nm { font-size: 17px; font-weight: 700; }
 .ohead .sub { font-size: 12px; color: var(--muted); }
+.ohead .osum { margin: 8px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink); max-width: 75ch; }
+.ohead .osum b { font-weight: 700; }
+.rpanel { gap: 8px; }
+.rpanel p { margin: 0; font-size: 13px; line-height: 1.55; max-width: 90ch; }
 .ototals { display: flex; gap: 28px; flex-wrap: wrap; }
 .ototals > div { text-align: right; }
 .ototals .v { font-size: 22px; font-weight: 800; }
@@ -193,6 +197,9 @@ svg text.lab { fill: var(--ink); font-weight: 600; }
 .cmap .attr { position: absolute; right: 4px; bottom: 3px; font-size: 10px; color: var(--muted-2); background: var(--card); opacity: 0.85; padding: 1px 5px; border-radius: 3px; }
 .cmap-keys { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted-2); align-items: center; }
 .cmap-keys svg { vertical-align: -3px; margin-right: 4px; }
+.urows { display: flex; flex-direction: column; gap: 16px; }
+.urow { display: grid; grid-template-columns: minmax(300px, 380px) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.urow.solo { grid-template-columns: minmax(0, 380px); }
 .ocards { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(320px, 100%), 1fr)); gap: 16px; }
 .ocard { padding: 20px 22px; display: flex; flex-direction: column; gap: 14px; }
 .ocard h3 { margin: 0; font-size: 15px; font-weight: 700; }
@@ -258,6 +265,7 @@ svg text.lab { fill: var(--ink); font-weight: 600; }
   .prow { grid-template-columns: 1fr; row-gap: 10px; }
   .mlabel { display: block; }
   .ototals > div { text-align: left; }
+  .urow { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: no-preference) {
   .drawer { animation: slide 0.18s ease-out; }
@@ -278,7 +286,7 @@ svg text.lab { fill: var(--ink); font-weight: 600; }
     <select id="f-type" aria-label="Rental type"></select>
     <select id="f-bed" aria-label="Bedrooms"></select>
     <select id="f-grp" aria-label="Listing group"></select>
-    <select id="f-owner" aria-label="Owner statement"></select>
+    <select id="f-owner" aria-label="Property"></select>
     <div class="seg" role="group" aria-label="View">
       <button type="button" data-view="valta">Valta</button>
       <button type="button" data-view="trends">Trends</button>
@@ -306,23 +314,29 @@ const L = D.listings;
 const rows = L.map(() => new Map());
 for (let i = 0; i < D.lm.li.length; i++) {
   rows[D.lm.li[i]].set(D.lm.ym[i], { rev: D.lm.rev[i] || 0, rocc: D.lm.rocc[i] || 0, nd: D.lm.nd[i] || 0,
-    occ: D.lm.occ[i], adrf: D.lm.adrf[i], lt: D.lm.lt ? D.lm.lt[i] : null, nb: D.lm.nb ? D.lm.nb[i] || 0 : 0 });
+    occ: D.lm.occ[i], av: D.lm.av ? D.lm.av[i] : null, adrf: D.lm.adrf[i], lt: D.lm.lt ? D.lm.lt[i] : null, nb: D.lm.nb ? D.lm.nb[i] || 0 : 0 });
 }
 // guest-payment parts per listing-month (itemized from 2026; see revenue_mix.py)
 if (D.lm.mix) D.lm.mix.i.forEach((idx, j) => {
   const r = rows[D.lm.li[idx]].get(D.lm.ym[idx]); if (!r) return;
   r.mix = {}; ["rent", "clean", "tax", "channel", "lease", "none", "acc", "pet", "disc", "other", "comm"].forEach(k => r.mix[k] = (D.lm.mix[k] || [])[j] || 0);
 });
-// benchmarks: kind 0 comp set (averaged across a listing's sets), 1 market high performers, 2 whole market
+const dim = ym => new Date(Math.floor(ym / 100), ym % 100, 0).getDate();
+// benchmarks: kind 0 comp set (a listing's sets pooled), 1 market high performers, 2 whole market.
+// Each month keeps nights booked (bk), nights bookable (bb) and revenue (rv), so a period
+// totals the way Wheelhouse does: occupancy = sum bk / sum bb, ADR = sum rv / sum bk.
 const bench = L.map(() => [new Map(), new Map(), new Map()]);
 for (let i = 0; i < D.bench.li.length; i++) {
   const m = bench[D.bench.li[i]][D.bench.k[i]], ym = D.bench.ym[i];
   const o = D.bench.occ[i], a = D.bench.adr[i];
   if (o == null || a == null) continue;
-  const cur = m.get(ym) || { o: 0, a: 0, n: 0 };
-  cur.o += o; cur.a += a; cur.n += 1; m.set(ym, cur);
+  const d = dim(ym), bb = D.bench.bb && D.bench.bb[i] > 0 ? D.bench.bb[i] : d;
+  const bk = D.bench.bk && D.bench.bb && D.bench.bb[i] > 0 ? D.bench.bk[i] : o * d;
+  const rv = D.bench.rv && D.bench.bb && D.bench.bb[i] > 0 ? D.bench.rv[i] : a * o * d;
+  const cur = m.get(ym) || { bk: 0, bb: 0, rv: 0 };
+  cur.bk += bk; cur.bb += bb; cur.rv += rv; m.set(ym, cur);
 }
-bench.forEach(ks => ks.forEach(m => m.forEach((v, k) => m.set(k, { occ: v.o / v.n, adr: v.a / v.n }))));
+bench.forEach(ks => ks.forEach(m => m.forEach((v, k) => m.set(k, { ...v, occ: v.bb ? v.bk / v.bb : 0, adr: v.bk ? v.rv / v.bk : null }))));
 const benchLt = L.map(() => new Map());
 for (let i = 0; i < D.bench.li.length; i++) {
   const v = D.bench.lt ? D.bench.lt[i] : null;
@@ -332,11 +346,19 @@ for (let i = 0; i < D.bench.li.length; i++) {
 }
 benchLt.forEach(m => m.forEach((v, k) => m.set(k, v[0] / v[1])));
 
-const dim = ym => new Date(Math.floor(ym / 100), ym % 100, 0).getDate();
+// Nights the listing could be booked: the month minus Wheelhouse-blocked nights (owner
+// stays, maintenance). Older payloads without "av" fall back to back-solving OccRt.
+function availNights(r, ym) {
+  if (r.av != null) return r.av;
+  let a = r.occ > 0 ? r.nd / r.occ : dim(ym);
+  if (Math.abs(a - dim(ym)) < 1.5) a = dim(ym);
+  return a;
+}
 
 // one listing over a set of months; null when it has no rows there.
-// ADR / RevPAR are on the guest-paid basis (nightly rate + cleaning, = ADR_w_fees),
-// the same basis as Wheelhouse comp-set `adr` and market `adr_w_fees`.
+// ADR / RevPAR use the nightly rate without the cleaning fee (ADR_nightly), the
+// basis Wheelhouse shows for listings and comp sets. Market series only come with fees
+// (adr_w_fees), as on Wheelhouse's own market screen.
 // Leases have no cleaning fee: their rent per night is used as is.
 function agg(li, months) {
   let rev = 0, rocc = 0, nd = 0, av = 0, gp = 0, n = 0, done = 0, ltw = 0, nb = 0;
@@ -344,8 +366,7 @@ function agg(li, months) {
     const r = rows[li].get(ym); if (!r) continue;
     n++; if (ym < NOW) done++;
     rev += r.rev; rocc += r.rocc; nd += r.nd;
-    let a = r.occ > 0 ? r.nd / r.occ : dim(ym);
-    if (Math.abs(a - dim(ym)) < 1.5) a = dim(ym);   // OccRt is rounded; snap to the month
+    const a = availNights(r, ym);
     av += a; gp += r.adrf != null ? r.adrf * r.nd : r.rocc;
     if (r.lt != null && r.nb) { ltw += r.lt * r.nb; nb += r.nb; }
   }
@@ -354,20 +375,20 @@ function agg(li, months) {
            revpar: av ? gp / av : 0, done, nb, lead: nb ? ltw / nb : null };
 }
 // comp: Wheelhouse comp set, else the whole market at the listing's bedroom size.
-// Both include cleaning fees, like the listing figures from agg().
+// Nightly rate without cleaning fees, like the listing figures from agg(); totalled over the period as Wheelhouse does.
 function comp(li, months, a) {
   if (!a) return null;
   for (const [k, src] of [[0, "set"], [2, "mkt"]]) {
-    const m = bench[li][k]; let o = 0, ad = 0, rp = 0, n = 0;
+    const m = bench[li][k]; let bk = 0, bb = 0, rv = 0, n = 0;
     for (const ym of months) {
       if (!rows[li].has(ym)) continue;
       const b = m.get(ym); if (!b) continue;
-      o += b.occ; ad += b.adr; rp += b.occ * b.adr; n++;
+      bk += b.bk; bb += b.bb; rv += b.rv; n++;
     }
     if (n) {
       let lt = 0, ln = 0;
       if (src === "set") for (const ym of months) { const v = benchLt[li].get(ym); if (v != null && rows[li].has(ym)) { lt += v; ln++; } }
-      return { occ: o / n, adr: ad / n, revpar: rp / n, src, lead: ln ? lt / ln : null };
+      return { occ: bb ? bk / bb : 0, adr: bk ? rv / bk : null, revpar: bb ? rv / bb : 0, src, lead: ln ? lt / ln : null };
     }
   }
   return null;
@@ -380,7 +401,7 @@ function hpGap(li, months) {
   for (const ym of months) {
     if (ym >= NOW) continue;
     const r = rows[li].get(ym), b = bench[li][1].get(ym); if (!r || !b) continue;
-    let a = r.occ > 0 ? r.nd / r.occ : dim(ym); if (Math.abs(a - dim(ym)) < 1.5) a = dim(ym);
+    const a = availNights(r, ym);
     const occ = a ? r.nd / a : 0;
     g += (occ - b.occ) * a; o += occ * a; h += b.occ * a; w += a;
   }
@@ -557,7 +578,7 @@ function syncControls() {
   if (S.bed !== "All" && !beds.includes(S.bed)) S.bed = "All";
   opts($("f-bed"), [["All", "All Bedrooms"], ...beds.map(b => [b, bedLabel(b)])], S.bed);
   $("f-bed").hidden = S.view === "owner";
-  const GORDER = ["Elektra", "Yacinde", "OSBR", "Remote", "Beachwood", "Microsoft", "Seattle", "Bellevue", "Kirkland", "Redmond"];
+  const GORDER = ["Elektra", "Yacinde", "OSBR", "Remote", "Beachwood", "Microsoft"];
   const grps = GORDER.filter(g => L.some(l => l.g.includes(g)));
   if (S.grp !== "All" && !grps.includes(S.grp)) S.grp = "All";
   opts($("f-grp"), [["All", "All Groups"], ...grps.map(g => [g, g])], S.grp);
@@ -645,7 +666,7 @@ function propertyRows(rs) {
         ${bars([["This", r.a.rev, "this"], ["Last", r.p ? r.p.rev : null, "last"]], maxRev)}</div>
       <div class="metric" title="${tip("Occupancy", pct, r.a.occ, r.p ? r.p.occ : null, r.c ? r.c.occ : null, cl) + (r.g ? esc(` · Market HP (${r.b === "" ? "" : r.b + " BR, "}finished months): ${pct(r.g.hp)} vs listing ${pct(r.g.occ)}`) : "")}"><div class="mlabel">Occupancy</div><div class="top2"><b class="num">${pct(r.a.occ)}</b>${delta(r.a.occ, r.p ? r.p.occ : null, true)}</div>
         ${bars(occItems, 1)}</div>
-      <div class="metric" title="${tip("ADR (incl. cleaning)", usd, r.a.adr, r.p ? r.p.adr : null, r.c ? r.c.adr : null, cl)}"><div class="mlabel">ADR</div><div class="top2"><b class="num">${usd(r.a.adr)}</b>${delta(r.a.adr, r.p ? r.p.adr : null)}</div>
+      <div class="metric" title="${tip("ADR (nightly rate)", usd, r.a.adr, r.p ? r.p.adr : null, r.c ? r.c.adr : null, cl)}"><div class="mlabel">ADR</div><div class="top2"><b class="num">${usd(r.a.adr)}</b>${delta(r.a.adr, r.p ? r.p.adr : null)}</div>
         ${bars(adrItems, maxAdr)}</div>
       <div class="metric" title="${tip("RevPAR", usd, r.a.revpar, r.p ? r.p.revpar : null, r.c ? r.c.revpar : null, cl)}"><div class="mlabel">RevPAR</div><div class="top2"><b class="num">${usd(r.a.revpar)}</b>${delta(r.a.revpar, r.p ? r.p.revpar : null)}</div>
         ${bars(rpItems, maxRp)}</div>
@@ -667,7 +688,7 @@ function viewValta(per) {
   const booked = per.booked ? `<div class="note">This period includes months that haven't finished. Their figures are bookings on the books as of ${D.asof}, compared with last year's final numbers.</div>` : "";
   return head + booked + legend() + teamPanel() + flaggedList(rs) + propertyRows(rs) +
     `<div class="foot">${rs.length} properties · ${S.market === "All" ? "All markets" : esc(S.market)} · ${typeLabel()} · ${per.label}<br>
-    Revenue is counted in the month the nights fall in: a stay that crosses a month end is split by nights. ADR and RevPAR include the cleaning fee (what the guest pays per night), the same basis Wheelhouse uses for comps. Comp = the listing's Wheelhouse comp set, or the whole market at the same bedroom count ("Mkt") when it has none. Comp occupancy is Wheelhouse's adjusted occupancy, which leaves out blocked nights; ours counts every calendar night. Lead time = days from booking confirmation to check-in, averaged over bookings checking in during the period (comp: Wheelhouse comp set). Click a property for its monthly detail.</div>`;
+    Revenue is counted in the month the nights fall in: a stay that crosses a month end is split by nights. ADR and RevPAR use the nightly rate without the cleaning fee, the basis Wheelhouse shows for listings and comp sets, so they line up with the Wheelhouse screen. Market benchmarks ("Mkt", high performers) include fees, because Wheelhouse's market report has no fee-free ADR. Comp figures are totalled over the period the way Wheelhouse does (nights booked ÷ nights bookable; revenue ÷ nights booked). Comp = the listing's Wheelhouse comp set, or the whole market at the same bedroom count ("Mkt") when it has none. Occupancy leaves out blocked nights (owner stays, maintenance) on both sides: ours from each listing's Wheelhouse calendar, comps from Wheelhouse's adjusted occupancy. Lead time = days from booking confirmation to check-in, averaged over bookings checking in during the period (comp: Wheelhouse comp set). Click a property for its monthly detail.</div>`;
 }
 
 // ---------- Trends view ----------
@@ -726,7 +747,7 @@ function marketTable(per) {
     <td title="${P.nHp ? esc(`Market high performers ${pct(P.hpOcc)} vs these ${P.nHp} listings ${pct(P.hpT)}`) : ""}">${P.nHp ? pct(P.hpOcc) : "–"}</td><td>${usd(P.adr)}</td><td>${usd(P.revpar)}</td>
     <td>${P.nComp ? delta(P.tRevpar, P.cRevpar) : '<span class="delta flat">–</span>'}</td></tr>`).join("");
   return `<div class="card panel"><h2>Markets · ${per.label}</h2><div class="tablebox"><table class="mt"><thead><tr><th>Market</th><th>Listings</th><th>Revenue</th><th>vs Last</th><th>Occupancy</th><th>vs Last</th><th>HP occupancy</th><th>ADR</th><th>RevPAR</th><th>RevPAR vs Comp</th></tr></thead><tbody>${tr || '<tr><td colspan="10" class="na">No data for this period.</td></tr>'}</tbody></table></div>
-    <div class="note">Occupancy = your listings' nights booked ÷ nights available. HP occupancy = Wheelhouse market high performers at each listing's bedroom size, weighted by your listings' available nights; it is Wheelhouse's adjusted occupancy, which leaves out blocked nights, so it reads higher than a plain calendar rate.</div></div>`;
+    <div class="note">Occupancy = your listings' nights booked ÷ nights available. HP occupancy = Wheelhouse market high performers at each listing's bedroom size, weighted by your listings' available nights; it is Wheelhouse's adjusted occupancy. Both leave out blocked nights (owner stays, maintenance).</div></div>`;
 }
 function topMovers(per) {
   const rs = scope(per).filter(r => r.p && r.p.rev > 0).map(r => ({ r, d: r.a.rev - r.p.rev }));
@@ -744,9 +765,9 @@ function topMovers(per) {
 const DEFS = [
   ["Revenue", "What the booking pays Valta: Guesty host payout (guest total minus the channel's host fee; channel-remitted taxes excluded). Leases use received rent from the rent roll. Owner stays and $0-fare bookings are left out."],
   ["Revenue in a month", "Each booking's revenue is split evenly over its nights, and each night counts in the month it falls in. A stay that crosses a month end counts in both months."],
-  ["Occupancy", "Nights booked ÷ nights in the period (onboarding months count from the first available day). Wheelhouse comp occupancy is adjusted occupancy, which leaves out blocked nights."],
-  ["ADR", "Average daily rate including cleaning: (accommodation fare + cleaning fee) ÷ nights. That is the guest's price before channel fees, the same basis Wheelhouse uses for comps."],
-  ["RevPAR", "Revenue per available night = ADR × occupancy (incl. cleaning, so it compares with Wheelhouse)."],
+  ["Occupancy", "Paid nights ÷ available nights. Available = nights in the period minus nights blocked on the listing's Wheelhouse calendar (owner stays, maintenance, before launch), the same basis as Wheelhouse's adjusted occupancy for comps. Listings not in Wheelhouse (leases, a few units) count every night."],
+  ["ADR", "Average daily rate = accommodation fare ÷ nights booked: the nightly rate, without the cleaning fee or taxes. Same basis as Wheelhouse's ADR for listings and comp sets. Market figures (whole market, high performers, \"Mkt\" fallback) come from Wheelhouse's market report, which only offers ADR including fees, as on Wheelhouse's own market screen. Our accommodation fare includes a few Guesty nightly add-ons, so it can read a few percent above Wheelhouse's figure for the same listing."],
+  ["RevPAR", "Revenue per available night = ADR × occupancy, with both on the Wheelhouse basis (nightly rate without cleaning; blocked nights left out). Comp RevPAR = comp revenue ÷ comp nights bookable over the period, as Wheelhouse shows it."],
   ["Lead time", "Days from booking confirmation to check-in, averaged over bookings checking in during the period."],
   ["Comp", "The listing's Wheelhouse comp set; when it has none, the whole market at the same bedroom count (\"Mkt\"). Market high performers = top-performing listings in that market and size."],
   ["Last", "The same months one year earlier, for the same listing."],
@@ -814,6 +835,106 @@ function paySum(prop, yms) {
   const m = D.pay[prop]; if (!m) return null; let s = 0, n = 0;
   yms.forEach(ym => { if (m[ym] != null) { s += m[ym]; n++; } });
   return n ? s : null;
+}
+// Owner tab: "Why RevPAR matters" panel, one line per short-term unit.
+function revparPanel(rs) {
+  const us = rs.filter(r => r.t === "STR" && r.a.revpar > 0);
+  if (!us.length) return "";
+  const pc = (c, p) => Math.abs((c / p - 1) * 100).toFixed(1) + "%";
+  let firstComp = true;
+  const line = r => {
+    const parts = [`<b>${esc(r.n)}</b>: RevPAR of ${usd(r.a.revpar)}`];
+    const last = r.p && r.p.revpar > 0, cmp = r.c && r.c.revpar > 0;
+    if (last) parts.push(`is ${r.a.revpar >= r.p.revpar ? "up" : "down"} ${pc(r.a.revpar, r.p.revpar)} from last year`);
+    if (cmp) {
+      parts.push(`${last ? "and " : "is "}${pc(r.a.revpar, r.c.revpar)} ${r.a.revpar >= r.c.revpar ? "above" : "below"} ${firstComp ? "comparable properties" : "comps"}`);
+      firstComp = false;
+    }
+    let txt = parts.join(" ") + ".";
+    if (last && r.p.occ != null && r.p.adr) {
+      const dOcc = (r.a.occ - r.p.occ) * 100, dAdr = (r.a.adr / r.p.adr - 1) * 100, up = r.a.revpar >= r.p.revpar;
+      if (Math.abs(dOcc) < 2 && Math.abs(dAdr) >= 3) txt += ` Occupancy was flat, and ${dAdr > 0 ? "stronger" : "softer"} rates drove the ${up ? "gain" : "decline"}.`;
+      else if (Math.abs(dAdr) < 3 && Math.abs(dOcc) >= 2) txt += ` Rates held steady, and ${dOcc > 0 ? "higher" : "lower"} occupancy drove the ${up ? "gain" : "decline"}.`;
+    }
+    return txt;
+  };
+  const upL = us.filter(r => r.p && r.p.revpar > 0 && r.a.revpar >= r.p.revpar).length, nL = us.filter(r => r.p && r.p.revpar > 0).length;
+  const upC = us.filter(r => r.c && r.c.revpar > 0 && r.a.revpar >= r.c.revpar).length, nC = us.filter(r => r.c && r.c.revpar > 0).length;
+  const n = us.length, who = n === 1 ? "The unit is" : n === 2 ? "Both units are" : `All ${n} units are`;
+  let concl = "";
+  if (nL === n && nC === n && upL === n && upC === n) concl = `${who} outperforming last year and the local market.`;
+  else if (nL === n && nC === n && !upL && !upC) concl = `${who} behind last year and the local market.`;
+  else {
+    const bits = [];
+    if (nL) bits.push(`${upL} of ${nL} ${nL === 1 ? "unit" : "units"} ${upL === 1 ? "is" : "are"} ahead of last year`);
+    if (nC) bits.push(`${upC} of ${nC} ${upC === 1 ? "is" : "are"} above comparable properties`);
+    if (bits.length) concl = bits.join("; ") + ".";
+  }
+  let body;
+  if (n <= 6) body = us.map(line).map(t => `<p>${t}</p>`).join("");
+  else {
+    const g = us.filter(r => r.p && r.p.revpar > 0).sort((a, b) => b.a.revpar / b.p.revpar - a.a.revpar / a.p.revpar);
+    body = g.length >= 2 ? `<p>Strongest: ${line(g[0])}</p><p>Weakest: ${line(g[g.length - 1])}</p>` : us.slice(0, 2).map(line).map(t => `<p>${t}</p>`).join("");
+  }
+  return `<div class="card panel rpanel"><p><b>Why RevPAR matters:</b> RevPAR (revenue per available night) is the single best measure of performance. It combines nightly rate and occupancy, so it shows what the property earns across every night on the calendar, booked or not.</p>
+    ${body}${concl ? `<p>${concl}</p>` : ""}
+    <p class="note">How it's calculated: RevPAR = ADR × occupancy. ADR is the nightly rate without the cleaning fee; occupancy leaves out nights blocked on the calendar (owner stays, maintenance). Comparable properties are the listing's Wheelhouse comp set, totalled over the period as Wheelhouse does, so these figures line up with the Wheelhouse screen. Our nightly rate includes a few Guesty add-ons, so it can run a few percent above Wheelhouse's.</p></div>`;
+}
+// Owner tab: a few plain-language sentences under the property name.
+function ownerSummary(prop, rs, rev, prev, pay, ppay, per) {
+  if (!rs.length) return "";
+  const chg = (c, p) => !p ? "" : ` (${c >= p ? "up" : "down"} ${Math.abs((c / p - 1) * 100).toFixed(1)}% vs ${S.year - 1})`;
+  const out = [`Revenue for ${per.label} was <b>${usd(rev)}</b>${chg(rev, prev)}`
+    + (pay != null ? `; owner payout <b>${usd(pay)}</b>${ppay != null ? chg(pay, ppay) : ""}.` : ".")];
+  const unit = r => {
+    const occ = r.a.occ ? `, occupancy ${pct(r.a.occ)}` + (r.c && r.c.occ != null ? ` vs comp ${pct(r.c.occ)}` : "") : "";
+    return `${esc(r.n)} ${usd(r.a.rev)}${r.p && r.p.rev ? ` (${r.a.rev >= r.p.rev ? "+" : "−"}${Math.abs((r.a.rev / r.p.rev - 1) * 100).toFixed(1)}%)` : ""}${occ}`;
+  };
+  if (rs.length <= 3) out.push(rs.map(unit).join("; ") + ".");
+  else {
+    const g = rs.filter(r => r.p && r.p.rev).sort((a, b) => b.a.rev / b.p.rev - a.a.rev / a.p.rev);
+    if (g.length >= 2) out.push(`Strongest growth: ${unit(g[0])}. Weakest: ${unit(g[g.length - 1])}.`);
+  }
+  // best finished month in the selected year
+  const lis = rs.map(r => r.li);
+  const mrev = ALLM.map(m => lis.reduce((t, li) => { const r = rows[li].get(S.year * 100 + m); return t + (r ? r.rev : 0); }, 0));
+  const done = ALLM.filter(m => S.year * 100 + m < NOW && mrev[m - 1] > 0);
+  if (done.length) { const b = done.reduce((a, m) => mrev[m - 1] > mrev[a - 1] ? m : a); out.push(`Best month: ${MON[b - 1]} (${usd(mrev[b - 1])}).`); }
+  // revenue already on the books for the rest of the current year
+  if (S.year === AY) {
+    const fut = ALLM.filter(m => AY * 100 + m >= NOW);
+    const on = fut.reduce((t, m) => t + mrev[m - 1], 0);
+    const ly = fut.reduce((t, m) => t + lis.reduce((u, li) => { const r = rows[li].get((AY - 1) * 100 + m); return u + (r ? r.rev : 0); }, 0), 0);
+    if (fut.length && (on || ly)) out.push(`On the books for ${MON[fut[0] - 1]}–Dec: ${usd(on)}${ly ? ` (those months earned ${usd(ly)} in ${AY - 1})` : ""}.`);
+  }
+  return `<p class="osum">${out.join(" ")}</p>`;
+}
+// Owner tab: one listing's revenue by month, selected year vs the year before (left of its card).
+function listingRevenueChart(li, name) {
+  const ys = [S.year - 1, S.year], cols = ["var(--last)", "var(--brand)"];
+  const lis = [li];
+  const data = ys.map(y => ALLM.map(m => lis.reduce((t, li) => { const r = rows[li].get(y * 100 + m); return t + (r ? r.rev : 0); }, 0)));
+  const tot = data.map(yr => yr.reduce((t, v) => t + v, 0));
+  if (!tot[0] && !tot[1]) return "";
+  const W = 760, H = 330, ml = 48, mr = 6, mt = 18, mb = 30, iw = W - ml - mr, ih = H - mt - mb;
+  const max = Math.max(1, ...data.flat());
+  const step = niceStep(max / 4), top = Math.ceil(max / step) * step;
+  const sy = v => mt + ih - Math.max(0, v) / top * ih, gw = iw / 12, bw = (gw - 6) / 2;
+  let g = "";
+  for (let v = 0; v <= top + 1; v += step) g += `<line x1="${ml}" x2="${W - mr}" y1="${sy(v)}" y2="${sy(v)}" stroke="var(--line)" stroke-width="1"/><text x="${ml - 6}" y="${sy(v) + 4}" text-anchor="end" font-size="11">${usdK(v)}</text>`;
+  data.forEach((yr, yi) => yr.forEach((v, m) => {
+    if (!v) return;
+    const x = ml + m * gw + 3 + yi * bw, booked = ys[yi] * 100 + m + 1 >= NOW;
+    const prev = yi === 1 ? data[0][m] : null;
+    const chg = prev ? ` · ${v >= prev ? "+" : ""}${Math.round((v / prev - 1) * 100)}% vs ${ys[0]}` : "";
+    g += `<rect x="${x}" y="${sy(v)}" width="${bw - 2}" height="${mt + ih - sy(v)}" rx="2" fill="${cols[yi]}"${booked ? ` fill-opacity="0.18" stroke="${cols[yi]}" stroke-width="1.5" stroke-dasharray="3 2"` : ""}><title>${MON[m]} ${ys[yi]}: ${usd(v)}${chg}${booked ? " (on the books)" : ""}</title></rect>`;
+    if (yi === 1) g += `<text class="lab" x="${x + bw / 2}" y="${sy(v) - 4}" text-anchor="middle" font-size="10">${usdK(v)}</text>`;
+  }));
+  MON.forEach((mo, m) => g += `<text x="${ml + m * gw + gw / 2}" y="${H - mb + 16}" text-anchor="middle" font-size="11">${mo}</text>`);
+  return `<div class="card panel"><h2>${esc(name)} · revenue by month</h2>
+    <div class="keys"><span><i class="sw" style="background:var(--brand)"></i>${ys[1]}</span><span><i class="sw" style="background:var(--last)"></i>${ys[0]}</span><span><i class="sw" style="background:transparent;border:1.5px dashed var(--brand)"></i>On the books</span></div>
+    <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" style="min-width:520px" role="img" aria-label="Monthly revenue ${ys[1]} vs ${ys[0]} for ${esc(name)}">${g}</svg></div>
+    <div class="note">Full year: ${ys[1]} ${usd(tot[1])}${ys[1] === AY ? " (incl. booked)" : ""} · ${ys[0]} ${usd(tot[0])}. Hover a bar for the change.</div></div>`;
 }
 // ---------- comp-set map (Owner tab) ----------
 // Wheelhouse comp listings pinned on a street map baked at build time (comp_map.py):
@@ -888,19 +1009,23 @@ function viewOwner(per) {
     const rpMax = Math.max(r.a.revpar, r.p ? r.p.revpar : 0, r.c ? r.c.revpar : 0) * 1.1 || 1;
     const rvMax = Math.max(r.a.rev, r.p ? r.p.rev : 0) * 1.05 || 1;
     const payBlock = single && pay != null ? oblock("Owner Payout", pay, ppay, null, Math.max(pay, ppay || 0) * 1.05, usd, false, "pay") : "";
-    return `<div class="card ocard"><h3><button type="button" class="link" data-li="${r.li}">${esc(r.n)}</button></h3>
+    const card = `<div class="card ocard"><h3><button type="button" class="link" data-li="${r.li}">${esc(r.n)}</button></h3>
       <div class="ostats"><div><div class="lbl">Revenue</div><div class="v num">${usd(r.a.rev)}</div>${delta(r.a.rev, r.p ? r.p.rev : null)}</div>
         <div><div class="lbl">Nights Sold</div><div class="v num">${Math.round(r.a.nd)}</div><span class="note">ADR ${usd(r.a.adr)}</span></div></div>
       ${oblock("Occupancy", r.a.occ, r.p ? r.p.occ : null, r.c ? r.c.occ : null, 1, pct, true)}
       ${r.t === "STR" ? oblock("RevPAR", r.a.revpar, r.p ? r.p.revpar : null, r.c ? r.c.revpar : null, rpMax, usd) : ""}
       ${oblock("Total Revenue", r.a.rev, r.p ? r.p.rev : null, null, rvMax, usd)}
       ${payBlock}</div>`;
+    const chart = listingRevenueChart(r.li, r.n);
+    return chart ? `<div class="urow">${card}${chart}</div>` : `<div class="urow solo">${card}</div>`;
   }).join("");
-  return `<div class="card ohead"><div><div class="lbl">Owner statement</div><div class="nm">${esc(prop)}</div>
-      <div class="sub">${rs.length} ${rs.length === 1 ? "listing" : "listings"}${mkts ? " · " + esc(mkts) : ""} · ${per.label}</div></div>
+  return `<div class="card ohead"><div><div class="lbl">Property performance</div><div class="nm">${esc(prop)}</div>
+      <div class="sub">${rs.length} ${rs.length === 1 ? "listing" : "listings"}${mkts ? " · " + esc(mkts) : ""} · ${per.label}</div>
+      ${ownerSummary(prop, rs, rev, prev, pay, ppay, per)}</div>
     <div class="ototals"><div><div class="lbl">Combined Revenue</div><div class="v num">${usd(rev)}</div>${delta(rev, prev)}</div>
       <div><div class="lbl">Combined Owner Payout</div><div class="v num pay">${pay == null ? "–" : usd(pay)}</div>${pay == null ? '<span class="note">No payouts recorded for this period</span>' : (ppay == null ? `<span class="note">${payNote}</span>` : delta(pay, ppay))}</div></div></div>
-    <div class="ocards">${cards || '<div class="card ocard"><span class="na">No activity for this owner in this period.</span></div>'}</div>
+    ${revparPanel(rs)}
+    <div class="urows">${cards ||'<div class="card ocard"><span class="na">No activity for this owner in this period.</span></div>'}</div>
     ${compMaps(rs)}
     <div class="foot">Owner payouts are recorded through the latest statement month. Comp = Wheelhouse comp set.<br>Prepared by Valta Realty · contact@valtarealty.com · 425-578-9494</div>`;
 }
@@ -945,7 +1070,7 @@ function openListing(li) {
   const kp = a ? `<div class="kpis">
       ${kpi("Revenue · " + per.label, a.rev, a.rev, p ? p.rev : null, null, null, false, usd)}
       ${kpi("Occupancy", a.occ, a.occ, p ? p.occ : null, a.occ, c ? c.occ : null, true, pct)}
-      ${kpi("ADR (including cleaning fee)", a.adr, a.adr, p ? p.adr : null, a.adr, c ? c.adr : null, false, usd)}
+      ${kpi("ADR (nightly rate)", a.adr, a.adr, p ? p.adr : null, a.adr, c ? c.adr : null, false, usd)}
       ${kpi("RevPAR", a.revpar, a.revpar, p ? p.revpar : null, a.revpar, c ? c.revpar : null, false, usd)}</div>` : `<div class="note">No data for ${per.label}.</div>`;
   const str = l.t === "STR";
   const meta = [l.mk, l.b !== "" ? l.b + " BR" : "", str ? "Short-term" : "Long-term lease", l.p ? "Owner statement: " + l.p : ""].filter(Boolean).join(" · ");
@@ -957,8 +1082,8 @@ function openListing(li) {
         <div class="card panel"><h2>Revenue by month</h2><div class="keys"><span><i class="sw" style="background:var(--brand)"></i>${y}</span><span><i class="sw" style="background:var(--last)"></i>${y - 1}</span><span><i class="sw" style="background:transparent;border:1.5px dashed var(--brand)"></i>Not finished yet: on the books</span></div>
           <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" style="min-width:520px" role="img" aria-label="Revenue by month">${g}</svg></div></div>
         ${str ? whCard(li, "Occupancy {y}", y, getL("occ"), getB("occ"), v => v == null ? "–" : Math.round(v * 100) + "%", 1) : ""}
-        ${str ? whCard(li, "ADR {y} (including cleaning fee)", y, getL("adr"), getB("adr"), v => v == null ? "–" : usd(v)) : ""}
-        <div class="note">${str ? "ADR includes the cleaning fee for the listing, comp set and market high performers alike. Months marked • haven't finished." : "Lease income comes from the rent roll. Wheelhouse comps cover short-term listings only."}</div>
+        ${str ? whCard(li, "ADR {y} (nightly rate)", y, getL("adr"), getB("adr"), v => v == null ? "–" : usd(v)) : ""}
+        <div class="note">${str ? "ADR is the nightly rate without the cleaning fee for the listing and its comp set (Wheelhouse basis); market high performers' ADR includes fees, as in Wheelhouse's market report. Months marked • haven't finished." : "Lease income comes from the rent roll. Wheelhouse comps cover short-term listings only."}</div>
       </div></aside>`;
   document.querySelector(".drawer .x").focus();
 }

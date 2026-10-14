@@ -69,7 +69,9 @@ def build(run: str):
         "rev": [_r(v, 2) for v in (lm["Revenue_month"].fillna(lm["Revenue"])
                                    if "Revenue_month" in lm else lm["Revenue"])], "rocc": [_r(v, 2) for v in lm["Revenue_occ"]],
         "nd": [_r(v, 0) for v in lm["occdays"]], "occ": [_r(v, 4) for v in lm["OccRt"]],
-        "adr": [_r(v, 2) for v in lm["ADR"]], "adrf": [_r(v, 2) for v in lm["ADR_w_fees"]],
+        # available nights = nights in the month minus Wheelhouse-blocked nights
+        "av": [_r(v, 0) for v in lm["avail"]] if "avail" in lm else None,
+        "adr": [_r(v, 2) for v in lm["ADR"]], "adrf": [_r(v, 2) for v in lm["ADR_nightly" if "ADR_nightly" in lm else "ADR_w_fees"]],
         "lt": [_r(v, 1) for v in lm["LeadTime"]], "nb": [_r(v, 0) for v in lm["Bookings"]],
     }
     # guest-payment parts (2026+; see revenue_mix.py), sparse: listing-month index -> parts
@@ -102,6 +104,9 @@ def build(run: str):
                for b, k in zip(bench["benchmark"], bench["kind"])],
         "occ": [_r(v, 4) for v in bench["Occ"]], "adr": [_r(v, 2) for v in bench["ADR"]],
         "lt": [_r(v, 1) for v in (bench["Lead"] if "Lead" in bench else [None] * len(bench))],
+        # nights booked / bookable and revenue: a period totals as sum / sum (Wheelhouse's way)
+        **({"bk": [_r(v, 3) for v in bench["Booked"]], "bb": [_r(v, 3) for v in bench["Bookable"]],
+            "rv": [_r(v, 1) for v in bench["Rev"]]} if "Booked" in bench else {}),
     }
     maps, loc, maps_snap = build_maps(run, set_names, {l["n"]: l["sets"] for l in listings})
     for l in listings:

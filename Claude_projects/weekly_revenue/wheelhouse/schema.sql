@@ -168,3 +168,16 @@ CREATE TABLE IF NOT EXISTS dynamic_set_changelog (
   raw_json      TEXT,
   PRIMARY KEY (snapshot_date, set_id, change_date, change_type, detail)
 );
+
+-- Night-by-night calendar of our own listings (price_calendar): booked / blocked /
+-- open. Blocked = unavailable and not booked (owner stays, maintenance). Latest
+-- snapshot only (download_calendar deletes older ones).
+CREATE TABLE IF NOT EXISTS listing_calendar (
+  snapshot_date TEXT NOT NULL,
+  listing_id    TEXT NOT NULL,
+  name          TEXT,
+  stay_date     TEXT NOT NULL,
+  state         TEXT NOT NULL,
+  pulled_at     TEXT NOT NULL,
+  PRIMARY KEY (snapshot_date, listing_id, stay_date)
+);

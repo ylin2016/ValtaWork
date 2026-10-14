@@ -16,6 +16,8 @@ Differences from the notebook (intentional):
   * onboarding denominators: explicit ONBOARD dates, plus automatic handling
     for any other listing whose first stay is in the current year
   * newest "*guesty_reviews.xlsx" is picked up automatically
+  * occupancy leaves out blocked nights (owner stays, maintenance) from the
+    Wheelhouse calendar, the same basis as Wheelhouse's occupancy_adjusted
 """
 import argparse
 import re
@@ -85,9 +87,8 @@ FORMAT_RULES = {
 # ---------------------------------------------------------------------------
 # Listing groups (a listing can be in several, "|"-joined): Elektra / Yacinde by name,
 # OSBR / Beachwood / Microsoft / Remote by the first word of Property_Cohost "Set"
-# (Remote also takes the Hawaii market), plus one group per city in GROUP_CITIES.
+# (Remote also takes the Hawaii market). City groups removed 2026-10-11 at the user's request.
 SET_GROUPS = {"osbr": "OSBR", "remote": "Remote", "beachwood": "Beachwood", "microsoft": "Microsoft"}
-GROUP_CITIES = ["Seattle", "Bellevue", "Kirkland", "Redmond"]
 
 
 def listing_groups(r):
@@ -98,8 +99,6 @@ def listing_groups(r):
         g.append(SET_GROUPS[w])
     if r["Market"] == "Hawaii" and "Remote" not in g:
         g.append("Remote")
-    if r["City"] in GROUP_CITIES:
-        g.append(r["City"])
     return "|".join(g)
 
 
@@ -110,9 +109,56 @@ def bedroom_bucket(b):
     return "4+" if b >= 4 else str(b)
 
 
+# ---------------------------------------------------------------------------
+# Blocked nights (Wheelhouse calendar) -> occupancy denominator
+# ---------------------------------------------------------------------------
+WH_CAL_RENAME = {"Seattle 906": "Seattle 906 Lower"}   # same rename as the bookings
+
+
+def load_blocked() -> pd.DataFrame:
+    """Blocked nights (Listing, date) from the latest Wheelhouse calendar pull:
+    unavailable and not booked (owner stays, maintenance, pre-launch). Empty when the
+    calendar hasn't been pulled; occupancy then falls back to every calendar night.
+    Listings not in Wheelhouse (leases, a few short-term units) have no rows."""
+    con = sqlite3.connect(WHEELHOUSE_DB)
+    try:
+        b = pd.read_sql_query("""
+            SELECT name AS Listing, stay_date FROM listing_calendar
+            WHERE state = 'blocked'
+              AND snapshot_date = (SELECT MAX(snapshot_date) FROM listing_calendar)""", con)
+    except Exception:   # table not created yet
+        b = pd.DataFrame(columns=["Listing", "stay_date"])
+    con.close()
+    b["Listing"] = b["Listing"].replace(WH_CAL_RENAME)
+    b["date"] = pd.to_datetime(b["stay_date"])
+    return b[["Listing", "date"]]
+
+
+def unpaid_blocked(blocked: pd.DataFrame, daily: pd.DataFrame) -> pd.DataFrame:
+    """Blocked nights that are not one of our paid nights. A paid night Wheelhouse
+    shows as blocked (e.g. a unit's stay on its whole-house parent) stays in the
+    denominator, so occupancy can't exceed 100%."""
+    paid = daily[["Listing", "date"]].drop_duplicates().assign(_paid=True)
+    m = blocked.merge(paid, on=["Listing", "date"], how="left")
+    return m.loc[m["_paid"].isna(), ["Listing", "date"]]
+
+
+def apply_blocked(occ: pd.DataFrame, blk: pd.DataFrame) -> pd.DataFrame:
+    """Add blocked / avail (nights in the month minus blocked) to a Listing x
+    yearmonth occupancy frame and recompute OccRt = occdays / avail."""
+    bm = (blk.assign(yearmonth=blk["date"].dt.strftime("%Y-%m"))
+             .groupby(["Listing", "yearmonth"]).size().rename("blocked").reset_index())
+    occ = occ.drop(columns=["blocked", "avail"], errors="ignore").merge(bm, on=["Listing", "yearmonth"], how="left")
+    occ["blocked"] = occ["blocked"].fillna(0)
+    occ["avail"] = occ["yearmonth"].apply(days_in_month_from_yearmonth) - occ["blocked"]
+    occ["OccRt"] = occ["occdays"] / occ["avail"].where(occ["avail"] > 0)
+    return occ
+
+
 def load_market(snapshot: str | None) -> tuple[pd.DataFrame, str]:
     """Monthly occupancy_adjusted + adr_w_fees per (Market, bedrooms):
-    Occ_All/Occ_HP (fractions, 0.43 = 43%) and ADR_All/ADR_HP ($, incl. fees).
+    Occ_All/Occ_HP (fractions, 0.43 = 43%) and ADR_All/ADR_HP ($, incl. fees --
+    the market series has no fee-free ADR, unlike comp sets and our listings).
     bedrooms '' = all sizes."""
     con = sqlite3.connect(WHEELHOUSE_DB)
     if snapshot is None:
@@ -167,9 +213,10 @@ def attach_market(listings: pd.DataFrame, market: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_sets(snapshot: str) -> pd.DataFrame:
-    """Listing -> Wheelhouse dynamic (comp) set monthly occupancy + ADR.
-    Wheelhouse listing names are the Guesty nicknames. A listing can be in
-    more than one set (one row per set)."""
+    """Listing -> Wheelhouse dynamic (comp) set monthly occupancy + ADR, plus the
+    nights booked / bookable and revenue that let a period be totalled the way
+    Wheelhouse does. Wheelhouse listing names are the Guesty nicknames. A listing
+    can be in more than one set (one row per set)."""
     con = sqlite3.connect(WHEELHOUSE_DB)
     df = pd.read_sql_query("""
         SELECT l.name AS Listing, d.name AS set_name, substr(a.period, 1, 7) AS yearmonth,
@@ -178,16 +225,19 @@ def load_sets(snapshot: str) -> pd.DataFrame:
         JOIN listings l ON l.listing_id = s.user_listing_id AND l.snapshot_date = s.snapshot_date
         JOIN dynamic_sets d ON d.set_id = s.set_id AND d.snapshot_date = s.snapshot_date
         JOIN dynamic_set_aggregated_metrics a ON a.set_id = s.set_id AND a.snapshot_date = s.snapshot_date
-        WHERE s.snapshot_date = ? AND a.metric IN ('occupancy_adjusted', 'adr', 'lead_time')""",
+        WHERE s.snapshot_date = ? AND a.metric IN ('occupancy_adjusted', 'adr', 'lead_time',
+                                                    'nights_booked', 'nights_bookable', 'revenue')""",
         con, params=(snapshot,))
     con.close()
     df["set_name"] = df["set_name"].str.strip()
     wide = df.pivot_table(index=["Listing", "set_name", "yearmonth"], columns="metric",
                           values="value", aggfunc="first").reset_index()
     wide.columns.name = None
-    if "lead_time" not in wide:
-        wide["lead_time"] = np.nan
-    return wide.rename(columns={"occupancy_adjusted": "Occ", "adr": "ADR", "lead_time": "Lead"})
+    for c in ("lead_time", "nights_booked", "nights_bookable", "revenue"):
+        if c not in wide:
+            wide[c] = np.nan
+    return wide.rename(columns={"occupancy_adjusted": "Occ", "adr": "ADR", "lead_time": "Lead",
+                                "nights_booked": "Booked", "nights_bookable": "Bookable", "revenue": "Rev"})
 
 
 def dashboard_tables(data, monthly, prop, market, snap, money_csv=None):
@@ -195,17 +245,17 @@ def dashboard_tables(data, monthly, prop, market, snap, money_csv=None):
     listing_monthly: our figures per Listing x yearmonth.
     benchmarks: per Listing x yearmonth x benchmark (comp set / market high
     performers / whole market, both at the listing's bedroom size)."""
-    # ADR incl. cleaning, allocated to stay nights (comparable to Wheelhouse w_fees)
+    # ADR = nightly rate (accommodation fare, no cleaning fee) per stay night -- the
+    # basis Wheelhouse shows for listings and comp sets (changed 2026-10-13)
     s = data[data["Term"] == "STR"][["Listing", "checkin_date", "checkout_date", "nights",
                                      "accommodation_fare", "cleaning_fee"]].copy()
     s = s[(s["nights"] > 0) & s["checkout_date"].notna()]
-    s["per_night"] = (pd.to_numeric(s["accommodation_fare"], errors="coerce").fillna(0)
-                      + pd.to_numeric(s["cleaning_fee"], errors="coerce").fillna(0)) / s["nights"]
+    s["per_night"] = pd.to_numeric(s["accommodation_fare"], errors="coerce").fillna(0) / s["nights"]
     s["date"] = [pd.date_range(a, b - pd.Timedelta(days=1)) for a, b in
                  zip(pd.to_datetime(s["checkin_date"]), pd.to_datetime(s["checkout_date"]))]
     s = s.explode("date").dropna(subset=["date"])
     s["yearmonth"] = pd.to_datetime(s["date"]).dt.strftime("%Y-%m")
-    adr_fees = s.groupby(["Listing", "yearmonth"], as_index=False).agg(ADR_w_fees=("per_night", "mean"))
+    adr_fees = s.groupby(["Listing", "yearmonth"], as_index=False).agg(ADR_nightly=("per_night", "mean"))
 
     # revenue in the month: each booking's revenue split evenly over its nights, so a
     # stay that crosses a month end counts in both months (Revenue puts short-term
@@ -233,16 +283,16 @@ def dashboard_tables(data, monthly, prop, market, snap, money_csv=None):
         LeadTime=("lead_time", "mean"), Bookings=("lead_time", "size"))
 
     lm = (monthly[["Listing", "yearmonth", "Year", "Month", "Revenue", "Revenue_occ", "occdays",
-                   "OccRt", "ADR", "Payout"]]
+                   "OccRt", "blocked", "avail", "ADR", "Payout"]]
           .merge(adr_fees, on=["Listing", "yearmonth"], how="left")
           .merge(lead, on=["Listing", "yearmonth"], how="left")
           .merge(rev_month, on=["Listing", "yearmonth"], how="left")
           .merge(mix, on=["Listing", "yearmonth"], how="left")
-          .merge(prop[["Listing", "Property", "Type", "Status", "Market", "BEDROOMS", "City", "Set"]],
+          .merge(prop[["Listing", "Property", "Type", "Status", "Market", "BEDROOMS", "Set"]],
                  on="Listing", how="left"))
     lm["Bedrooms"] = lm["BEDROOMS"].map(bedroom_bucket)
     lm["Group"] = lm.apply(listing_groups, axis=1)
-    lm = lm.drop(columns=["Set", "City"])
+    lm = lm.drop(columns=["Set"])
     lm = safe_round(lm.drop(columns="BEDROOMS"))
 
     mk = attach_market(prop.loc[prop["Type"] == "STR"], market)
@@ -260,7 +310,18 @@ def dashboard_tables(data, monthly, prop, market, snap, money_csv=None):
     sets = load_sets(snap)
     bench.append(sets.assign(benchmark="Set: " + sets["set_name"], kind="set")
                      .drop(columns="set_name"))
-    bench = safe_round(pd.concat(bench, ignore_index=True), ndigits=4)
+    bench = pd.concat(bench, ignore_index=True)
+    # Market series have only monthly rates: weight them by days in the month so a
+    # period totals like the comp sets (sum booked / sum bookable; revenue / booked).
+    days = bench["yearmonth"].apply(days_in_month_from_yearmonth)
+    for c in ("Booked", "Bookable", "Rev"):
+        if c not in bench:
+            bench[c] = np.nan
+    miss = bench["Bookable"].isna() | (bench["Bookable"] <= 0)
+    bench.loc[miss, "Bookable"] = days[miss]
+    bench.loc[miss, "Booked"] = (bench["Occ"] * days)[miss]
+    bench.loc[miss, "Rev"] = (bench["ADR"] * bench["Occ"] * days)[miss]
+    bench = safe_round(bench, ndigits=4)
     return lm, bench
 
 
@@ -376,6 +437,10 @@ def build(asof: date, guesty_csv, market_snapshot=None):
     if unknown:
         print(f"  rent roll: WARNING not in Property_Cohost (no Type/Market): {unknown}")
     occupancy, daily = cal_occupancy(data)
+    blocked = load_blocked()
+    blk = unpaid_blocked(blocked, daily)
+    occupancy = apply_blocked(occupancy, blk)
+    print(f"  occupancy: {len(blk)} blocked nights left out ({blk['Listing'].nunique()} listings, Wheelhouse calendar)")
 
     # --- cell 4: owner payouts (paid month m covers revenue month m-1) ---
     owner_payout_last, OwnerPayout_last = build_owner_payout_2425()
@@ -389,7 +454,7 @@ def build(asof: date, guesty_csv, market_snapshot=None):
     monthly_STR = (data[data["Term"] == "STR"]
                    .groupby(["Listing", "yearmonth"], as_index=False)
                    .agg(Revenue=("total_revenue", "sum"))
-                   .merge(occupancy[["Listing", "yearmonth", "occdays", "OccRt", "Revenue_occ",
+                   .merge(occupancy[["Listing", "yearmonth", "occdays", "OccRt", "blocked", "avail", "Revenue_occ",
                                      "Revenue_occ_accom", "minADR", "maxADR", "avgADR", "medADR"]],
                           on=["Listing", "yearmonth"], how="outer"))
     monthly_STR["ADR"] = monthly_STR["Revenue_occ_accom"] / monthly_STR["occdays"]
@@ -403,6 +468,9 @@ def build(asof: date, guesty_csv, market_snapshot=None):
     monthly["Revenue"] = np.where(monthly["Revenue_defer"].isna(), monthly["Revenue"], monthly["Revenue_occ"])
     monthly["Month"] = monthly["yearmonth"].str[5:7]
     monthly["Year"] = monthly["yearmonth"].str[0:4]
+    dim = monthly["yearmonth"].dropna().apply(days_in_month_from_yearmonth)
+    monthly["blocked"] = monthly["blocked"].fillna(0)
+    monthly["avail"] = monthly["avail"].fillna(dim)   # leases / listings not in Wheelhouse
     monthly = monthly.merge(owner_payout[["Property", "yearmonth", "Payout"]],
                             left_on=["Listing", "yearmonth"], right_on=["Property", "yearmonth"], how="left")
     monthly = monthly.merge(prop[["Listing", "Type", "Status"]], on="Listing", how="outer")
@@ -438,7 +506,14 @@ def build(asof: date, guesty_csv, market_snapshot=None):
     yearly["firstbooking"] = pd.to_datetime(yearly["firstbooking"], errors="coerce")
     yearly["days_to_eoy"] = (pd.to_datetime({"year": yearly["firstbooking"].dt.year, "month": 12, "day": 31})
                              - yearly["firstbooking"]).dt.days + 1
-    yearly["OccRt"] = yearly["nights"] / yearly["days_to_eoy"]
+    # blocked nights from the first stay of the year to Dec 31 leave the denominator
+    yb = blk.assign(Year=blk["date"].dt.strftime("%Y")).merge(
+        yearly[["Listing", "Year", "firstbooking"]], on=["Listing", "Year"])
+    yb = yb[yb["date"] >= yb["firstbooking"]].groupby(["Listing", "Year"]).size().rename("blocked")
+    yearly = yearly.merge(yb.reset_index(), on=["Listing", "Year"], how="left")
+    yearly["blocked"] = yearly["blocked"].fillna(0)
+    yearly["OccRt"] = yearly["nights"] / (yearly["days_to_eoy"] - yearly["blocked"])
+    yearly = yearly.drop(columns="blocked")
     yearly = safe_round(yearly)
     metrics = ["Revenue", "Revenue_fiscal", "ADR", "OccRt"]
     cols = [f"{m}_{y}" for m in metrics for y in YEARS]
@@ -454,13 +529,15 @@ def build(asof: date, guesty_csv, market_snapshot=None):
         .merge(prop[["Listing", "Set", "Type", "Status"]], on="Listing", how="left")
     data_str = data_adr.loc[(data_adr["Status"] == "Active") & (data_adr["Type"] == "STR")
                             & (data_adr["nights"] <= 31)].copy()
-    occupancy_str, _ = cal_occupancy(data_str)
+    occupancy_str, daily_str = cal_occupancy(data_str)
+    occupancy_str = apply_blocked(occupancy_str, unpaid_blocked(blocked, daily_str))
     occ_valta = (occupancy_str.loc[occupancy_str["Year"].isin(YEARS),
-                                   ["Listing", "yearmonth", "Year", "Month", "occdays", "avgADR"]]
+                                   ["Listing", "yearmonth", "Year", "Month", "occdays", "avail", "avgADR"]]
                  .merge(prop[["Listing", "Market"]], on="Listing", how="left")
                  .groupby(["yearmonth", "Market"], as_index=False)
-                 .agg(listings=("Listing", "nunique"), avgocc=("occdays", "mean"), avgADR=("avgADR", "mean")))
-    occ_valta["avg_OccRt"] = occ_valta["avgocc"] / occ_valta["yearmonth"].apply(days_in_month_from_yearmonth)
+                 .agg(listings=("Listing", "nunique"), occd=("occdays", "sum"), avail=("avail", "sum"),
+                      avgADR=("avgADR", "mean")))
+    occ_valta["avg_OccRt"] = occ_valta["occd"] / occ_valta["avail"]
     occ_valta = safe_round(occ_valta).sort_values(["Market", "yearmonth"])
     occ_valta = occ_valta[["yearmonth", "Market", "avg_OccRt", "avgADR"]]
     occ_valta["Year"] = occ_valta["yearmonth"].str[0:4]
@@ -473,7 +550,7 @@ def build(asof: date, guesty_csv, market_snapshot=None):
     yearly_todate = (monthly.loc[~monthly["Month"].isin([f"{x:02d}" for x in months_excl])]
                      .groupby(["Listing", "Year"], as_index=False)
                      .agg(nights=("occdays", "sum"), Revenue=("Revenue", "sum"), ADR=("avgADR", "mean")))
-    yearly_todate["OccRt"] = yearly_todate["nights"] / yearly_todate["Year"].map(ytd_days)
+    yearly_todate["days"] = yearly_todate["Year"].map(ytd_days)
 
     # onboarding this year: denominator from the start date, not Jan 1
     first_ever = daily.groupby("Listing")["date"].min()
@@ -483,8 +560,19 @@ def build(asof: date, guesty_csv, market_snapshot=None):
     cur = yearly_todate["Year"] == CUR
     for listing, start in starts.items():
         idx = cur & (yearly_todate["Listing"] == listing)
-        days = (ytd_end - pd.Timestamp(start)).days + 1
-        yearly_todate.loc[idx, "OccRt"] = yearly_todate.loc[idx, "nights"] / days
+        yearly_todate.loc[idx, "days"] = (ytd_end - pd.Timestamp(start)).days + 1
+
+    # minus blocked nights inside the same window (Jan 1 or start .. end of the as-of month)
+    tb = blk.assign(Year=blk["date"].dt.strftime("%Y"))
+    tb = tb[tb["Year"].isin(YEARS)]
+    tb = tb[tb["date"] <= tb["Year"].map(lambda y: pd.Timestamp(int(y), today.month, monthrange(int(y), today.month)[1]))]
+    st = pd.to_datetime(tb["Listing"].map(starts))
+    tb = tb[~((tb["Year"] == CUR) & st.notna() & (tb["date"] < st))]
+    tb = tb.groupby(["Listing", "Year"]).size().rename("blocked").reset_index()
+    yearly_todate = yearly_todate.merge(tb, on=["Listing", "Year"], how="left")
+    yearly_todate["blocked"] = yearly_todate["blocked"].fillna(0)
+    yearly_todate["OccRt"] = yearly_todate["nights"] / (yearly_todate["days"] - yearly_todate["blocked"])
+    yearly_todate = yearly_todate.drop(columns=["days", "blocked"])
     yearly_todate = safe_round(yearly_todate)
     cols_new = [f"{m}_{y}" for m in ["Revenue", "ADR", "OccRt"] for y in YEARS]
     yearly_todate_tab = (yearly_todate[yearly_todate["Year"].isin(YEARS)]

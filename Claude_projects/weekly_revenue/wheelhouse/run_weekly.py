@@ -13,6 +13,8 @@ project folder:
   python -m wheelhouse.run_weekly --only listings      # /listings demo (auth smoke test)
   python -m wheelhouse.run_weekly --only report        # what the weekly revenue report reads:
                                                 #   set listings + set monthly metrics + market
+                                                #   + our listings' nightly calendar
+  python -m wheelhouse.run_weekly --only calendar      # just the nightly calendar
   python -m wheelhouse.run_weekly --snapshot-date 2026-07-20
   python -m wheelhouse.run_weekly --limit 3            # cap items per group (dev)
   python -m wheelhouse.run_weekly --no-export
@@ -27,6 +29,7 @@ from .download_listings import download_listings
 from .download_market_data import download_markets
 from .download_dynamic_sets import (download_dynamic_sets, collect_associated_listings,
                                     download_set_metrics, download_set_members)
+from .download_calendar import download_calendar
 from .export_csv import export_snapshot
 
 
@@ -34,7 +37,7 @@ def parse_args(argv=None):
     p = argparse.ArgumentParser(description="Download Wheelhouse market data & dynamic sets.")
     p.add_argument("--snapshot-date", default=date.today().isoformat(),
                    help="Snapshot date tag (YYYY-MM-DD). Default: today.")
-    p.add_argument("--only", choices=["listings", "market", "dynamic_sets", "report"],
+    p.add_argument("--only", choices=["listings", "market", "dynamic_sets", "report", "calendar"],
                    help="Run only one part of the pull.")
     p.add_argument("--limit", type=int, default=None,
                    help="Cap items per group (markets/sets) — for dev/testing.")
@@ -77,8 +80,16 @@ def main(argv=None) -> int:
         if args.only == "report":
             download_set_metrics(client, conn, cfg, snapshot_date, set_ids)
             download_set_members(client, conn, cfg, snapshot_date, set_ids)
+            if cfg.get("pull", {}).get("calendar", True):
+                print("Listing calendar...")
+                download_calendar(client, conn, cfg, snapshot_date)
         print("Market data...")
         download_markets(client, conn, cfg, snapshot_date, limit=args.limit)
+
+    if args.only == "calendar":
+        collect_associated_listings(client, conn, cfg, snapshot_date, limit=args.limit)
+        print("Listing calendar...")
+        download_calendar(client, conn, cfg, snapshot_date)
 
     if not args.no_export:
         print("Export...")

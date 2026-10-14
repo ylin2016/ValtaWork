@@ -52,8 +52,9 @@ cd /Users/ylin/ValtaWork/Claude_projects/weekly_revenue
 ```
 
 Steps: `sync_inputs.py` → `fetch_guesty.py` → `wheelhouse.run_weekly --only report`
-(set listings + set monthly metrics + set members + market data — `--only
-market` alone leaves the comp sets empty) → `build_report.py` → `build_artifact.py`.
+(set listings + set monthly metrics + set members + market data + our listings'
+nightly calendar — `--only market` alone leaves the comp sets empty) →
+`build_report.py` → `build_artifact.py`.
 The Wheelhouse pull takes ~3.5 min: calls run 6 in parallel at the ~55/min rate
 limit (~180 calls), and only the current year of market data is fetched — earlier
 months are copied from the previous snapshot (`market_incremental` in its config). `--skip-guesty` / `--skip-market` rebuild
@@ -80,9 +81,9 @@ the Valta and Trends views (not Owner). Read them with ArtifactData if needed.
 Valta | Trends | Owner views. Valta and Trends also filter by Bedrooms (0/1/2/3/4+ buckets)
 and Listing group (`build_report.listing_groups`; a listing can be in several): Elektra /
 Yacinde by listing name; OSBR / Remote / Beachwood / Microsoft by the first word of
-Property_Cohost `Set` (Remote also takes the Hawaii market); Seattle / Bellevue / Kirkland /
-Redmond = every listing whose Property_Cohost `City` is that city. (No separate location
-filter — removed 2026-10-07 at the user's request.) Valta = KPI tiles (vs last year, vs comp), flag legend
+Property_Cohost `Set` (Remote also takes the Hawaii market). (City groups Seattle /
+Bellevue / Kirkland / Redmond removed 2026-10-11, and the separate location filter
+2026-10-07, both at the user's request.) Valta = KPI tiles (vs last year, vs comp), flag legend
 + flagged list (rules in `FLAG_DEFAULT` / team settings: occupancy 10/5+ pts below
 market high performers at the SAME market + bedroom bucket, compared month by month
 over finished months (gap weighted by available nights; build_report drops the
@@ -144,6 +145,29 @@ The artifact can't load tiles itself (CSP), so **republish with the images**: `r
   - `ACCOMMODATION FARE` = `fareAccommodation` + MAR + EPF + AFWD items
     (excludes LOSD/GCD/AFD discounts and AFA). Pet fee = invoice items titled
     "Pet". Verified vs the 2026-09-22 UI export: only altered bookings differ.
+- **Occupancy basis (2026-10-13, user request)**: Valta occupancy = paid nights ÷
+  (nights − blocked nights), the same basis as Wheelhouse `occupancy_adjusted`.
+  Blocked nights come from `wheelhouse/download_calendar.py`
+  (`/listings/{guesty id}/price_calendar?channel=guesty`, 2024-01-01..Dec 31, one
+  call per listing, table `listing_calendar`, latest snapshot only): a night that is
+  unavailable and not booked = owner stay, maintenance, pre-launch. A blocked night
+  that is one of our paid nights stays in the denominator (`unpaid_blocked`), so
+  occupancy can't pass 100% from blocks. Applied to monthly, yearly, YTD and
+  Valta-by-market OccRt (`apply_blocked`); the dashboard gets `av` (available
+  nights) per listing-month. Listings not in Wheelhouse (leases; Bellevue 2243 /
+  321 / 701, Microsoft E205, Sammamish 5124-1, Seattle 906 Lower) count every night.
+  A mostly-blocked month can read 100% (e.g. Mercer 3627 Lower Jan 2026: 5 of 5
+  open nights sold). `--only calendar` re-pulls just the calendar (~2 min).
+- **ADR / RevPAR basis (2026-10-13, user request)**: dashboard ADR = accommodation fare ÷
+  nights (`ADR_nightly`, no cleaning fee), RevPAR = ADR × adjusted occupancy — the
+  basis Wheelhouse shows (Seattle 710 FY2026: Wheelhouse $355 / 52.6% / $187; ours
+  $369 / 52.6% / $194 — Guesty accommodation fare carries a few nightly add-ons).
+  Comp sets store monthly `nights_booked` / `nights_bookable` / `revenue`
+  (aggregated_metrics) and the page totals a period as Σbooked/Σbookable and
+  Σrevenue/Σbooked, which reproduces Wheelhouse's set highlights exactly (4B Seattle
+  N: 39.7% / $410 / $163). Market series have no fee-free ADR (time_series rejects
+  `adr`), so market benchmarks (whole market, HP, "Mkt" fallback) stay `adr_w_fees`,
+  day-weighted — the page notes say so.
 - **Wheelhouse**: `occupancy_adjusted` from the shared `wheelhouse.sqlite` `market_monthly`.
   Each listing is matched on **Market + bedroom bucket** (0/1/2/3/4+, from
   Property_Cohost `BEDROOMS`): `Occ_All` = whole market at that size, `Occ_HP` =

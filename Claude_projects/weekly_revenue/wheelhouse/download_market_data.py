@@ -83,7 +83,8 @@ def download_markets(client, conn, cfg, snapshot_date, limit=None):
         for seg in segments:
             s = start_date
             if incremental:
-                n = _carry_history(conn, snapshot_date, mid, seg, start_date[:7], cutoff[:7])
+                n = _carry_history(conn, snapshot_date, mid, seg, start_date[:7], cutoff[:7],
+                                   ((cfg.get("params") or {}).get("metrics") or {}).get("time_series") or ())
                 if n is not None:
                     carried += n
                     s = cutoff
@@ -231,17 +232,22 @@ def _ts_job(cfg, mid, seg, start_date, end_date):
     return path, params, f"market_ts:{mid}:{_seg_label(seg)}"
 
 
-def _carry_history(conn, snapshot_date, mid, seg, from_month, before_month):
+def _carry_history(conn, snapshot_date, mid, seg, from_month, before_month, metrics=()):
     """Copy months [from_month, before_month) for one market/segment from the newest
-    snapshot (<= snapshot_date) that has them into snapshot_date.
+    snapshot (<= snapshot_date) that has them -- every configured metric -- into
+    snapshot_date.
 
     Returns rows copied (0 when they're already in this snapshot), or None when no
-    snapshot has that history -> the caller fetches the full window instead."""
+    snapshot has that history (or a metric was added since) -> the caller fetches the
+    full window instead."""
     perf, bed = seg
+    need = len(set(metrics)) or 1
     row = conn.execute(
-        "SELECT MAX(snapshot_date) FROM market_monthly WHERE snapshot_date <= ? "
-        "AND market_id = ? AND performance = ? AND bedrooms = ? AND month >= ? AND month < ?",
-        (snapshot_date, mid, perf, bed, from_month, before_month)).fetchone()
+        "SELECT MAX(snapshot_date) FROM (SELECT snapshot_date FROM market_monthly "
+        "WHERE snapshot_date <= ? AND market_id = ? AND performance = ? AND bedrooms = ? "
+        "AND month >= ? AND month < ?" + (f" AND metric IN ({','.join('?' * len(set(metrics)))})" if metrics else "")
+        + " GROUP BY snapshot_date HAVING COUNT(DISTINCT metric) >= ?)",
+        (snapshot_date, mid, perf, bed, from_month, before_month, *sorted(set(metrics)), need)).fetchone()
     src = row[0] if row else None
     if src is None:
         return None
