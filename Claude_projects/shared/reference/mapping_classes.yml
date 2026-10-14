@@ -1149,6 +1149,7 @@
   owner_id: owner_seatac_12834
   owner_name: Seatac 12834 Owner
   owner_email: ''
+  pm_fee_rate: 0.16
 - qbo_class_id: '2100000000001491556'
   qbo_class_name: Listings:Seatac 12834 Lower
   property_id: seatac_12834_lower
@@ -1156,6 +1157,7 @@
   owner_id: owner_seatac_12834_lower
   owner_name: Seatac 12834 Lower Owner
   owner_email: ''
+  pm_fee_rate: 0.16
 - qbo_class_id: '2100000000001491557'
   qbo_class_name: Listings:Seatac 12834 Upper
   property_id: seatac_12834_upper
@@ -1163,6 +1165,7 @@
   owner_id: owner_seatac_12834_upper
   owner_name: Seatac 12834 Upper Owner
   owner_email: ''
+  pm_fee_rate: 0.16
 - qbo_class_id: '692581'
   qbo_class_name: Listings:Seattle 10057 Lower
   property_id: seattle_10057_lower
@@ -1646,3 +1649,38 @@
   owner_email: ''
   pm_fee_rate: 0.2
   term: STR
+- qbo_class_id: '1000000042'
+  qbo_class_name: Listings:Kirkland 10925
+  property_id: kirkland_10925
+  property_name: Kirkland 10925
+  owner_id: owner_kirkland_10925
+  pm_fee_rate: 0.06
+  term: STR
+- qbo_class_id: '1000000043'
+  qbo_class_name: Listings:Kirkland 10925:Kirkland 10925 Main
+  property_id: kirkland_10925_main
+  property_name: Kirkland 10925 Main
+  owner_id: owner_kirkland_10925
+  pm_fee_rate: 0.06
+  term: STR
+- qbo_class_id: '1000000044'
+  qbo_class_name: Listings:Kirkland 10925:Kirkland 10925 Lower
+  property_id: kirkland_10925_lower
+  property_name: Kirkland 10925 Lower
+  owner_id: owner_kirkland_10925
+  pm_fee_rate: 0.06
+  term: LTR
+- qbo_class_id: '1000000045'
+  qbo_class_name: Listings:Kirkland 10925:Kirkland 10925 ADU
+  property_id: kirkland_10925_adu
+  property_name: Kirkland 10925 ADU
+  owner_id: owner_kirkland_10925
+  pm_fee_rate: 0.06
+  term: STR
+- qbo_class_id: '1000000041'
+  qbo_class_name: Yacinde HOA
+  property_id: yacinde_hoa
+  property_name: Yacinde HOA
+  owner_id: owner_yacinde_hoa
+  owner_name: Yacinde HOA
+  pm_fee_rate: 0.0
