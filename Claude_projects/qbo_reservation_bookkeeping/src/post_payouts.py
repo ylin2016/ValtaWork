@@ -67,8 +67,10 @@ class PayoutPoster(Poster):
     def _je(self, p) -> str:
         lines = []
         for l in p["lines"]:
+            loc = (self._need(self.res.department(l["location"]), "Location", l["location"])
+                   if l.get("location") else self.trust)
             d = {"PostingType": l["posting"], "AccountRef": {"value": self.account(l["account"])},
-                 "DepartmentRef": {"value": self.trust}}
+                 "DepartmentRef": {"value": loc}}
             if l.get("class"):
                 d["ClassRef"] = {"value": self.klass(l["class"])}
             if l.get("customer_id"):

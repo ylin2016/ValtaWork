@@ -42,6 +42,10 @@ whose DocNumber now exists, an UPDATE/ZERO/VOID whose SyncToken moved since the 
 live post 2026-10-05: HMHTND2XXN (Invoice 120128, Bills 120129/120130) -- format verified.
     python -m src.payout_inbox [--dry-run]  # inputs/inbox/ Airbnb + Booking.com exports -> new,
                                             # verified payouts in inputs/airbnb|bookingcom + payout_ledger.csv
+                                            # --allow-noref 211.66: release an Airbnb payout whose export
+                                            # has no Reference code (stand-in id AB-<acct4>-<MMDD>-<amount>)
+    python -m src.void_txn --code X Payment:<id>=<amt> Invoice:<id>=<amt> [--confirm]   # one-off voids
+    python -m src.cleanup_clearing [--confirm]  # legacy clearing-account corrections (dated today)
 
 Both siblings call their package `src`; `src/bridge.py` loads them as `qbo_ops` / `osw`.
 
@@ -183,6 +187,14 @@ Fallback: download the file manually into `inputs/<channel>/`.
 | `stripe/Stripe platform payment <MMDD-MMDD>.csv` | Stripe payout list (po_ id, amount, arrival) | `inputs/stripe/` |
 | `stripe/<amount> Payout.csv` | ONE payout itemized: Charge / Refund / Adjustment (application-fee refund) rows with Amount, Fees (Stripe + Guesty 1%), Net; code in `Description` (metadata often blank). Net sums to the payout exactly | `inputs/stripe/` |
 | `bookingcom/` | Booking.com payout files (none yet) | `inputs/bookingcom/` |
+| Marriott folder `Marriott_Remittance_<date>.xlsx` | Marriott Payment Remittance Advice (ref no., one row per Marriott invoice `M<13 digits><suffix>`, negatives = clawbacks) | `inputs/marriott/` |
+
+**Marriott (owner, 2026-10-14):** two-step like the others -- Payment into `Payments Clearing -
+Marriott` (1688), JE `MAR-<ref>` clearing → Chase 9967 dated the next business day. VRP never
+booked Marriott; staff hand-entered Payments straight to the bank up to 10/07 (the builder skips
+those). Cutover: remittances after 9/28. Jon Lilja's hand booking was voided and rebooked
+(`src/void_txn.py`); his cancelled booking nets −$96.41 in 1688 (Marriott clawed back more than
+it paid) -- open with the owner.
 
 Ignore the `QBO transactions*.csv` files in that folder — owner said not to check them.
 An Airbnb payout's lines sum to its `Paid out` exactly.

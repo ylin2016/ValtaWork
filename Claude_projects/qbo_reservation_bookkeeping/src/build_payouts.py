@@ -12,6 +12,9 @@ Reads the verified payout files (src.payout_inbox output):
     inputs/bookingcom/Payout_Statement__*.csv           grouped by Statement Descriptor
     inputs/stripe/<amount> Payout.csv                   one payout each; po_ id from the
                                                         `Stripe platform payment*.csv` list
+    inputs/marriott/Marriott_Remittance_<date>.xlsx|csv one remittance advice each (owner,
+                                                        2026-10-14: two-step via Payments
+                                                        Clearing - Marriott, like the others)
 Hopper stays manual (owner, 2026-10-06) and is not built here.
 
 Line routing (VRP's / QBO_operations' format):
@@ -20,6 +23,7 @@ Line routing (VRP's / QBO_operations' format):
     resolution payout        Cr Resolutions (Airbnb pays the owner side directly)
     Stripe fees              Dr Fee - Stripe Processing, split Stripe / Guesty application fee
     application fee refund   Cr Fee - Stripe Processing
+    Marriott clawback        negative remittance line; same rule as a refund
 
 Writes review/payouts_plan_<stamp>.json (what the poster will post), payouts_<stamp>.csv
 (one row per payout) and payout_lines_<stamp>.csv (every Payment and JE line).
@@ -120,6 +124,61 @@ def stripe_files() -> list[dict]:
     return out
 
 
+def _sheet_rows(p) -> list[list[str]]:
+    if p.suffix == ".xlsx":
+        from openpyxl import load_workbook
+        ws = load_workbook(p, data_only=True).active
+        return [["" if c is None else str(c) for c in r] for r in ws.iter_rows(values_only=True)]
+    with p.open(newline="", encoding="utf-8-sig") as fh:
+        return list(csv.reader(fh))
+
+
+def _signed(s) -> float:
+    s = str(s or "").strip()
+    neg = s.startswith("(") and s.endswith(")")
+    v = money(s.strip("()")) if s not in ("", "-") else 0.0
+    return -v if neg else v
+
+
+def _next_business_day(d: str) -> str:
+    from datetime import date, timedelta
+    x = date.fromisoformat(d[:10]) + timedelta(days=1)
+    while x.weekday() >= 5:
+        x += timedelta(days=1)
+    return x.isoformat()
+
+
+def marriott_files() -> list[dict]:
+    """Marriott Payment Remittance Advice: key/value header, then one row per Marriott invoice
+    (`M<13 digits><suffix>`; negative = clawback, `...PTREFUND...` = pass-through tax refund).
+    The deposit lands the next business day -- staff dated their hand Payments that way."""
+    out = []
+    for p in sorted((INPUTS_DIR / "marriott").glob("Marriott_Remittance_*.*")):
+        if p.suffix not in (".csv", ".xlsx"):
+            continue
+        rows, head, items, in_table = _sheet_rows(p), {}, [], False
+        for r in rows:
+            k = (r[0] if r else "").strip()
+            if k == "Invoice ID":
+                in_table = True
+            elif in_table and k and k != "Total" and re.match(r"M\d{13}", k):
+                amt = _signed(r[4])
+                typ = "PT Refund" if "PTREFUND" in k else ("Reservation" if amt > 0 else "Clawback")
+                items.append({"type": typ, "marriott_id": k, "code": k[:14], "amount": amt,
+                              "details": k})
+            elif not in_table and k and len(r) > 1:
+                head[k] = r[1]
+        ref = head.get("Payment Reference Number", "").strip()
+        total = _signed(next((v for k, v in head.items() if k.startswith("Total Payment Amount")), ""))
+        amount = r2(sum(x["amount"] for x in items))
+        po = {"channel": "marriott", "id": f"MAR-{ref}" if ref else None, "amount": amount,
+              "date": _next_business_day(head["Payment Date"]) if head.get("Payment Date") else None,
+              "file": p.name, "rows": items, "bank_desc": f"Marriott remittance {ref}",
+              "check": None if abs(amount - total) < CENT else f"lines sum {amount:.2f} != advice {total:.2f}"}
+        out.append(po)
+    return out
+
+
 # --- planner ------------------------------------------------------------------------------
 class Planner:
     def __init__(self, payouts: list[dict]):
@@ -134,6 +193,19 @@ class Planner:
                 if bc:
                     self.guesty[str(bc)] = r
         self.app_fee = self._guesty_app_fees()
+        for po in payouts:                       # Marriott M<13 digits> -> Guesty HVBM-M<digits>-…
+            for r in po["rows"]:
+                if po["channel"] == "marriott":
+                    hit = [c for c in self.guesty if c.startswith(f"HVBM-{r['code']}-")]
+                    if len(hit) == 1:
+                        r["code"] = hit[0]
+                        continue
+                    # not in the Guesty pull (unchanged since): its live invoice in QBO
+                    inv = [i for i in self.qbo.query_all(
+                        f"SELECT * FROM Invoice WHERE DocNumber LIKE 'HVBM-{r['code']}%'", "Invoice")
+                        if "Voided" not in (i.get("PrivateNote") or "")]
+                    if len(inv) == 1:
+                        r["code"] = inv[0]["DocNumber"]
         # Per booking, across every payout in the run: reservation money and Airbnb
         # adjustments. When Guesty already netted an adjustment into the invoice
         # (invoice total == reservations + adjustments), the adjustment is the same money
@@ -175,11 +247,15 @@ class Planner:
                 self.invoices[inv["DocNumber"]] = inv
 
     def _load_existing(self):
+        # from a week before the earliest payout (Marriott remittances predate START)
+        from datetime import date, timedelta
+        d0 = min([START] + [po["date"] for po in self.payouts if po.get("date")])
+        since = (date.fromisoformat(d0) - timedelta(days=7)).isoformat()
         je_post = bridge._sub("qbo_ops", bridge.QBO_OPS_ROOT, "je.post")
-        self.bank_index = je_post.existing_payouts(self.qbo, start=START)
+        self.bank_index = je_post.existing_payouts(self.qbo, start=since)
         self.je_docs = {j.get("DocNumber") for j in self.qbo.query_all(
-            f"SELECT * FROM JournalEntry WHERE TxnDate >= '{START}'", "JournalEntry")}
-        self.payments = self.qbo.query_all(f"SELECT * FROM Payment WHERE TxnDate >= '{START}'", "Payment")
+            f"SELECT * FROM JournalEntry WHERE TxnDate >= '{since}'", "JournalEntry")}
+        self.payments = self.qbo.query_all(f"SELECT * FROM Payment WHERE TxnDate >= '{since}'", "Payment")
 
     # -- per invoice facts
     def facts(self, channel, code):
@@ -189,11 +265,30 @@ class Planner:
             return None, g
         ln = next((l for l in inv["Line"] if l.get("DetailType") == "SalesItemLineDetail"), None)
         span = (ln.get("Description") or "").split(" | ", 1)[1] if ln and " | " in (ln.get("Description") or "") else ""
+        klass = ((ln or {}).get("SalesItemLineDetail", {}).get("ClassRef") or {}).get("name")
+        if not klass and g:              # a voided invoice keeps no class: class + dates from Guesty
+            klass, span = self._guesty_class(g), self._guesty_span(g)
         return {"Id": inv["Id"], "doc": inv["DocNumber"], "balance": r2(inv["Balance"]),
                 "total": r2(inv["TotalAmt"]), "customer": inv["CustomerRef"]["name"],
-                "customer_id": inv["CustomerRef"]["value"],
-                "class": ((ln or {}).get("SalesItemLineDetail", {}).get("ClassRef") or {}).get("name"),
+                "customer_id": inv["CustomerRef"]["value"], "class": klass,
                 "span": span, "voided": "Voided" in (inv.get("PrivateNote") or "")}, g
+
+    def _guesty_class(self, g) -> str | None:
+        """Live class FQN as build_invoices resolves it: statement class map, else Listings:<nick>."""
+        if not hasattr(self, "_res"):
+            self._res, self._cmap = bridge.resolver(self.qbo), bridge.class_map()
+        nick = (g.get("listing") or {}).get("nickname") or ""
+        pid = bridge.to_property_id(nick)
+        for c in filter(None, [(self._cmap.get(pid) or {}).get("qbo_class_name"), f"Listings:{nick}"]):
+            fqn = self._res.klass_fqn(c)
+            if fqn:
+                return fqn
+        return None
+
+    @staticmethod
+    def _guesty_span(g) -> str:
+        ci, co = (g.get("checkIn") or "")[:10], (g.get("checkOut") or "")[:10]
+        return f"{ci} to {co} | {g.get('nightsCount', '')} nights" if ci else ""
 
     def netted(self, code: str, f: dict) -> bool:
         a = self.adj_sum.get(code, 0.0)
@@ -203,6 +298,20 @@ class Planner:
         plans, applied = [], defaultdict(float)
         for po in sorted(self.payouts, key=lambda x: (x["channel"], x["date"] or "", x["id"] or "")):
             plans.append(self._plan_one(po, applied))
+        # A cancelled Marriott booking's money and clawbacks wash in clearing; anything left
+        # over (Marriott took back more than it paid, or a remittance is missing) is flagged.
+        net, last = defaultdict(float), {}
+        for po, p in zip(sorted(self.payouts, key=lambda x: (x["channel"], x["date"] or "", x["id"] or "")), plans):
+            if po["channel"] == "marriott" and p["action"] != "SKIP":
+                for r in po["rows"]:
+                    f, g = self.facts("marriott", r["code"])
+                    if f and ((g or {}).get("status") == "canceled" or f["voided"]):
+                        net[r["code"]] += r["amount"]
+                        last[r["code"]] = p
+        for code, n in net.items():
+            if abs(n) > CENT:
+                last[code]["warn"].append(f"{code} is CANCELLED and its remittances net {n:+.2f} in "
+                                          f"Payments Clearing - Marriott -- not zero; ask Marriott / decide")
         return plans
 
     def _plan_one(self, po, applied) -> dict:
@@ -211,7 +320,9 @@ class Planner:
              "payments": [], "lines": [], "block": [], "warn": [], "action": "CREATE"}
         if not po["id"] or not po["date"]:
             p["block"].append("no payout id/date (Stripe file not in the payout list?)")
-        if po["date"] and po["date"] < START:
+        if po.get("check"):
+            p["block"].append(f"remittance does not add up: {po['check']}")
+        if po["date"] and po["date"] < START and ch != "marriott":     # Marriott was never VRP's
             p["action"] = "SKIP"
             p["warn"].append(f"before {START} (VRP era)")
             return p
@@ -222,19 +333,45 @@ class Planner:
             hit = self.bank_index.get((po["date"], po["amount"]))
             p["warn"].append(f"already booked in QBO ({hit[0] if hit else doc})")
             return p
+        hand = self._hand_recorded(po)
+        if hand:
+            p["action"] = "SKIP"
+            p["warn"].append(f"already recorded by hand from the bank feed ({hand}) -- not booked again")
+            return p
         clearing = PCFG["clearing"][ch]
         pay_by_code = defaultdict(float)
 
-        def line(acct, amt, desc, f=None, cls=None):
+        def line(acct, amt, desc, f=None, cls=None, location=None):
             # amt > 0 = credit, < 0 = debit (the payout's sign convention)
             p["lines"].append({"account": acct, "posting": "Credit" if amt >= 0 else "Debit",
                                "amount": r2(abs(amt)), "description": desc,
                                "customer": (f or {}).get("customer"),
                                "customer_id": (f or {}).get("customer_id"),
-                               "class": cls if cls is not None else (f or {}).get("class")})
+                               "class": cls if cls is not None else (f or {}).get("class"),
+                               "location": location})
 
         for r in po["rows"]:
             typ, code, amt = r["type"], r.get("code") or "", r["amount"]
+            if ch == "stripe" and typ == "Adjustment" and r["details"].startswith("Chargeback"):
+                # Chargeback withdrawal / reversal: the disputed money leaves or comes back
+                # through clearing, on the reservation it was charged for -- as the 2026-08
+                # withdrawals were booked (JE 116571). Old charges are found by the line that
+                # booked their withdrawal.
+                m = re.search(r"(ch_\w+)", r["details"])
+                f = self._facts_for_charge(m.group(1)) if m else None
+                if not f and m:
+                    f = self._facts_from_withdrawal(m.group(1))
+                if not f:
+                    p["block"].append(f"{r['details']} {amt:.2f}: cannot find its reservation -- ask")
+                    continue
+                line(clearing, amt, f"{r['details']} | {self._tail(ch, f)}", f)
+                continue
+            if ch == "stripe" and typ == "Stripe Fee":
+                # Account-level fees (dispute counter fees, refunded when the dispute is won):
+                # Legal and Professional Fees, company class/location, no customer (JE 116571).
+                line(PCFG["dispute_fee"], amt, r["details"], None, PCFG["company_class"],
+                     PCFG["company_location"])
+                continue
             if ch == "stripe" and typ == "Adjustment":
                 m = re.search(r"(ch_\w+)", r["details"])
                 src = next((x for x in po["rows"] if m and x.get("id") == m.group(1)), None)
@@ -264,12 +401,26 @@ class Planner:
                 line(clearing, amt, f"{typ} | airbnb | {f['span']}" + (f" | {r['details']}" if r["details"] else ""), f)
                 if not cancelled:
                     pay_by_code[code] += amt
-            elif ch == "airbnb" and typ in ("Adjustment", "Resolution Payout", "Resolution Adjustment"):
-                acct = (clearing if typ == "Adjustment" and (cancelled or self.netted(code, f))
-                        else PCFG["resolutions"])
+            elif ch == "airbnb" and typ == "Pass Through Tot Adjustment" and not cancelled:
+                p["block"].append(f"no rule for airbnb {typ!r} on a stay that happened ({code} {amt:.2f}) -- ask")
+                continue
+            elif ch == "airbnb" and typ in ("Adjustment", "Resolution Payout", "Resolution Adjustment",
+                                            "Pass Through Tot Adjustment"):
+                # A cancelled booking's clawbacks (incl. a mid-stay cancellation's resolution
+                # adjustment) wash in clearing: the invoice drops to the kept amount at month end,
+                # so charging Resolutions too would hit the owner twice (owner, 2026-10-14).
+                acct = (clearing if (typ == "Adjustment" and self.netted(code, f))
+                        or (cancelled and typ != "Resolution Payout") else PCFG["resolutions"])
                 line(acct, amt, f"{typ} | airbnb | {f['span']}" + (f" | {r['details']}" if r["details"] else ""), f)
             elif ch == "airbnb" and typ == "Misc Credit":
                 line(PCFG["commission_revenue"], amt, f"{typ} | airbnb | {r['details']}", f, PCFG["company_class"])
+            elif ch == "marriott" and typ == "Reservation":
+                line(clearing, amt, f"{r['details']} | marriott | {f['span']}", f)
+                if not cancelled:
+                    pay_by_code[code] += amt
+            elif ch == "marriott" and typ in ("Clawback", "PT Refund"):
+                line(clearing if cancelled else PCFG["resolutions"], amt,
+                     f"{typ} {r['details']} | marriott | {f['span']}", f)
             elif ch == "bookingcom" and typ == "RESERVATION":
                 line(clearing, amt, f"RESERVATION | bookingcom | {f['span']}", f)
                 if not cancelled:
@@ -280,7 +431,7 @@ class Planner:
             else:
                 p["block"].append(f"no rule for {ch} row type {typ!r} ({code} {amt:.2f}) -- ask")
                 continue
-            if cancelled and typ in ("Charge", "Reservation", "RESERVATION"):
+            if cancelled and typ in ("Charge", "Reservation", "RESERVATION") and amt > 0:
                 p["warn"].append(f"{code} is CANCELLED: {amt:.2f} credited to clearing, no Payment "
                                  f"(its refund washes there); existing payments on the invoice need voiding")
 
@@ -326,10 +477,55 @@ class Planner:
         return p
 
     def _tail(self, ch, f) -> str:
-        src = {"stripe": "", "airbnb": "airbnb", "bookingcom": "bookingcom"}[ch]
+        src = {"stripe": "", "airbnb": "airbnb", "bookingcom": "bookingcom", "marriott": "marriott"}[ch]
         if ch == "stripe":
             src = (f["customer"] or "").split(" - ")[0]
         return f"{src} | {f['span']}"
+
+    def _hand_recorded(self, po) -> str | None:
+        """Staff record some payouts straight from the bank feed: a Payment of the whole payout
+        on the reservation's invoice, without our `External Payment ID` memo. When every
+        reservation row of the payout has such a Payment (same amount, within 5 days), the
+        payout is already in the books -- a JE would count the deposit twice."""
+        money = ("Reservation", "Pass Through Tot", "RESERVATION", "Charge")
+        res = [r for r in po["rows"] if r["type"] in money]
+        if not res or len(res) != len(po["rows"]) and po["channel"] != "stripe":
+            return None
+        by_code = defaultdict(float)                 # a reservation's money across its rows
+        for r in res:
+            by_code[r["code"]] += r["amount"]
+        d0 = datetime.fromisoformat(po["date"]).date()
+        ids = []
+        for code, amt in by_code.items():
+            f, _ = self.facts(po["channel"], code)
+            hit = f and next((x for x in self.payments
+                              if x["CustomerRef"]["value"] == f["customer_id"]
+                              and "External Payment ID" not in (x.get("PrivateNote") or "")
+                              and abs(float(x["TotalAmt"]) - amt) < CENT
+                              and abs((datetime.fromisoformat(x["TxnDate"]).date() - d0).days) <= 5), None)
+            if not hit:
+                return None
+            ids.append(f"Payment {hit['Id']}")
+        return ", ".join(ids)
+
+    def _facts_from_withdrawal(self, chid: str):
+        """The reservation whose chargeback withdrawal of `chid` is already booked in QBO."""
+        if not hasattr(self, "_po_jes"):
+            self._po_jes = self.qbo.query_all("SELECT * FROM JournalEntry WHERE TxnDate >= '2025-01-01' "
+                                              "AND DocNumber LIKE 'po_%'", "JournalEntry")
+        for j in self._po_jes:
+            for l in j["Line"]:
+                if f"withdrawal for {chid}" in (l.get("Description") or ""):
+                    ent = (l["JournalEntryLineDetail"].get("Entity") or {}).get("EntityRef") or {}
+                    code = ent.get("name", "").rsplit(" - ", 1)[-1]
+                    if code and code not in self.invoices:      # not in this run's payout files
+                        for inv in self.qbo.query_all(
+                                f"SELECT * FROM Invoice WHERE DocNumber = '{esc(code[:21])}'", "Invoice"):
+                            self.invoices[inv["DocNumber"]] = inv
+                    f, _ = self.facts("stripe", code)
+                    if f:
+                        return f
+        return None
 
     def _facts_for_charge(self, chid: str):
         for r in self.guesty.values():
@@ -370,7 +566,7 @@ def write(plans: list[dict], stamp: str) -> None:
 
 
 def main():
-    payouts = airbnb_files() + booking_files() + stripe_files()
+    payouts = airbnb_files() + booking_files() + stripe_files() + marriott_files()
     plans = Planner(payouts).plan()
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     write(plans, stamp)
