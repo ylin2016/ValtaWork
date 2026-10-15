@@ -46,6 +46,11 @@ live post 2026-10-05: HMHTND2XXN (Invoice 120128, Bills 120129/120130) -- format
                                             # has no Reference code (stand-in id AB-<acct4>-<MMDD>-<amount>)
     python -m src.void_txn --code X Payment:<id>=<amt> Invoice:<id>=<amt> [--confirm]   # one-off voids
     python -m src.cleanup_clearing [--confirm]  # legacy clearing-account corrections (dated today)
+    python -m src.fix_owner_paid_airbnb --date 2026-10-31 [--confirm]  # Elektra 1004/1108/1115 owner-paid
+                                            # Airbnb: month-end MCR journal (Dr Other Owner Expenses / Cr Airbnb
+                                            # clearing, full payout) + payment per stay; earlier months corrected by
+                                            # MCRADJ adjustments in the open month (SOP Part E)
+    python -m src.fix_cl_vendor [--confirm]     # one-off: Elektra _CL rebills -> vendor Valta Realty
 
 Both siblings call their package `src`; `src/bridge.py` loads them as `qbo_ops` / `osw`.
 
