@@ -394,6 +394,23 @@ class Fixer(Poster):
         return f"BILLPAY {b['bill_doc']} {amt:.2f} applied, Id {r['Id']}"
 
 
+def held_cleaning(on: str) -> list[dict]:
+    """Backlog stays whose invoice is paid into Airbnb clearing but whose cleaning fee was never charged
+    to the owner: the fee sits in clearing until the owner decides (Valta absorbs or owner charged).
+    A later journal line tagged to the stay that credits clearing clears it from this list."""
+    plan = Fixer(False).build_backlog(on)
+    rows = []
+    for r in sorted(plan["res"].values(), key=lambda r: r["checkin"]):
+        held = round(r["total"] - r["mcr_clearing"], 2)
+        if r["balance"] or r["block"] or held < 0.005:
+            continue
+        rows.append({"invoice": r["code"], "guest": r["customer"]["name"], "listing": f"Elektra {r['unit']}",
+                     "check_in": r["checkin"], "invoice_total": r["total"], "open": held,
+                     "why": f"cleaning fee {r['clean']:.2f} the owner collected (owner-paid Airbnb) is in Airbnb "
+                            f"clearing, never charged: Valta absorbs or charge owner (SOP Part E)"})
+    return rows
+
+
 def write(plan, stamp):
     (REVIEW_DIR / f"owner_paid_plan_{stamp}.json").write_text(json.dumps(plan, indent=1))
     with (REVIEW_DIR / f"owner_paid_{stamp}.csv").open("w", newline="") as fh:
