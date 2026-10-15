@@ -3,6 +3,7 @@ corrections of earlier months. DRY RUN unless --confirm.
 
     python -m src.fix_owner_paid_airbnb                     # build: review/owner_paid_<stamp>.csv + plan json
     python -m src.fix_owner_paid_airbnb --date 2026-10-31   # month-end run once October has ended
+    python -m src.fix_owner_paid_airbnb --backlog --date 2026-10-14   # 12/2024-12/2025: payments only
     python -m src.fix_owner_paid_airbnb --confirm           # post the LATEST plan the owner reviewed
 
 These three listings take Airbnb bookings on the owner's own Airbnb account, so Airbnb pays the
@@ -56,6 +57,9 @@ CLEARING = "1626"                                   # Payments Clearing - Airbnb
 BANK = "800"                                        # Chase Trust Checking 9967 (a $0 bill payment needs one)
 CLEAN_ITEM = "Cleaning Fee (PM)"
 CORRECTION_INVOICES = {"HM9XZ4SCFZ_C": "HM9XZ4SCFZ"}  # $0 invoice that moved fare -> cleaning
+# backlog journal lines with no customer, by (DocNumber, amount) -> the stay they charge. The amount ties
+# to that stay's total - cleaning; the description names the wrong guest (checked 2026-10-14).
+UNTAGGED = {("20250331_1004MCR", 538.86): "HM3ZBWSDBY"}
 MON = {m: i + 1 for i, m in enumerate("Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec".split())}
 
 
@@ -225,6 +229,68 @@ class Fixer(Poster):
         return {"date": on, "res": res, "pays": pays, "adj": adj, "mcr": mcr, "billpays": billpays,
                 "cl_docs": [[e, d, o] for (e, d), o in cl_docs.items()]}
 
+    # -- backlog: 12/2024-12/2025 ----------------------------------------------------
+    def build_backlog(self, on: str, start="2024-11-01", end="2025-12-31") -> dict:
+        """Close the pre-2026 invoices with a Payment into Airbnb clearing dated `on` -- nothing else.
+
+        Those stays were charged to the owner (Dr Other Owner Expenses / Cr clearing, on MCR or other
+        journals) for the invoice total LESS the cleaning fee; the cleaning was never charged anywhere.
+        Owner, 2026-10-14: payments only -- the cleaning left in clearing is held for a later decision.
+        A stay is paid only when its customer-tagged charge lines tie to total - cleaning exactly and
+        no journal line mentions its code without being tagged to it (mislabelled lines -> block)."""
+        q = self.qbo
+        res = {}
+        for i in q.query_all(f"SELECT * FROM Invoice WHERE TxnDate >= '{start}' AND TxnDate <= '{end}'", "Invoice"):
+            sl = [l for l in i["Line"] if l.get("DetailType") == "SalesItemLineDetail"]
+            unit = next((UNITS[c] for c in {(l["SalesItemLineDetail"].get("ClassRef") or {}).get("name") for l in sl} if c in UNITS), None)
+            if not unit or not i["DocNumber"].startswith("HM") or not i["TotalAmt"]:
+                continue
+            clean = round(sum(l["Amount"] for l in sl if l["SalesItemLineDetail"]["ItemRef"]["name"].endswith(CLEAN_ITEM)), 2)
+            res[i["DocNumber"]] = {
+                "code": i["DocNumber"], "unit": unit, "checkin": i["TxnDate"], "total": i["TotalAmt"],
+                "balance": i["Balance"], "clean": clean, "customer": i["CustomerRef"], "invoice_id": i["Id"],
+                "mcr": [], "mcr_charge": 0.0, "mcr_clearing": 0.0, "cl": [], "block": []}
+        for j in q.query_all(f"SELECT * FROM JournalEntry WHERE TxnDate >= '{start}'", "JournalEntry"):
+            for l in j["Line"]:
+                d = l.get("JournalEntryLineDetail") or {}
+                if (d.get("ClassRef") or {}).get("name") not in UNITS:
+                    continue
+                tagged = code_of(((d.get("Entity") or {}).get("EntityRef") or {}).get("name") or "")
+                tagged = tagged or UNTAGGED.get((j["DocNumber"], l["Amount"]))
+                named = re.findall(r"\bHM[A-Z0-9]{8}\b", l.get("Description") or "")
+                for c in set(named) - {tagged} if not tagged else ():   # a tagged line: the customer wins
+                    msg = f"{j['DocNumber']} line {l['Amount']} names it but is tagged {tagged or 'no customer'}"
+                    if c in res and msg not in res[c]["block"]:
+                        res[c]["block"].append(msg)
+                if tagged not in res:
+                    continue
+                r = res[tagged]
+                if j["DocNumber"] not in r["mcr"]:
+                    r["mcr"].append(j["DocNumber"])
+                if d["PostingType"] == "Debit":
+                    r["mcr_charge"] = round(r["mcr_charge"] + l["Amount"], 2)
+                elif d["AccountRef"]["value"] == CLEARING:
+                    r["mcr_clearing"] = round(r["mcr_clearing"] + l["Amount"], 2)
+        pays = []
+        for r in sorted(res.values(), key=lambda r: (r["checkin"], r["unit"])):
+            want = round(r["total"] - r["clean"], 2)
+            if not r["balance"]:
+                r["note"] = "already closed"
+                continue
+            if abs(r["balance"] - r["total"]) > 0.005:
+                r["block"].append(f"partly paid (balance {r['balance']})")
+            if not r["mcr"]:
+                r["block"].append("no charge journal")
+            elif abs(r["mcr_charge"] - want) > 0.005 or abs(r["mcr_clearing"] - want) > 0.005:
+                r["block"].append(f"charged {r['mcr_charge']} / clearing {r['mcr_clearing']}, expected {want}")
+            if r["block"]:
+                continue
+            pays.append({"code": r["code"], "amount": round(r["balance"], 2), "customer": r["customer"]["value"],
+                         "invoice_id": r["invoice_id"]})
+            r.update(pay=round(r["balance"], 2), left=r["clean"], charged=r["mcr_charge"], refund=0.0,
+                     note="cleaning held in clearing (owner decision pending)")
+        return {"date": on, "res": res, "pays": pays, "adj": {}, "mcr": {}, "billpays": [], "cl_docs": []}
+
     # -- post -----------------------------------------------------------------------
     def post(self, plan) -> list[str]:
         out, on = [], plan["date"]
@@ -367,6 +433,7 @@ def summary(plan):
 def main():
     ap = argparse.ArgumentParser(description="Owner-paid Airbnb (Elektra) corrections; dry run unless --confirm.")
     ap.add_argument("--date", default=date.today().isoformat(), help="adjustment date (an unpublished month)")
+    ap.add_argument("--backlog", action="store_true", help="12/2024-12/2025 stays: payments only")
     ap.add_argument("--confirm", action="store_true")
     a = ap.parse_args()
     fx = Fixer(a.confirm)
@@ -375,7 +442,7 @@ def main():
         plan = json.loads(path.read_text())
         print(f"{path.name}: posting")
     else:
-        plan = fx.build(a.date)
+        plan = fx.build_backlog(a.date) if a.backlog else fx.build(a.date)
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         write(plan, stamp)
         print(f"-> review/owner_paid_{stamp}.csv, owner_paid_plan_{stamp}.json  [DRY RUN]")
