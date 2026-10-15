@@ -154,7 +154,11 @@ drift the moment a listing is renamed.
 - `qbo.post()` already unwraps the entity; after any crash mid-post, check QBO for what was
   written before re-running.
 - A refund on a stay that happened → `1A - Net Earnings:Resolutions`; a cancelled booking's
-  refund washes in clearing.
+  refund washes in clearing. **A clawback of an overpayment also stays in clearing** (owner,
+  2026-10-14): Booking.com labels every negative row `REFUND`, so `build_payouts.split_refund`
+  sends to clearing only what the channel paid beyond the invoice (Guesty's total), the rest to
+  Resolutions; money paid beyond the invoice is held in clearing for that clawback. VRP got this
+  wrong on Castano 6314669620 (added a fare line + charged Resolutions; fixed 10/14).
 - Account Ids live in `../QBO_operations/config/accounts.yml`; run
   `python -m src.verify_accounts` there before a posting session.
 - `PMS Clearing – A/P` (Id 1600) has an EN DASH.

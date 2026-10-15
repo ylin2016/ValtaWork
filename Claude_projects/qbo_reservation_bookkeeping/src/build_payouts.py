@@ -19,7 +19,11 @@ Hopper stays manual (owner, 2026-10-06) and is not built here.
 
 Line routing (VRP's / QBO_operations' format):
     reservation money        Cr clearing, Payment applies it to the invoice
-    refund / adjustment      stay happened -> Dr Resolutions; booking CANCELLED -> clearing
+    refund / adjustment      booking CANCELLED -> clearing; stay happened -> the part that only takes
+                             back money paid beyond the invoice (Guesty's total) -> clearing (a
+                             clawback, no owner effect), the rest -> Dr Resolutions (a real refund)
+    money beyond invoice     -> Resolutions up to earlier refunds charged there (a re-charge);
+                             the rest is held in clearing for the channel's clawback (warned)
     resolution payout        Cr Resolutions (Airbnb pays the owner side directly)
     Stripe fees              Dr Fee - Stripe Processing, split Stripe / Guesty application fee
     application fee refund   Cr Fee - Stripe Processing
@@ -219,6 +223,10 @@ class Planner:
                     self.adj_sum[r["code"]] += r["amount"]
         self._load_invoices()
         self._load_existing()
+        # Per (channel, customer), changes planned in this run: money held in clearing beyond the
+        # invoice (awaiting a clawback) and refunds charged to Resolutions. QBO's prior state is
+        # added by _prior().
+        self.held, self.res_refunded, self._prior_cache = defaultdict(float), defaultdict(float), {}
 
     def _guesty_app_fees(self) -> dict[str, float]:
         """Stripe charge id -> the Guesty application fee actually taken (from Guesty)."""
@@ -290,6 +298,54 @@ class Planner:
         ci, co = (g.get("checkIn") or "")[:10], (g.get("checkOut") or "")[:10]
         return f"{ci} to {co} | {g.get('nightsCount', '')} nights" if ci else ""
 
+    def _prior(self, ch: str, f: dict) -> tuple[float, float]:
+        """What QBO already holds for this reservation's customer, before this run:
+        (money in the channel clearing beyond what Payments applied -- an overpayment awaiting
+        its clawback, refunds charged to Resolutions not yet credited back)."""
+        key = (ch, f["customer_id"])
+        if key not in self._prior_cache:
+            if not hasattr(self, "_jes"):
+                self._jes = self.qbo.query_all("SELECT * FROM JournalEntry WHERE TxnDate >= '2026-01-01'",
+                                               "JournalEntry")
+                self._acct_ids = {}
+            clearing, res = PCFG["clearing"][ch], PCFG["resolutions"]
+            cr = rs = 0.0
+            for j in self._jes:
+                for l in j["Line"]:
+                    d = l.get("JournalEntryLineDetail") or {}
+                    if ((d.get("Entity") or {}).get("EntityRef") or {}).get("value") != f["customer_id"]:
+                        continue
+                    sign = 1 if d["PostingType"] == "Credit" else -1
+                    name = d["AccountRef"].get("name") or ""
+                    if name.endswith(clearing.split(":")[-1]):
+                        cr += sign * l["Amount"]
+                    elif name.endswith(res.split(":")[-1]):
+                        rs -= sign * l["Amount"]             # net debit = refunds charged
+            if clearing not in self._acct_ids:
+                a = self.qbo.query_all(f"SELECT * FROM Account WHERE Name = '{esc(clearing.split(':')[-1])}'", "Account")
+                self._acct_ids[clearing] = a[0]["Id"] if a else None
+            paid = sum(float(x["TotalAmt"]) for x in self.qbo.query_all(
+                f"SELECT * FROM Payment WHERE CustomerRef = '{f['customer_id']}'", "Payment")
+                if (x.get("DepositToAccountRef") or {}).get("value") == self._acct_ids[clearing])
+            self._prior_cache[key] = (max(r2(cr - paid), 0.0), max(r2(rs), 0.0))
+        return self._prior_cache[key]
+
+    def split_refund(self, ch, code, f, amt, pay_by_code, applied) -> tuple[float, float]:
+        """A negative row on a stay that happened -> (to clearing, to Resolutions), both positive.
+        Only money paid beyond the invoice can be clawed back without touching the owner: first
+        this payout's own excess over the open balance, then what earlier payouts left in clearing.
+        Booking.com labels a clawback and a guest refund the same (REFUND); this tells them apart
+        (Castano 6314669620: paid 3,395.77 on a 1,805.82 stay, 1,589.95 clawed back next day)."""
+        key, back = (ch, f["customer_id"]), r2(-amt)
+        room = max(r2(f["balance"] - applied[f["Id"]]), 0.0)
+        in_po = min(back, max(r2(pay_by_code[code] - room), 0.0))
+        pay_by_code[code] -= in_po                    # the Payment stays at the open balance
+        held = min(r2(back - in_po), max(r2(self._prior(ch, f)[0] + self.held[key]), 0.0))
+        self.held[key] -= held
+        to_res = r2(back - in_po - held)
+        self.res_refunded[key] += to_res
+        return r2(in_po + held), to_res
+
     def netted(self, code: str, f: dict) -> bool:
         a = self.adj_sum.get(code, 0.0)
         return a < -CENT and abs(self.res_sum.get(code, 0.0) + a - f["total"]) < 0.02
@@ -322,9 +378,11 @@ class Planner:
             p["block"].append("no payout id/date (Stripe file not in the payout list?)")
         if po.get("check"):
             p["block"].append(f"remittance does not add up: {po['check']}")
-        if po["date"] and po["date"] < START and ch != "marriott":     # Marriott was never VRP's
+        if po["date"] and po["date"] < START:
+            # VRP era -- and for Marriott (never VRP's) the hand-entered era: older remittances
+            # sit in inputs/marriott/ for review only and are already in the books (cutover 9/28)
             p["action"] = "SKIP"
-            p["warn"].append(f"before {START} (VRP era)")
+            p["warn"].append(f"before {START} ({'hand-entered' if ch == 'marriott' else 'VRP'} era)")
             return p
         doc = (po["id"] or "")[:21]
         p["DocNumber"], p["memo"] = doc, f"External Payment ID: {po['id']}"
@@ -349,6 +407,19 @@ class Planner:
                                "customer_id": (f or {}).get("customer_id"),
                                "class": cls if cls is not None else (f or {}).get("class"),
                                "location": location})
+
+        def refund(amt, desc, f, code, cancelled):
+            # cancelled -> washes in clearing; else clawback of an overpayment -> clearing,
+            # the rest (a real refund on a stay that happened) -> Resolutions
+            if cancelled:
+                return line(clearing, amt, desc, f)
+            claw, res = self.split_refund(ch, code, f, amt, pay_by_code, applied)
+            if claw:
+                line(clearing, -claw, desc + (" | clawback of an overpayment" if res else ""), f)
+                p["warn"].append(f"{code}: {claw:.2f} of the {-amt:.2f} refund takes back money paid "
+                                 f"beyond invoice {f['doc']} -> clearing, not Resolutions")
+            if res:
+                line(PCFG["resolutions"], -res, desc, f)
 
         for r in po["rows"]:
             typ, code, amt = r["type"], r.get("code") or "", r["amount"]
@@ -395,8 +466,7 @@ class Planner:
                 if not cancelled:
                     pay_by_code[code] += amt
             elif ch == "stripe" and typ == "Refund":
-                acct = clearing if cancelled else PCFG["resolutions"]
-                line(acct, amt, f"REFUND FOR CHARGE ({code}) | {tail}", f)
+                refund(amt, f"REFUND FOR CHARGE ({code}) | {tail}", f, code, cancelled)
             elif ch == "airbnb" and typ in ("Reservation", "Pass Through Tot"):
                 line(clearing, amt, f"{typ} | airbnb | {f['span']}" + (f" | {r['details']}" if r["details"] else ""), f)
                 if not cancelled:
@@ -419,15 +489,13 @@ class Planner:
                 if not cancelled:
                     pay_by_code[code] += amt
             elif ch == "marriott" and typ in ("Clawback", "PT Refund"):
-                line(clearing if cancelled else PCFG["resolutions"], amt,
-                     f"{typ} {r['details']} | marriott | {f['span']}", f)
+                refund(amt, f"{typ} {r['details']} | marriott | {f['span']}", f, code, cancelled)
             elif ch == "bookingcom" and typ == "RESERVATION":
                 line(clearing, amt, f"RESERVATION | bookingcom | {f['span']}", f)
                 if not cancelled:
                     pay_by_code[code] += amt
             elif ch == "bookingcom" and typ == "REFUND":
-                line(clearing if cancelled else PCFG["resolutions"], amt,
-                     f"REFUND | bookingcom | {f['span']}", f)
+                refund(amt, f"REFUND | bookingcom | {f['span']}", f, code, cancelled)
             else:
                 p["block"].append(f"no rule for {ch} row type {typ!r} ({code} {amt:.2f}) -- ask")
                 continue
@@ -459,12 +527,23 @@ class Planner:
                                      f"{excess:.2f} over it comes back out of clearing with its Airbnb "
                                      f"adjustment (already netted on the invoice)")
                 else:
-                    # Money beyond what the invoice asks for is the owner's (typically a
-                    # re-charge after a refund that was booked to Resolutions): move it there.
-                    line(clearing, -excess, f"Excess over invoice {f['doc']} -> Resolutions | {self._tail(ch, f)}", f)
-                    line(PCFG["resolutions"], excess, f"Received beyond invoice {f['doc']} | {self._tail(ch, f)}", f)
-                    p["warn"].append(f"{code}: {excess:.2f} received beyond invoice {f['doc']} (open "
-                                     f"{room:.2f}) -> credited to Resolutions")
+                    # Money beyond what the invoice asks for: a re-charge after a refund charged to
+                    # Resolutions goes back there; anything more is the channel overpaying -- held
+                    # in clearing for its clawback (Castano 6314669620), never the owner's income.
+                    key = (ch, f["customer_id"])
+                    back = min(excess, max(r2(self._prior(ch, f)[1] + self.res_refunded[key]), 0.0))
+                    if back:
+                        self.res_refunded[key] -= back
+                        line(clearing, -back, f"Excess over invoice {f['doc']} -> Resolutions | {self._tail(ch, f)}", f)
+                        line(PCFG["resolutions"], back, f"Received beyond invoice {f['doc']} | {self._tail(ch, f)}", f)
+                        p["warn"].append(f"{code}: {back:.2f} received beyond invoice {f['doc']} (open "
+                                         f"{room:.2f}) after a refund charged there -> credited to Resolutions")
+                    hold = r2(excess - back)
+                    if hold:
+                        self.held[key] += hold
+                        p["warn"].append(f"{code}: {hold:.2f} paid beyond invoice {f['doc']} (open {room:.2f}) "
+                                         f"held in clearing for the channel's clawback -- if none comes by "
+                                         f"month end, check the invoice against Guesty")
             if amt < CENT:
                 continue
             applied[f["Id"]] += amt
