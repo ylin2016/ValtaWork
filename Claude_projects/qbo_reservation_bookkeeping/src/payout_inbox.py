@@ -132,6 +132,31 @@ def airbnb_account(path: Path, payouts: list[dict], ledger: list[dict], cfg: dic
     return None
 
 
+def _raw_refs(account: str) -> dict:
+    """(date, amount) -> M-... from earlier full-history exports of this account in raw/, to fill
+    a blank Reference code (some manual exports leave the column empty)."""
+    out = {}
+    for f in sorted((AIRBNB_DIR / "raw").glob(f"*{account}*.csv")):
+        try:
+            pos, _ = airbnb_payouts(_read(f)[1])
+        except (KeyError, ValueError):
+            continue
+        for p in pos:
+            if p["ref"]:
+                out[(p["date"], p["amount"])] = p["ref"]
+    return out
+
+
+# Payout amounts the owner released without an Airbnb Reference code (--allow-noref). Some
+# exports leave the code blank for good; those payouts get a stand-in id built from the
+# account, date and amount (`AB-<acct4>-<MMDD>-<amount>`, <= 21 chars, the JE DocNumber).
+ALLOW_NOREF: set[str] = set()
+
+
+def _standin_ref(account: str, p) -> str:
+    return f"AB-{account[-4:]}-{p['date']:%m%d}-{p['amount']:.2f}"
+
+
 def process_airbnb(path, header, rows, ledger, cfg, start, dry) -> tuple[list[dict], list[str]]:
     msgs: list[str] = []
     payouts, orphans = airbnb_payouts(rows)
@@ -142,16 +167,35 @@ def process_airbnb(path, header, rows, ledger, cfg, start, dry) -> tuple[list[di
     done = {r["payout_id"] for r in ledger if r["channel"] == "airbnb" and r["account"] == account}
     done |= {f"{r['payout_date']}|{r['amount']}" for r in ledger
              if r["channel"] == "airbnb" and r["account"] == account}
-    fresh, bad = [], []
+    known = _raw_refs(account)
+    fresh, bad, noref = [], [], []
     for p in payouts:
-        if p["date"] < start or _airbnb_key(account, p) in done:
+        if not p["ref"]:
+            p["ref"] = known.get((p["date"], p["amount"]), "")
+        if not p["ref"] and f"{p['amount']:.2f}" in ALLOW_NOREF:
+            p["ref"] = _standin_ref(account, p)
+            msgs.append(f"  {p['date']} {p['amount']:,.2f}: no Reference code -- released with stand-in id {p['ref']}")
+        if p["date"] < start or _airbnb_key(account, p) in done or (
+                f"{p['date']}|{p['amount']}" in done):
             continue
-        (fresh if p["sum"] == p["amount"] else bad).append(p)
+        if p["sum"] != p["amount"]:
+            bad.append(p)
+        elif not p["ref"]:
+            # The payout id (M-...) is the JE DocNumber and the Payment memo. Without it the
+            # payout is held back -- NOT ledgered -- so a later export that carries the code
+            # still gets in.
+            noref.append(p)
+        else:
+            fresh.append(p)
     msgs.append(f"  Airbnb {account}: {len(payouts)} payouts in file, {len(fresh)} new"
                 + (f", {orphans} rows not yet paid out (ignored)" if orphans else ""))
     for p in bad:
         msgs.append(f"  ! {p['date']} {p['ref'] or '(no ref)'} paid {p['amount']} but rows sum "
                     f"{p['sum']} -- NOT written, check the export")
+    for p in noref:
+        msgs.append(f"  ! {p['date']} {p['amount']:,.2f}: no Reference code (M-...) in the export -- "
+                    f"held back; re-export with the Reference code column, or release it with "
+                    f"--allow-noref {p['amount']:.2f}")
     if not fresh:
         return [], msgs
     fresh.sort(key=lambda p: p["date"])
@@ -174,6 +218,7 @@ def process_airbnb(path, header, rows, ledger, cfg, start, dry) -> tuple[list[di
             w = csv.DictWriter(f, fieldnames=header)
             w.writeheader()
             for p in sorted(fresh, key=lambda p: p["date"], reverse=True):  # export order
+                p["rows"][0]["Reference code"] = p["ref"]   # may have come from raw/
                 w.writerows(p["rows"])
     return entries, msgs
 
@@ -246,9 +291,13 @@ def rebuild_ledger() -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--dry-run", action="store_true", help="report only; write and move nothing")
+    ap.add_argument("--allow-noref", action="append", default=[], metavar="AMOUNT",
+                    help="release this Airbnb payout (e.g. 211.66) although its export has no Reference "
+                         "code; it gets a stand-in id AB-<acct4>-<MMDD>-<amount> (repeatable)")
     ap.add_argument("--rebuild-ledger", action="store_true",
                     help="re-register the payout files already in inputs/airbnb + bookingcom")
     a = ap.parse_args(argv)
+    ALLOW_NOREF.update(f"{float(x):.2f}" for x in a.allow_noref)
     if a.rebuild_ledger:
         rebuild_ledger()
         return 0

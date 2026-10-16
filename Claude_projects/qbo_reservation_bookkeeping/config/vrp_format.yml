@@ -86,7 +86,10 @@ payouts:
     airbnb: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Airbnb"
     bookingcom: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Booking.com"
     stripe: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Stripe"
+    marriott: "Trust Assets other than Cash & A/R:Payments in transit to Trust:Payments Clearing - Marriott"
   resolutions: "Trust Liabilities:Owner Payables:1A - Net Earnings:Resolutions"
   stripe_fee: "Fee - Processing & Commission:Fee - Stripe Processing"
   commission_revenue: "Management Commissions Revenue"
   company_class: "Valta Realty"
+  company_location: "Valta Realty"
+  dispute_fee: "Legal and Professional Fees"   # Stripe "Card Dispute Countered Fee" (JE 116571)

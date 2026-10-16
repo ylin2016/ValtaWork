@@ -138,6 +138,12 @@ both = merge(both, Res_monthly,by=c("yearmonth","Listing"), all=T) %>%
            diff = coalesce(Times.disp, 0)-coalesce(Times.pay, 0))
 
 both %>% filter(yearmonth %in% '2026-08' & diff!=0)
+#2026-09
+
+#Issaquah 917: 9/17 1 dispatch, no payment - canceled
+#Seattle 3821: 9/12,9/14 2 dispatch, 1 payment - rescheduled
+# Mercer 2449: 9/4,9/18, 2 dispatch, 1payment - canceled one
+# Bellevue 2243: paid 7 times in august, sept should be 1
 
 #2026-08
 #Issaquah 1938: 2 dispatch, 1 payment-> reschedule

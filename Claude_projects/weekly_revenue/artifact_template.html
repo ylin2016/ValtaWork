@@ -174,17 +174,15 @@ svg text.lab { fill: var(--ink); font-weight: 600; }
 .mover .delta { text-align: right; }
 
 /* owner */
-.ohead { padding: 18px 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; }
+.ohead { padding: 18px 24px; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 18px 32px; }
 .ohead .nm { font-size: 17px; font-weight: 700; }
 .ohead .sub { font-size: 12px; color: var(--muted); }
-.ohead .osum { margin: 8px 0 0; font-size: 13px; line-height: 1.55; color: var(--ink); max-width: 75ch; }
-.ohead .osum b { font-weight: 700; }
-.rpanel { gap: 8px; }
-.rpanel p { margin: 0; font-size: 13px; line-height: 1.55; max-width: 90ch; }
-.ototals { display: flex; gap: 28px; flex-wrap: wrap; }
-.ototals > div { text-align: right; }
-.ototals .v { font-size: 22px; font-weight: 800; }
-.ototals .v.pay { color: var(--brand-text); }
+.rpanel { gap: 6px; }
+.uins { margin: 0; font-size: 13px; line-height: 1.5; color: var(--ink); background: var(--brand-soft); border-radius: 6px; padding: 7px 10px; }
+.uins .sep { color: var(--muted); margin: 0 4px; }
+.ocard .uins .sep { display: none; }
+.ocard .uins .b { display: block; }
+.rpanel p { margin: 0; font-size: 13px; line-height: 1.55; max-width: none; }
 .cmaps { display: grid; gap: 16px; }
 .cmap-card { padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .cmap-card h3 { margin: 0; font-size: 15px; font-weight: 700; }
@@ -264,7 +262,7 @@ svg text.lab { fill: var(--ink); font-weight: 600; }
   .rhead { display: none; }
   .prow { grid-template-columns: 1fr; row-gap: 10px; }
   .mlabel { display: block; }
-  .ototals > div { text-align: left; }
+  .ohead { grid-template-columns: 1fr; }
   .urow { grid-template-columns: 1fr; }
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -749,17 +747,29 @@ function marketTable(per) {
   return `<div class="card panel"><h2>Markets · ${per.label}</h2><div class="tablebox"><table class="mt"><thead><tr><th>Market</th><th>Listings</th><th>Revenue</th><th>vs Last</th><th>Occupancy</th><th>vs Last</th><th>HP occupancy</th><th>ADR</th><th>RevPAR</th><th>RevPAR vs Comp</th></tr></thead><tbody>${tr || '<tr><td colspan="10" class="na">No data for this period.</td></tr>'}</tbody></table></div>
     <div class="note">Occupancy = your listings' nights booked ÷ nights available. HP occupancy = Wheelhouse market high performers at each listing's bedroom size, weighted by your listings' available nights; it is Wheelhouse's adjusted occupancy. Both leave out blocked nights (owner stays, maintenance).</div></div>`;
 }
+// Each listing's active span: first to last month with a booking or lease (incl. booked
+// months ahead). A delisted listing's span ends when it left; a new one starts at launch.
+const span = rows.map(m => { const k = [...m.entries()].filter(([, r]) => r.rev || r.nd).map(([ym]) => ym); return k.length ? [Math.min(...k), Math.max(...k)] : null; });
+const live = (li, ym) => span[li] && ym >= span[li][0] && ym <= span[li][1];
 function topMovers(per) {
-  const rs = scope(per).filter(r => r.p && r.p.rev > 0).map(r => ({ r, d: r.a.rev - r.p.rev }));
+  // compare only months the listing was active in BOTH years
+  const rs = scope(per).map(r => {
+    const ms = per.cur.filter(ym => live(r.li, ym) && live(r.li, ym - 100));
+    if (!ms.length) return null;
+    const a = agg(r.li, ms), p = agg(r.li, ms.map(ym => ym - 100));
+    if (!a || !p || !(p.rev > 0)) return null;
+    return { r, d: a.rev - p.rev, n: ms.length, all: ms.length === per.cur.length };
+  }).filter(Boolean);
   const up = rs.filter(x => x.d > 0).sort((a, b) => b.d - a.d).slice(0, 6);
   const dn = rs.filter(x => x.d < 0).sort((a, b) => a.d - b.d).slice(0, 6);
   const max = Math.max(1, ...up.concat(dn).map(x => Math.abs(x.d)));
   const list = (xs, cls) => xs.length ? xs.map(x => `<div class="mover">
       <button type="button" class="link" data-li="${x.r.li}" title="${esc(x.r.n)}">${esc(x.r.n)}</button>
       ${fill(Math.abs(x.d), max, cls)}
-      <span class="num delta ${x.d >= 0 ? "up" : "down"}">${x.d >= 0 ? "+" : "−"}${usdK(Math.abs(x.d))}</span></div>`).join("") : '<span class="na">None this period.</span>';
+      <span class="num delta ${x.d >= 0 ? "up" : "down"}" title="${x.all ? "" : `Compared over ${x.n} active month${x.n === 1 ? "" : "s"}`}">${x.d >= 0 ? "+" : "−"}${usdK(Math.abs(x.d))}${x.all ? "" : "*"}</span></div>`).join("") : '<span class="na">None this period.</span>';
   return `<div class="two"><div class="card panel"><h2>Biggest gains vs last year</h2>${list(up, "this")}</div>
-    <div class="card panel"><h2>Biggest drops vs last year</h2>${list(dn, "last")}</div></div>`;
+    <div class="card panel"><h2>Biggest drops vs last year</h2>${list(dn, "last")}</div></div>
+    <div class="note">Gains and drops compare only the months each listing was active in both years (first to last booking), so a listing that was delisted or launched mid-period isn't counted for the months it was off. * = compared over part of the period; hover for how many months.</div>`;
 }
 // measure definitions shown at the top of Trends
 const DEFS = [
@@ -836,81 +846,73 @@ function paySum(prop, yms) {
   yms.forEach(ym => { if (m[ym] != null) { s += m[ym]; n++; } });
   return n ? s : null;
 }
-// Owner tab: "Why RevPAR matters" panel, one line per short-term unit.
+// Owner tab: one short box on what RevPAR is (short-term properties only).
 function revparPanel(rs) {
-  const us = rs.filter(r => r.t === "STR" && r.a.revpar > 0);
-  if (!us.length) return "";
-  const pc = (c, p) => Math.abs((c / p - 1) * 100).toFixed(1) + "%";
-  let firstComp = true;
-  const line = r => {
-    const parts = [`<b>${esc(r.n)}</b>: RevPAR of ${usd(r.a.revpar)}`];
-    const last = r.p && r.p.revpar > 0, cmp = r.c && r.c.revpar > 0;
-    if (last) parts.push(`is ${r.a.revpar >= r.p.revpar ? "up" : "down"} ${pc(r.a.revpar, r.p.revpar)} from last year`);
-    if (cmp) {
-      parts.push(`${last ? "and " : "is "}${pc(r.a.revpar, r.c.revpar)} ${r.a.revpar >= r.c.revpar ? "above" : "below"} ${firstComp ? "comparable properties" : "comps"}`);
-      firstComp = false;
-    }
-    let txt = parts.join(" ") + ".";
-    if (last && r.p.occ != null && r.p.adr) {
-      const dOcc = (r.a.occ - r.p.occ) * 100, dAdr = (r.a.adr / r.p.adr - 1) * 100, up = r.a.revpar >= r.p.revpar;
-      if (Math.abs(dOcc) < 2 && Math.abs(dAdr) >= 3) txt += ` Occupancy was flat, and ${dAdr > 0 ? "stronger" : "softer"} rates drove the ${up ? "gain" : "decline"}.`;
-      else if (Math.abs(dAdr) < 3 && Math.abs(dOcc) >= 2) txt += ` Rates held steady, and ${dOcc > 0 ? "higher" : "lower"} occupancy drove the ${up ? "gain" : "decline"}.`;
-    }
-    return txt;
-  };
-  const upL = us.filter(r => r.p && r.p.revpar > 0 && r.a.revpar >= r.p.revpar).length, nL = us.filter(r => r.p && r.p.revpar > 0).length;
-  const upC = us.filter(r => r.c && r.c.revpar > 0 && r.a.revpar >= r.c.revpar).length, nC = us.filter(r => r.c && r.c.revpar > 0).length;
-  const n = us.length, who = n === 1 ? "The unit is" : n === 2 ? "Both units are" : `All ${n} units are`;
-  let concl = "";
-  if (nL === n && nC === n && upL === n && upC === n) concl = `${who} outperforming last year and the local market.`;
-  else if (nL === n && nC === n && !upL && !upC) concl = `${who} behind last year and the local market.`;
-  else {
-    const bits = [];
-    if (nL) bits.push(`${upL} of ${nL} ${nL === 1 ? "unit" : "units"} ${upL === 1 ? "is" : "are"} ahead of last year`);
-    if (nC) bits.push(`${upC} of ${nC} ${upC === 1 ? "is" : "are"} above comparable properties`);
-    if (bits.length) concl = bits.join("; ") + ".";
-  }
-  let body;
-  if (n <= 6) body = us.map(line).map(t => `<p>${t}</p>`).join("");
-  else {
-    const g = us.filter(r => r.p && r.p.revpar > 0).sort((a, b) => b.a.revpar / b.p.revpar - a.a.revpar / a.p.revpar);
-    body = g.length >= 2 ? `<p>Strongest: ${line(g[0])}</p><p>Weakest: ${line(g[g.length - 1])}</p>` : us.slice(0, 2).map(line).map(t => `<p>${t}</p>`).join("");
-  }
+  if (!rs.some(r => r.t === "STR" && r.a.revpar > 0)) return "";
   return `<div class="card panel rpanel"><p><b>Why RevPAR matters:</b> RevPAR (revenue per available night) is the single best measure of performance. It combines nightly rate and occupancy, so it shows what the property earns across every night on the calendar, booked or not.</p>
-    ${body}${concl ? `<p>${concl}</p>` : ""}
-    <p class="note">How it's calculated: RevPAR = ADR × occupancy. ADR is the nightly rate without the cleaning fee; occupancy leaves out nights blocked on the calendar (owner stays, maintenance). Comparable properties are the listing's Wheelhouse comp set, totalled over the period as Wheelhouse does, so these figures line up with the Wheelhouse screen. Our nightly rate includes a few Guesty add-ons, so it can run a few percent above Wheelhouse's.</p></div>`;
+    <p class="note">RevPAR (revenue per available night) = ADR × occupancy · ADR: the nightly rate without the cleaning fee · Occupancy excludes blocked nights</p></div>`;
 }
-// Owner tab: a few plain-language sentences under the property name.
-function ownerSummary(prop, rs, rev, prev, pay, ppay, per) {
+// Owner tab: property-level metric tiles (all units on the statement combined).
+// Occupancy / ADR / RevPAR live on each unit's card below.
+function ownerKpis(rs, rev, prev, pay, ppay, payNote) {
   if (!rs.length) return "";
-  const chg = (c, p) => !p ? "" : ` (${c >= p ? "up" : "down"} ${Math.abs((c / p - 1) * 100).toFixed(1)}% vs ${S.year - 1})`;
-  const out = [`Revenue for ${per.label} was <b>${usd(rev)}</b>${chg(rev, prev)}`
-    + (pay != null ? `; owner payout <b>${usd(pay)}</b>${ppay != null ? chg(pay, ppay) : ""}.` : ".")];
-  const unit = r => {
-    const occ = r.a.occ ? `, occupancy ${pct(r.a.occ)}` + (r.c && r.c.occ != null ? ` vs comp ${pct(r.c.occ)}` : "") : "";
-    return `${esc(r.n)} ${usd(r.a.rev)}${r.p && r.p.rev ? ` (${r.a.rev >= r.p.rev ? "+" : "−"}${Math.abs((r.a.rev / r.p.rev - 1) * 100).toFixed(1)}%)` : ""}${occ}`;
-  };
-  if (rs.length <= 3) out.push(rs.map(unit).join("; ") + ".");
-  else {
-    const g = rs.filter(r => r.p && r.p.rev).sort((a, b) => b.a.rev / b.p.rev - a.a.rev / a.p.rev);
-    if (g.length >= 2) out.push(`Strongest growth: ${unit(g[0])}. Weakest: ${unit(g[g.length - 1])}.`);
-  }
-  // best finished month in the selected year
-  const lis = rs.map(r => r.li);
-  const mrev = ALLM.map(m => lis.reduce((t, li) => { const r = rows[li].get(S.year * 100 + m); return t + (r ? r.rev : 0); }, 0));
-  const done = ALLM.filter(m => S.year * 100 + m < NOW && mrev[m - 1] > 0);
-  if (done.length) { const b = done.reduce((a, m) => mrev[m - 1] > mrev[a - 1] ? m : a); out.push(`Best month: ${MON[b - 1]} (${usd(mrev[b - 1])}).`); }
-  // revenue already on the books for the rest of the current year
-  if (S.year === AY) {
-    const fut = ALLM.filter(m => AY * 100 + m >= NOW);
-    const on = fut.reduce((t, m) => t + mrev[m - 1], 0);
-    const ly = fut.reduce((t, m) => t + lis.reduce((u, li) => { const r = rows[li].get((AY - 1) * 100 + m); return u + (r ? r.rev : 0); }, 0), 0);
-    if (fut.length && (on || ly)) out.push(`On the books for ${MON[fut[0] - 1]}–Dec: ${usd(on)}${ly ? ` (those months earned ${usd(ly)} in ${AY - 1})` : ""}.`);
-  }
-  return `<p class="osum">${out.join(" ")}</p>`;
+  const nd = rs.reduce((t, r) => t + r.a.nd, 0), pnd = rs.reduce((t, r) => t + (r.p ? r.p.nd : 0), 0);
+  const tiles = [
+    kpi("Revenue", rev, rev, prev, null, null, false, usd),
+    `<div class="card kpi"><div class="lbl">Owner Payout</div><div class="v num">${pay == null ? "–" : usd(pay)}</div><div class="cmp">
+      ${pay == null ? "<div>No payouts recorded for this period</div>" : ppay == null ? `<div>${payNote || "–"}</div>` : `<div>vs Last: ${delta(pay, ppay)}</div>`}</div></div>`,
+  ];
+  // current year: revenue already booked for the months still ahead; otherwise nights sold
+  const fut = S.year === AY ? ALLM.filter(m => AY * 100 + m >= NOW) : [];
+  const sumRev = (y, ms) => ms.reduce((t, m) => t + rs.reduce((u, r) => { const x = rows[r.li].get(y * 100 + m); return u + (x ? x.rev : 0); }, 0), 0);
+  if (fut.length) {
+    const on = sumRev(AY, fut), ly = sumRev(AY - 1, fut);
+    tiles.push(`<div class="card kpi"><div class="lbl">On the Books · ${MON[fut[0] - 1]}–Dec</div><div class="v num">${usd(on)}</div><div class="cmp">
+      <div>Same months ${AY - 1}: ${usd(ly)}</div></div></div>`);
+  } else tiles.push(kpi("Nights Sold", nd, nd, pnd || null, null, null, false, v => v == null ? "–" : Math.round(v).toLocaleString("en-US")));
+  return `<div class="kpis">${tiles.join("")}</div>`;
 }
 // Owner tab: one listing's revenue by month, selected year vs the year before (left of its card).
-function listingRevenueChart(li, name) {
+// One-line takeaway above a unit's chart: RevPAR vs last year (±2% = flat) and
+// occupancy vs the comp set (points; within 1 pt = in line).
+function unitInsight(r) {
+  const bits = [];
+  if (r.t === "STR" && r.a.revpar > 0) {
+    if (r.p && r.p.revpar > 0) {
+      const d = r.a.revpar / r.p.revpar - 1;
+      bits.push(Math.abs(d) < 0.02 ? `RevPAR is flat at <b>${usd(r.a.revpar)}</b> vs last year`
+        : `RevPAR is <b>${usd(r.a.revpar)}</b>, ${d > 0 ? "up" : "down"} ${Math.abs(d * 100).toFixed(1)}% from last year`);
+    } else bits.push(`RevPAR is <b>${usd(r.a.revpar)}</b>`);
+  }
+  if (r.a.occ > 0) {
+    let o = `Occupancy: <b>${pct(r.a.occ)}</b>`;
+    if (r.c && r.c.occ != null) {
+      const pts = (r.a.occ - r.c.occ) * 100;
+      o += Math.abs(pts) < 1 ? ", in line with comps" : `, ${Math.abs(pts).toFixed(1)} pts ${pts > 0 ? "higher" : "lower"} than comps`;
+    }
+    bits.push(o);
+  }
+  return bits.length ? `<p class="uins">${bits.map(b => `<span class="b">${b}</span>`).join('<span class="sep"> | </span>')}</p>` : "";
+}
+// One-line takeaway above a unit's revenue chart: period revenue vs last year, best
+// finished month of the selected year, and what is already booked for the rest of it.
+function revenueInsight(r) {
+  const bits = [];
+  if (r.p && r.p.rev > 0) {
+    const d = r.a.rev / r.p.rev - 1;
+    bits.push(Math.abs(d) < 0.02 ? `Revenue is flat at <b>${usd(r.a.rev)}</b> vs last year`
+      : `Revenue is <b>${usd(r.a.rev)}</b>, ${d > 0 ? "up" : "down"} ${Math.abs(d * 100).toFixed(1)}% from last year`);
+  } else if (r.a.rev > 0) bits.push(`Revenue is <b>${usd(r.a.rev)}</b>`);
+  const mrev = ALLM.map(m => { const x = rows[r.li].get(S.year * 100 + m); return x ? x.rev : 0; });
+  const done = ALLM.filter(m => S.year * 100 + m < NOW && mrev[m - 1] > 0);
+  if (done.length) { const b = done.reduce((a, m) => mrev[m - 1] > mrev[a - 1] ? m : a); bits.push(`Best month: <b>${MON[b - 1]}</b> (${usd(mrev[b - 1])})`); }
+  if (S.year === AY) {
+    const fut = ALLM.filter(m => AY * 100 + m >= NOW), on = fut.reduce((t, m) => t + mrev[m - 1], 0);
+    if (fut.length && on > 0) bits.push(`On the books ${MON[fut[0] - 1]}–Dec: <b>${usd(on)}</b>`);
+  }
+  return bits.length ? `<p class="uins">${bits.join(' <span class="sep">|</span> ')}</p>` : "";
+}
+function listingRevenueChart(li, name, insight = "") {
   const ys = [S.year - 1, S.year], cols = ["var(--last)", "var(--brand)"];
   const lis = [li];
   const data = ys.map(y => ALLM.map(m => lis.reduce((t, li) => { const r = rows[li].get(y * 100 + m); return t + (r ? r.rev : 0); }, 0)));
@@ -931,7 +933,7 @@ function listingRevenueChart(li, name) {
     if (yi === 1) g += `<text class="lab" x="${x + bw / 2}" y="${sy(v) - 4}" text-anchor="middle" font-size="10">${usdK(v)}</text>`;
   }));
   MON.forEach((mo, m) => g += `<text x="${ml + m * gw + gw / 2}" y="${H - mb + 16}" text-anchor="middle" font-size="11">${mo}</text>`);
-  return `<div class="card panel"><h2>${esc(name)} · revenue by month</h2>
+  return `<div class="card panel"><h2>${esc(name)} · Revenue by Month</h2>${insight}
     <div class="keys"><span><i class="sw" style="background:var(--brand)"></i>${ys[1]}</span><span><i class="sw" style="background:var(--last)"></i>${ys[0]}</span><span><i class="sw" style="background:transparent;border:1.5px dashed var(--brand)"></i>On the books</span></div>
     <div class="chartbox"><svg viewBox="0 0 ${W} ${H}" style="min-width:520px" role="img" aria-label="Monthly revenue ${ys[1]} vs ${ys[0]} for ${esc(name)}">${g}</svg></div>
     <div class="note">Full year: ${ys[1]} ${usd(tot[1])}${ys[1] === AY ? " (incl. booked)" : ""} · ${ys[0]} ${usd(tot[0])}. Hover a bar for the change.</div></div>`;
@@ -1009,21 +1011,19 @@ function viewOwner(per) {
     const rpMax = Math.max(r.a.revpar, r.p ? r.p.revpar : 0, r.c ? r.c.revpar : 0) * 1.1 || 1;
     const rvMax = Math.max(r.a.rev, r.p ? r.p.rev : 0) * 1.05 || 1;
     const payBlock = single && pay != null ? oblock("Owner Payout", pay, ppay, null, Math.max(pay, ppay || 0) * 1.05, usd, false, "pay") : "";
-    const card = `<div class="card ocard"><h3><button type="button" class="link" data-li="${r.li}">${esc(r.n)}</button></h3>
+    const card = `<div class="card ocard"><h3><button type="button" class="link" data-li="${r.li}">${esc(r.n)} Performance</button></h3>${unitInsight(r)}
       <div class="ostats"><div><div class="lbl">Revenue</div><div class="v num">${usd(r.a.rev)}</div>${delta(r.a.rev, r.p ? r.p.rev : null)}</div>
         <div><div class="lbl">Nights Sold</div><div class="v num">${Math.round(r.a.nd)}</div><span class="note">ADR ${usd(r.a.adr)}</span></div></div>
       ${oblock("Occupancy", r.a.occ, r.p ? r.p.occ : null, r.c ? r.c.occ : null, 1, pct, true)}
       ${r.t === "STR" ? oblock("RevPAR", r.a.revpar, r.p ? r.p.revpar : null, r.c ? r.c.revpar : null, rpMax, usd) : ""}
       ${oblock("Total Revenue", r.a.rev, r.p ? r.p.rev : null, null, rvMax, usd)}
       ${payBlock}</div>`;
-    const chart = listingRevenueChart(r.li, r.n);
+    const chart = listingRevenueChart(r.li, r.n, revenueInsight(r));
     return chart ? `<div class="urow">${card}${chart}</div>` : `<div class="urow solo">${card}</div>`;
   }).join("");
   return `<div class="card ohead"><div><div class="lbl">Property performance</div><div class="nm">${esc(prop)}</div>
-      <div class="sub">${rs.length} ${rs.length === 1 ? "listing" : "listings"}${mkts ? " · " + esc(mkts) : ""} · ${per.label}</div>
-      ${ownerSummary(prop, rs, rev, prev, pay, ppay, per)}</div>
-    <div class="ototals"><div><div class="lbl">Combined Revenue</div><div class="v num">${usd(rev)}</div>${delta(rev, prev)}</div>
-      <div><div class="lbl">Combined Owner Payout</div><div class="v num pay">${pay == null ? "–" : usd(pay)}</div>${pay == null ? '<span class="note">No payouts recorded for this period</span>' : (ppay == null ? `<span class="note">${payNote}</span>` : delta(pay, ppay))}</div></div></div>
+      <div class="sub">${rs.length} ${rs.length === 1 ? "listing" : "listings"}${mkts ? " · " + esc(mkts) : ""} · ${per.label}</div></div></div>
+    ${ownerKpis(rs, rev, prev, pay, ppay, payNote)}
     ${revparPanel(rs)}
     <div class="urows">${cards ||'<div class="card ocard"><span class="na">No activity for this owner in this period.</span></div>'}</div>
     ${compMaps(rs)}
