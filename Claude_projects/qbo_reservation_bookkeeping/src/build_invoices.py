@@ -101,6 +101,11 @@ class Planner:
         self.cmap = bridge.class_map()
         self.invoices = {i["DocNumber"]: i for i in snap["invoices"]}
         self.bills = {b["DocNumber"]: b for b in snap["bills"]}
+        # Reservations whose fees are booked as one journal `<code>-FEES` instead of $0 fee Bills
+        # (test, owner 2026-10-15: Bellevue 1326 December). Never plan their fee Bills -- that
+        # would charge the owner twice. Read live, not from the snapshot.
+        self.fee_jes = {j["DocNumber"]: j for j in self.qbo.query_all(
+            "SELECT * FROM JournalEntry WHERE DocNumber LIKE '%-FEES'", "JournalEntry")}
         self.clean_hist = cleaning_history(snap["invoices"])
         live = [r for r in pull["results"] if r.get("status") in ("confirmed", "canceled")]
         self.bd = breakdown_by_code(live)
@@ -280,9 +285,33 @@ class Planner:
             if b["existing"] and b["existing"]["gross"] > CENT:
                 b["action"] = "ZERO"
                 p["bills"].append(b)
+        self._fees_as_je(p, cancelled=True)
         if p["block"] and p["action"] != "SKIP":
             p["action"] = "BLOCKED"
         return p
+
+    def _fees_as_je(self, p: dict, cancelled: bool = False) -> None:
+        """A reservation whose fees are a `<code>-FEES` journal gets no fee Bills. Compare what the
+        Bills would carry with the journal and warn when they differ: the journal is updated by hand."""
+        doc = f"{p['doc_code']}-FEES"[:21]
+        je = self.fee_jes.get(doc)
+        if not je:
+            return
+        planned = p["bills"]
+        p["bills"] = []
+        if cancelled:
+            p["warn"].append(f"fees are journal {doc}: the booking is cancelled -- reverse {doc} by hand")
+            return
+        want = sorted((ln["account"].split(":")[-1], round(ln["amount"], 2))
+                      for b in planned if b["action"] != "ZERO" for ln in b["lines"])
+        have = sorted((ln["JournalEntryLineDetail"]["AccountRef"]["name"].split(":")[-1],
+                       round(ln["Amount"] if ln["JournalEntryLineDetail"]["PostingType"] == "Debit" else -ln["Amount"], 2))
+                      for ln in je["Line"])
+        if want == have:
+            p["warn"].append(f"fees are journal {doc} (no fee Bills); it matches")
+        else:
+            p["warn"].append(f"fees are journal {doc} (no fee Bills) and it DIFFERS from the fees now: "
+                             f"journal {have} vs now {want} -- update {doc} by hand")
 
     def _finish(self, p: dict, existing: dict | None) -> dict:
         if p["block"]:
@@ -312,7 +341,8 @@ class Planner:
                 b["action"] = "UPDATE"
             keep.append(b)
         p["bills"] = keep
-        acts = {inv["action"]} | {b["action"] for b in keep}
+        self._fees_as_je(p)
+        acts = {inv["action"]} | {b["action"] for b in p["bills"]}
         p["action"] = "SAME" if acts == {"SAME"} else "CHANGE"
         return p
 
