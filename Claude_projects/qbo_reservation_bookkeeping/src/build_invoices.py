@@ -69,21 +69,26 @@ def breakdown_by_code(resvs: list[dict]) -> dict:
 
 
 def cleaning_history(invoices: list[dict]) -> dict[str, str]:
-    """Class -> the cleaning item VRP used on its latest invoice for that listing.
+    """Class -> the cleaning item VRP used most on its invoices for that listing.
 
     VRP's owner/PM cleaning split is per listing and does NOT follow the statement
     project's owner_pays_cleaning flag (it books every OSBR and Yacinde unit as Owner).
-    The books have run on VRP's split, so it is read from VRP's own invoices."""
-    latest: dict[str, tuple[str, str]] = {}
+    The books have run on VRP's split, so it is read from VRP's own invoices. The most
+    used item, not the latest: VRP booked Expedia / Trip.com cleaning as PM even on Owner
+    listings, so a latest-invoice rule flipped the next Airbnb stay on OSBR to PM too."""
+    from collections import Counter
+    count: dict[str, Counter] = {}
     for inv in invoices:
+        if inv.get("DocNumber", "").startswith(("EXP-", "CT-")):
+            continue
         for ln in inv.get("Line", []):
             d = ln.get("SalesItemLineDetail")
             if not d or "Cleaning Fee (" not in d["ItemRef"]["name"]:
                 continue
             k = (d.get("ClassRef") or {}).get("name")
-            if k and (k not in latest or inv["TxnDate"] > latest[k][0]):
-                latest[k] = (inv["TxnDate"], d["ItemRef"]["name"])
-    return {k: v[1] for k, v in latest.items()}
+            if k:
+                count.setdefault(k, Counter())[d["ItemRef"]["name"]] += 1
+    return {k: c.most_common(1)[0][0] for k, c in count.items()}
 
 
 # --- planning ---------------------------------------------------------------------------
@@ -154,7 +159,11 @@ class Planner:
 
         # -- invoice lines
         hist = self.clean_hist.get(klass or "")
-        if hist:
+        # owner, 2026-10-15: every OSBR and Yacinde cleaning fee is the owner's, any channel
+        osbr = (klass or "").startswith(("Listings:OSBR", "Listings:Yacinde"))
+        if osbr:
+            cleaning_owner = True
+        elif hist:
             cleaning_owner = hist.endswith("(Owner)")
         else:
             cleaning_owner = self.pmr.owner_pays_cleaning_at(self.cmap.get(pid) or {}, ci[:10])
@@ -165,7 +174,7 @@ class Planner:
             amt = r2(it.get("amount") or 0)
             if abs(amt) < CENT:
                 continue
-            item, why = item_for(src, it, cleaning_owner)
+            item, why = item_for(src, it, cleaning_owner, generic_follows=osbr)
             if item is None:
                 if why.startswith("skip:"):
                     skipped += amt

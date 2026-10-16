@@ -31,7 +31,8 @@ def is_homeaway(source: str) -> bool:
     return s.startswith(("vrbo", "homeaway"))
 
 
-def item_for(source: str, it: dict, cleaning_owner: bool) -> tuple[str | None, str]:
+def item_for(source: str, it: dict, cleaning_owner: bool,
+             generic_follows: bool = False) -> tuple[str | None, str]:
     """(item FQN or None, reason). None + reason 'skip:*' = deliberately not invoiced."""
     title = (it.get("title") or "").strip()
     t = title.lower()
@@ -60,15 +61,18 @@ def item_for(source: str, it: dict, cleaning_owner: bool) -> tuple[str | None, s
     if typ == "TAX" or nt in TAX_NTS or "tax" in t:
         # VRBO remits its own taxes; VRP booked those as PM income.
         return (ITEM["misc_pm"], "vrbo tax") if is_homeaway(src) else (ITEM["tax"], "tax")
-    # Only a real cleaning-fee line (CF) follows the listing's owner/PM split. A cleaning
-    # fee a channel sends as a generic fee -- Trip.com "Cleaning", Expedia "Service" --
-    # VRP always booked as PM income, OSBR included.
+    # A real cleaning-fee line (CF) follows the listing's owner/PM split. A cleaning fee a
+    # channel sends as a generic fee -- Trip.com "Cleaning", Expedia "Service" -- VRP booked
+    # as PM income; on OSBR and Yacinde it follows the split too (owner, 2026-10-15: their
+    # cleaning is the owner's, whatever the channel). `generic_follows` is set for those only.
+    owner_or_pm = lambda why, owner: ((ITEM["clean_owner"], f"{why} (owner)") if owner
+                                      else (ITEM["clean_pm"], f"{why} (PM)"))
     if nt == "CF":
-        return (ITEM["clean_owner"], "cleaning (owner)") if cleaning_owner else (ITEM["clean_pm"], "cleaning (PM)")
+        return owner_or_pm("cleaning", cleaning_owner)
     if "clean" in t:
-        return ITEM["clean_pm"], "cleaning sent as a fee"
+        return owner_or_pm("cleaning sent as a fee", cleaning_owner and generic_follows)
     if src == "expedia" and t == "service":
-        return ITEM["clean_pm"], "expedia cleaning ('Service')"
+        return owner_or_pm("expedia cleaning ('Service')", cleaning_owner and generic_follows)
     if "pet" in t:
         return ITEM["pet"], "pet fee"
     if "damage" in t or "protection" in t:

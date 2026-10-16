@@ -51,6 +51,10 @@ live post 2026-10-05: HMHTND2XXN (Invoice 120128, Bills 120129/120130) -- format
                                             # clearing, full payout) + payment per stay; earlier months corrected by
                                             # MCRADJ adjustments in the open month (SOP Part E)
     python -m src.fix_cl_vendor [--confirm]     # one-off: Elektra _CL rebills -> vendor Valta Realty
+    python -m src.uncollected [--month YYYY-MM] # READ-ONLY: open invoices on ended stays by why they are
+                                            # open (uncollected / not applied / cancelled / payout missing /
+                                            # awaiting / rounding); run before statements go out (SOP Part C).
+                                            # Manual charges added in Guesty are never paid by the channel.
 
 Both siblings call their package `src`; `src/bridge.py` loads them as `qbo_ops` / `osw`.
 
