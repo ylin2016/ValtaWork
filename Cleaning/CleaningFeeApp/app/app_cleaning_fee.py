@@ -152,7 +152,7 @@ st.dataframe(input_df)
 # ---------------------------
 if st.button("Estimate Cleaning Fee"):
     try:
-        pred = model.predict(input_df)[0]*1.05  # add 5% buffer
+        pred = model.predict(input_df)[0]*1.1  # add 5% buffer
         st.success(f"Estimated Cleaning Fee: **${pred:,.0f}**")
     except Exception as e:
         st.error(f"Prediction error: {e}")
