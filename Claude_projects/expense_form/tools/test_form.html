@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Expense Form Tester</title>
+<style>
+  :root {
+    --bg: #ffffff; --panel: #f6f8fa; --text: #1f2328; --muted: #656d76; --border: #d0d7de;
+    --accent: #0969da; --ok-bg: #dafbe1; --ok: #1a7f37; --err-bg: #ffebe9; --err: #b42318;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root { --bg: #0d1117; --panel: #161b22; --text: #e6edf3; --muted: #8d96a0; --border: #30363d;
+            --accent: #4493f8; --ok-bg: #12261e; --ok: #3fb950; --err-bg: #2d1214; --err: #f85149; }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font: 15px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  main { max-width: 640px; margin: 0 auto; padding: 16px; }
+  h1 { font-size: 20px; margin: 4px 0 2px; }
+  .sub { color: var(--muted); margin: 0 0 16px; font-size: 13px; }
+  fieldset { border: 1px solid var(--border); border-radius: 8px; padding: 12px; margin: 0 0 14px; background: var(--panel); }
+  legend { font-weight: 600; padding: 0 4px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 10px 0 4px; }
+  input, select, textarea { width: 100%; font: inherit; color: var(--text); background: var(--bg);
+    border: 1px solid var(--border); border-radius: 6px; padding: 8px; }
+  textarea { min-height: 60px; }
+  .row { display: flex; gap: 10px; } .row > div { flex: 1; min-width: 0; }
+  .kind { display: flex; gap: 8px; }
+  .kind label { flex: 1; margin: 0; text-align: center; border: 1px solid var(--border); border-radius: 6px;
+    padding: 8px; cursor: pointer; color: var(--text); background: var(--bg); }
+  .kind input { display: none; }
+  .kind input:checked + span { color: var(--accent); font-weight: 600; }
+  .kind label:has(input:checked) { border-color: var(--accent); }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 6px; padding: 10px 16px; cursor: pointer;
+    background: var(--accent); color: #fff; }
+  button.secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  button:disabled { opacity: .5; cursor: default; }
+  .hidden { display: none; }
+  .check { display: flex; gap: 8px; align-items: center; margin-top: 10px; color: var(--text); font-size: 14px; }
+  .check input { width: auto; }
+  #log { list-style: none; padding: 0; margin: 12px 0 0; font-size: 14px; }
+  #log li { padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; background: var(--panel); overflow-wrap: anywhere; }
+  #log li.ok { background: var(--ok-bg); } #log li.err { background: var(--err-bg); color: var(--err); }
+  #log a { color: var(--accent); }
+  .warn { color: var(--muted); font-size: 13px; margin-top: 8px; }
+  .other { margin-top: 6px; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Expense Form Tester</h1>
+  <p class="sub">Runs the full flow against your Apps Script: submit → upload each file → finish.
+     Submissions are <b>real</b>: they add a ledger row and save files in Drive (no email is sent; reviews go out in the Friday summary).</p>
+
+  <fieldset>
+    <legend>Web app</legend>
+    <label for="url">Web app URL (ends in /exec)</label>
+    <input id="url" placeholder="https://script.google.com/macros/s/…/exec" autocomplete="off">
+    <p><button id="load" class="secondary" type="button">Load lists</button></p>
+  </fieldset>
+
+  <form id="form" class="hidden">
+    <fieldset>
+      <legend>What is it?</legend>
+      <div class="kind">
+        <label><input type="radio" name="kind" value="expense" checked><span>Expense</span></label>
+        <label><input type="radio" name="kind" value="deposit"><span>Deposit (guest fee)</span></label>
+      </div>
+      <div class="row">
+        <div><label for="txn_date" id="date-label">Purchase date</label><input id="txn_date" type="date" required></div>
+        <div><label for="amount">Amount ($)</label><input id="amount" inputmode="decimal" placeholder="0.00" required></div>
+      </div>
+      <label for="property_code">Property</label><select id="property_code" required></select>
+      <input id="property_code_other" class="hidden other" placeholder="Type the property" maxlength="60">
+      <label for="submitter">Your name</label><select id="submitter" required></select>
+      <input id="submitter_other" class="hidden other" placeholder="Type your name" maxlength="60">
+      <label for="description">Description</label>
+      <textarea id="description" required placeholder="Home Depot_baseboard moulding and nails"></textarea>
+      <p class="warn" id="description-hint">Write it as <b>store_stuff</b>: the store, an underscore, then what you
+        bought — e.g. <i>Home Depot_baseboard moulding and nails</i>.</p>
+    </fieldset>
+
+    <fieldset id="expense-fields">
+      <legend>Expense</legend>
+      <label for="category">Category</label><select id="category"></select>
+      <input id="category_other" class="hidden other" placeholder="Type the category" maxlength="60">
+      <label for="money_account">Paid with</label><select id="money_account"></select>
+      <div id="reimburse-row" class="hidden">
+        <label for="reimburse_to">Reimburse to</label><select id="reimburse_to"></select>
+        <input id="reimburse_to_other" class="hidden other" placeholder="Type the name" maxlength="60">
+      </div>
+      <label class="check"><input type="checkbox" id="owner_billable"> Bill the owner</label>
+    </fieldset>
+
+    <fieldset id="deposit-fields" class="hidden">
+      <legend>Deposit</legend>
+      <label for="deposit_type">Fee</label><select id="deposit_type"></select>
+      <label for="collection_method">Paid by</label><select id="collection_method"></select>
+      <label for="payer_name">Guest name</label><input id="payer_name">
+      <div id="reservation-fields">
+        <div class="row">
+          <div><label for="reservation_code">Confirmation code</label><input id="reservation_code" autocapitalize="characters"></div>
+          <div><label for="check_in_date">Check-in date</label><input id="check_in_date" type="date"></div>
+        </div>
+      </div>
+      <label for="payment_reference">Payment reference (optional)</label><input id="payment_reference">
+    </fieldset>
+
+    <fieldset>
+      <legend>Receipts / screenshots</legend>
+      <input id="files" type="file" accept="image/*,application/pdf" multiple>
+      <p class="warn">Photos are shrunk to 1600 px before upload. Max 10 files, 10 MB each.</p>
+    </fieldset>
+
+    <button id="send" type="submit">Send</button>
+  </form>
+
+  <ul id="log"></ul>
+  <button id="another" class="hidden" type="button">Submit another</button>
+</main>
+
+<script>
+(function () {
+  var $ = function (id) { return document.getElementById(id); };
+  var cfg = null;
+
+  var LIVE_URL = 'https://script.google.com/macros/s/AKfycbxSPhD5YWZJhzI8XVH5Y0dPF7A6vT_rpupLz4GP2J5K0ZO6cfCwKm-6voDFbyMK8ic4/exec';
+  $('url').value = LIVE_URL;
+  try { $('url').value = localStorage.getItem('expense_form_url') || LIVE_URL; } catch (e) {}
+  $('txn_date').value = new Date().toLocaleDateString('en-CA');
+
+  function log(text, cls, html) {
+    var li = document.createElement('li');
+    if (cls) li.className = cls;
+    if (html) li.innerHTML = html; else li.textContent = text;
+    $('log').appendChild(li);
+    li.scrollIntoView({ block: 'nearest' });
+    return li;
+  }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  function url() {
+    var u = $('url').value.trim();
+    if (!/^https?:\/\//.test(u)) throw new Error('Paste the Web app URL first');
+    return u;
+  }
+  async function getJson(params) {
+    return withRetry(function (signal) { return fetch(url() + (url().includes('?') ? '&' : '?') + params, { signal: signal }); });
+  }
+  async function post(body) {
+    // text/plain = a "simple" request: no CORS preflight, which Apps Script cannot answer.
+    return withRetry(function (signal) {
+      return fetch(url(), { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                            body: JSON.stringify(body), signal: signal });
+    });
+  }
+  // Google's front end now and then answers with an error page or hangs (~30 s). Retry: the server
+  // recognises a repeated submit (client_ref) and a repeated file (same bytes), so nothing doubles.
+  // A JSON answer — even {ok:false} — is final and never retried.
+  var TRIES = 4, TIMEOUT_MS = 25000;
+  async function withRetry(send) {
+    var lastErr;
+    for (var i = 1; i <= TRIES; i++) {
+      var ctl = new AbortController(), timer = setTimeout(function () { ctl.abort(); }, TIMEOUT_MS);
+      try {
+        var r = await send(ctl.signal);
+        var text = await r.text();
+        clearTimeout(timer);
+        try { return JSON.parse(text); }
+        catch (e) { lastErr = new Error('Google did not answer properly (HTTP ' + r.status + ')'); }
+      } catch (e) {
+        clearTimeout(timer);
+        lastErr = new Error(e.name === 'AbortError' ? 'Google took too long to answer' : 'Network problem: ' + e.message);
+      }
+      if (i < TRIES) {
+        log('Connection hiccup — trying again (' + (i + 1) + '/' + TRIES + ')…', 'warn');
+        await new Promise(function (res) { setTimeout(res, 1500 * i); });
+      }
+    }
+    throw new Error(lastErr.message + '. Nothing was lost: press Send again.');
+  }
+  function newRef() {                                       // one per submission; a retry reuses it
+    var a = new Uint8Array(12); crypto.getRandomValues(a);
+    return Array.from(a, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  var clientRef = newRef();
+
+  function fill(sel, items, value, label) {
+    sel.innerHTML = '';
+    items.forEach(function (it) {
+      var o = document.createElement('option');
+      o.value = value(it); o.textContent = label(it);
+      sel.appendChild(o);
+    });
+  }
+
+  $('load').onclick = async function () {
+    $('log').innerHTML = '';
+    try {
+      try { localStorage.setItem('expense_form_url', $('url').value.trim()); } catch (e) {}
+      var c = await getJson('action=config');
+      if (!c.ok) throw new Error(c.error);
+      cfg = c;
+      var self = function (x) { return x; };
+      fill($('property_code'), c.properties, function (p) { return p.code; }, function (p) { return p.name; });
+      fill($('submitter'), [''].concat(c.people), self, function (x) { return x || 'Choose your name…'; });
+      fill($('reimburse_to'), [''].concat(c.people), self, function (x) { return x || '—'; });
+      $('submitter').options[0].disabled = true;           // blank by default; must be chosen
+      OTHER_LISTS.forEach(function (id) {                  // "Other — type it" at the end of each list
+        var o = document.createElement('option'); o.value = OTHER; o.textContent = 'Other — type it';
+        $(id).appendChild(o);
+      });
+      fill($('category'), c.expense_categories, function (x) { return x.code; }, function (x) { return x.label; });
+      fill($('money_account'), c.payment_accounts, function (x) { return x.code; }, function (x) { return x.label; });
+      var personal = c.payment_accounts.find(function (x) { return x.kind === 'personal'; });
+      if (personal) $('money_account').value = personal.code;   // default: paid personally, reimbursed by Zelle
+      fill($('deposit_type'), c.deposit_types, function (x) { return x.code; }, function (x) { return x.label; });
+      fill($('collection_method'), c.collection_methods, function (x) { return x.code; }, function (x) { return x.label; });
+      syncKind(); syncCategory(); syncAccount(); syncDepositType();
+      $('form').classList.remove('hidden');
+      log('Lists loaded: ' + c.properties.length + ' properties, ' + c.people.length + ' people.', 'ok');
+    } catch (e) { log(e.message, 'err'); }
+  };
+
+  // Name, property, category and reimburse-to also take free text (sent as <field>_other); the server
+  // flags anything that is not in the lists for the reviewer to map.
+  var OTHER = '__other__', OTHER_LISTS = ['property_code', 'submitter', 'category', 'reimburse_to'];
+  function syncOther(id) { $(id + '_other').classList.toggle('hidden', $(id).value !== OTHER); }
+  OTHER_LISTS.forEach(function (id) { $(id).addEventListener('change', function () { syncOther(id); }); });
+  function pick(d, field, id) {                            // chosen value, or the typed text under Other
+    if ($(id).value === OTHER) { d[field] = ''; d[field + '_other'] = $(id + '_other').value; }
+    else d[field] = $(id).value;
+  }
+
+  function kind() { return document.querySelector('input[name=kind]:checked').value; }
+  function syncKind() {
+    var exp = kind() === 'expense';
+    $('expense-fields').classList.toggle('hidden', !exp);
+    $('deposit-fields').classList.toggle('hidden', exp);
+    $('description-hint').classList.toggle('hidden', !exp);
+    $('date-label').textContent = exp ? 'Purchase date' : 'Date';
+  }
+  function syncCategory() {
+    var c = cfg && cfg.expense_categories.find(function (x) { return x.code === $('category').value; });
+    if (c) $('owner_billable').checked = c.owner_billable_default;
+  }
+  function syncAccount() {
+    var a = cfg && cfg.payment_accounts.find(function (x) { return x.code === $('money_account').value; });
+    $('reimburse-row').classList.toggle('hidden', !(a && a.kind === 'personal'));
+    if (a && a.kind === 'personal' && !$('reimburse_to').value) $('reimburse_to').value = $('submitter').value;
+  }
+  function syncDepositType() {
+    var d = cfg && cfg.deposit_types.find(function (x) { return x.code === $('deposit_type').value; });
+    $('reservation-fields').classList.toggle('hidden', !(d && d.per_reservation));
+  }
+  document.querySelectorAll('input[name=kind]').forEach(function (r) { r.onchange = syncKind; });
+  $('category').onchange = syncCategory;
+  $('money_account').onchange = syncAccount;
+  // Choosing "Your name" fills "Reimburse to" (still changeable, e.g. someone paid for a coworker).
+  $('submitter').onchange = function () {
+    $('reimburse_to').value = $('submitter').value;
+    $('reimburse_to_other').value = $('submitter_other').value;
+    syncOther('submitter'); syncOther('reimburse_to'); syncAccount();
+  };
+  $('submitter_other').oninput = function () {             // a typed name is also the default payee
+    if ($('reimburse_to').value === OTHER) $('reimburse_to_other').value = $('submitter_other').value;
+  };
+  $('deposit_type').onchange = syncDepositType;
+
+  function payload() {
+    var d = { kind: kind(), txn_date: $('txn_date').value, amount: $('amount').value,
+              description: $('description').value };
+    pick(d, 'property_code', 'property_code'); d.property_other = d.property_code_other; delete d.property_code_other;
+    pick(d, 'submitter', 'submitter');
+    if (d.kind === 'expense') {
+      pick(d, 'category', 'category');
+      d.money_account = $('money_account').value; d.owner_billable = $('owner_billable').checked;
+      if (!$('reimburse-row').classList.contains('hidden')) pick(d, 'reimburse_to', 'reimburse_to');
+    } else {
+      d.deposit_type = $('deposit_type').value; d.collection_method = $('collection_method').value;
+      d.payer_name = $('payer_name').value; d.payment_reference = $('payment_reference').value;
+      if (!$('reservation-fields').classList.contains('hidden')) {
+        d.reservation_code = $('reservation_code').value; d.check_in_date = $('check_in_date').value;
+      }
+    }
+    return d;
+  }
+
+  // Photos -> JPEG, longest side 1600 px. Anything the browser can't draw (PDF, HEIC in Chrome) goes as-is.
+  async function prepare(file) {
+    if (/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      try {
+        var bmp = await createImageBitmap(file);
+        var scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+        var canvas = document.createElement('canvas');
+        canvas.width = Math.round(bmp.width * scale); canvas.height = Math.round(bmp.height * scale);
+        canvas.getContext('2d').drawImage(bmp, 0, 0, canvas.width, canvas.height);
+        var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/jpeg', 0.85); });
+        if (blob) return { blob: blob, type: 'image/jpeg' };
+      } catch (e) { /* fall through: send the original */ }
+    }
+    return { blob: file, type: file.type || 'application/octet-stream' };
+  }
+  function toBase64(blob) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result).split(',')[1] || ''); };
+      fr.onerror = function () { rej(fr.error); };
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  // "Submit another": keep who you are and how you paid; clear everything about the purchase.
+  $('another').onclick = function () {
+    clientRef = newRef();                                   // a genuinely new submission
+    ['amount', 'description', 'payer_name', 'reservation_code', 'check_in_date', 'payment_reference',
+     'property_code_other', 'category_other'].forEach(function (id) { $(id).value = ''; });
+    $('files').value = '';
+    $('txn_date').value = new Date().toLocaleDateString('en-CA');
+    $('property_code').selectedIndex = 0; syncOther('property_code');
+    $('category').selectedIndex = 0; syncOther('category'); syncCategory();
+    $('log').innerHTML = '';
+    $('another').classList.add('hidden');
+    $('form').classList.remove('hidden');
+    window.scrollTo(0, 0);
+    $('amount').focus();
+  };
+
+  $('form').onsubmit = async function (ev) {
+    ev.preventDefault();
+    var files = Array.from($('files').files);
+    $('send').disabled = true;
+    $('log').innerHTML = '';
+    try {
+      if (!files.length) throw new Error('Add at least one receipt or screenshot');
+      var step = log('1/3 Submitting…');
+      var data = payload(); data.client_ref = clientRef;     // same ref if Send is pressed again
+      var s = await post({ action: 'submit', client: navigator.userAgent, data: data });
+      if (!s.ok) throw new Error(s.error);
+      if (s.already_complete) {
+        step.className = 'ok'; step.textContent = 'Already sent as submission #' + s.id + ' — nothing more to do.';
+        $('form').classList.add('hidden'); $('another').classList.remove('hidden');
+        return;
+      }
+      step.className = 'ok'; step.textContent = '1/3 Saved as submission #' + s.id;
+
+      for (var i = 0; i < files.length; i++) {
+        var li = log('2/3 Uploading ' + files[i].name + '…');
+        var p = await prepare(files[i]);
+        var f = await post({ action: 'file', data: { id: s.id, upload_token: s.upload_token,
+                                                     mime_type: p.type, base64: await toBase64(p.blob),
+                                                     last: i === files.length - 1 } });   // last file also finishes
+        if (!f.ok) throw new Error(files[i].name + ': ' + f.error);
+        li.className = 'ok';
+        li.innerHTML = '2/3 Filed as <a href="' + esc(f.url) + '" target="_blank" rel="noopener">' + esc(f.file_name) + '</a>' +
+          (f.possible_duplicate_of && f.possible_duplicate_of.length
+            ? ' <b>— same file already sent with #' + esc(f.possible_duplicate_of.join(', #')) + '</b>' : '');
+      }
+
+      var done = log('3/3 Finishing…');
+      if (!f.completed) {                                   // older server: finish with a separate call
+        var c = await post({ action: 'complete', data: { id: s.id, upload_token: s.upload_token } });
+        if (!c.ok) throw new Error(c.error);
+      }
+      done.className = 'ok';
+      done.textContent = '3/3 Done — it is in the Expense Ledger and will be in Friday\'s review summary.';
+      // Sent: lock this one (a second Send would duplicate it) and offer a fresh form.
+      $('form').classList.add('hidden');
+      $('another').classList.remove('hidden');
+    } catch (e) {
+      log(e.message, 'err');
+    } finally {
+      $('send').disabled = false;
+    }
+  };
+  $('load').click();   // lists load on open; the button is only needed after changing the URL
+})();
+</script>
+</body>
+</html>

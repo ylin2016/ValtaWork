@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 16px;
+           color: #1f2328; background: #fff; max-width: 760px; }
+    h1 { font-size: 20px; margin: 0 0 4px; }
+    .sub { color: #656d76; font-size: 14px; margin: 0 0 16px; }
+    .card { border: 1px solid #d0d7de; border-radius: 8px; padding: 12px; margin-bottom: 12px; }
+    .card.done { opacity: .55; }
+    .head { display: flex; justify-content: space-between; gap: 12px; font-weight: 600; }
+    .meta { color: #656d76; font-size: 13px; margin: 4px 0; }
+    .desc { margin: 6px 0; }
+    ul { margin: 6px 0; padding-left: 18px; font-size: 14px; }
+    .actions { display: flex; gap: 8px; align-items: center; margin-top: 8px; flex-wrap: wrap; }
+    input { font: inherit; padding: 6px 8px; border: 1px solid #d0d7de; border-radius: 6px; flex: 1; min-width: 140px; }
+    button { font: inherit; font-weight: 600; color: #fff; border: 0; border-radius: 6px; padding: 8px 14px; }
+    .approve { background: #1a7f37; } .reject { background: #b42318; } .all { background: #0969da; }
+    button:disabled { opacity: .5; }
+    .status { font-weight: 600; }
+    .msg { padding: 12px; border-radius: 6px; margin: 12px 0; }
+    .ok { background: #dafbe1; } .err { background: #ffebe9; }
+    .typed { margin: 6px 0; padding: 6px 8px; background: #fff8c5; border: 1px solid #d4a72c; border-radius: 4px; font-size: 13px; }
+</style>
+</head>
+<body>
+<? if (error) { ?>
+  <div class="msg err"><?= error ?></div>
+<? } else { ?>
+  <h1>Review expenses</h1>
+  <p class="sub">Waiting for review: <?= ctx.items.length ?>. Opening this page changes nothing.</p>
+  <? if (!ctx.items.length) { ?>
+    <div class="msg ok">Nothing is waiting for review.</div>
+  <? } else { ?>
+    <p><button class="all" id="all" onclick="decideAll()">Approve all <?= ctx.items.length ?></button></p>
+    <? for (var i = 0; i < ctx.items.length; i++) { var s = ctx.items[i].sub, f = ctx.items[i].files; ?>
+      <div class="card" id="c<?= s.id ?>">
+        <div class="head"><span>#<?= s.id ?> · <?= s.property_name ?> · <?= s.kind ?></span><span>$<?= Number(s.amount).toFixed(2) ?></span></div>
+        <div class="meta"><?= s.kind === 'expense' ? 'Purchased' : 'Paid' ?> <?= s.txn_date ?> · <?= s.submitter ?>
+          <? if (s.category) { ?> · <?= s.category ?><? } ?><? if (s.deposit_type) { ?> · <?= s.deposit_type ?> · <?= s.reservation_code ?><? } ?>
+          <? if (s.reimburse_to) { ?> · reimburse <?= s.reimburse_to ?><? } ?></div>
+        <div class="desc"><?= s.description ?></div>
+        <? if (s.typed_in) { ?><div class="typed">⚠ Typed in, not in the list: <?= s.typed_in.split(',').join(', ') ?>. Before QuickBooks, fix the row in the Expense Ledger (property_code / category / name) or add it to Expense Config.</div><? } ?>
+        <ul><? for (var j = 0; j < f.length; j++) { ?><li><a href="<?= f[j].url ?>" target="_blank" rel="noopener"><?= f[j].name ?></a></li><? } ?></ul>
+        <div class="actions">
+          <input placeholder="Note (optional)" id="n<?= s.id ?>">
+          <button class="approve" onclick="decide('<?= s.id ?>', 'approve')">Approve</button>
+          <button class="reject" onclick="decide('<?= s.id ?>', 'reject')">Reject</button>
+          <span class="status" id="s<?= s.id ?>"></span>
+        </div>
+      </div>
+    <? } ?>
+    <div id="result"></div>
+  <? } ?>
+<? } ?>
+<script>
+  var TOKEN = <?!= JSON.stringify(token).replace(/</g, '\\u003c') ?>;
+  var IDS = <?!= JSON.stringify(ctx ? ctx.items.map(function (x) { return x.sub.id; }) : []).replace(/</g, '\\u003c') ?>;
+  function mark(results) {
+    results.forEach(function (r) {
+      var card = document.getElementById('c' + r.id);
+      if (!card) return;
+      document.getElementById('s' + r.id).textContent = r.ok ? (r.status === 'approved' ? '✓ Approved' : '✗ Rejected') : r.error;
+      if (r.ok) { card.classList.add('done'); card.querySelectorAll('button').forEach(function (b) { b.disabled = true; }); }
+    });
+  }
+  function run(ids, action, note) {
+    google.script.run
+      .withSuccessHandler(function (r) { mark(r.results); })
+      .withFailureHandler(function (e) { var el = document.getElementById('result'); el.className = 'msg err'; el.textContent = e.message || String(e); })
+      .decideFromQueue(TOKEN, ids, action, note);
+  }
+  function decide(id, action) { run([id], action, document.getElementById('n' + id).value); }
+  function decideAll() {
+    var open = IDS.filter(function (id) { return !document.getElementById('c' + id).classList.contains('done'); });
+    if (!open.length || !confirm('Approve all ' + open.length + ' remaining?')) return;
+    document.getElementById('all').disabled = true;
+    run(open, 'approve', '');
+  }
+</script>
+</body>
+</html>

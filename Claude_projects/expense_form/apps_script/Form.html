@@ -1,0 +1,607 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="color-scheme" content="light dark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  /* Two themes that follow the device's day / night setting (prefers-color-scheme).
+     Day   = valtarealty.com: gray-50 page, white cards, #333 text, charcoal (#1F2937) pill buttons, logo red #EE1B22.
+     Night = the same charcoal family deepened: ink-navy page, raised slate cards, light pill buttons, the red kept
+             (slightly brighter so it holds its contrast). color-scheme makes the date picker, select menus and
+             scrollbars go dark too. */
+  :root {
+    color-scheme: light;
+    --bg: #f9fafb; --card: #ffffff; --text: #333333; --muted: #6b7280; --line: #e5e7eb;
+    --field: #ffffff; --field-line: #d1d5db; --brand: #1f2937; --brand-ink: #ffffff; --brand-soft: #f3f4f6;
+    --hover: #f3f4f6; --ring: rgba(31, 41, 55, .14);
+    --red: #ee1b22; --red-soft: #fef2f2;
+    --ok: #15803d; --ok-soft: #dcfce7; --err: #b91c1c; --err-soft: #fef2f2; --warn-soft: #fef9c3;
+    --shadow: 0 1px 2px rgba(17, 24, 39, .04), 0 2px 10px rgba(17, 24, 39, .05);
+    --pop: 0 12px 32px rgba(17, 24, 39, .16); --btn-shadow: 0 6px 16px rgba(17, 24, 39, .22);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      color-scheme: dark;
+      --bg: #0d1117; --card: #161b24; --text: #e6e8eb; --muted: #97a0ad; --line: #252d3a;
+      --field: #0f141c; --field-line: #353f4e; --brand: #f3f4f6; --brand-ink: #111827; --brand-soft: #1f2632;
+      --hover: #232b38; --ring: rgba(243, 244, 246, .16);
+      --red: #ff3b41; --red-soft: #2a1417;
+      --ok: #4ade80; --ok-soft: #12261a; --err: #fca5a5; --err-soft: #2a1517; --warn-soft: #29260f;
+      --shadow: 0 1px 0 rgba(255, 255, 255, .03) inset;
+      --pop: 0 14px 36px rgba(0, 0, 0, .55); --btn-shadow: 0 6px 18px rgba(0, 0, 0, .45);
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text); }
+  body { font: 15px/1.55 Poppins, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+         -webkit-font-smoothing: antialiased; }
+  main { max-width: 560px; margin: 0 auto; padding: 20px 16px 120px; }
+
+  header { display: flex; align-items: center; gap: 12px; margin: 4px 0 20px; }
+  .logo { display: block; height: 30px; width: auto; flex: none; }  /* valtarealty.com logo, embedded (2x) */
+  header .title { border-left: 1px solid var(--line); padding-left: 12px; }
+  header h1 { font-size: 17px; line-height: 1.2; margin: 0; font-weight: 700; letter-spacing: -.01em; }
+  header p { margin: 1px 0 0; color: var(--muted); font-size: 13px; }
+
+  .seg { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 9999px;
+         background: var(--card); box-shadow: var(--shadow); border: 1px solid var(--line); margin-bottom: 16px; }
+  .seg label { position: relative; text-align: center; padding: 9px 8px; border-radius: 9999px; cursor: pointer;
+               font-weight: 600; font-size: 15px; color: var(--muted); transition: background .15s, color .15s; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg label:has(input:checked) { background: var(--brand); color: var(--brand-ink); }
+  .seg label:has(input:focus-visible) { outline: 2px solid var(--brand); outline-offset: 2px; }
+
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 18px;
+          margin-bottom: 14px; box-shadow: var(--shadow); }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+             margin: 0 0 4px; font-weight: 600; }
+
+  .field { margin-top: 14px; }
+  .field:first-of-type { margin-top: 10px; }
+  .field > label, .lbl { display: block; font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .hint { color: var(--muted); font-size: 13px; margin: 6px 0 0; }
+  input, select, textarea {
+    width: 100%; font: inherit; color: var(--text); background: var(--field);
+    border: 1px solid var(--field-line); border-radius: 8px; padding: 11px 13px; outline: none;
+    transition: border-color .15s, background .15s; -webkit-appearance: none; appearance: none; }
+  select, .combo input { background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5 6 6.5l5-5' stroke='%236b7280' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+           background-repeat: no-repeat; background-position: right 14px center; padding-right: 38px; }
+  input:focus, select:focus, textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px var(--ring); }
+  textarea { min-height: 76px; resize: vertical; }
+  .other { margin-top: 8px; }
+
+  /* type-to-search lists (property, names): the real <select> stays hidden underneath and holds the value */
+  .combo { position: relative; }
+  .combo input { cursor: text; text-overflow: ellipsis; }
+  .combo ul { position: absolute; z-index: 30; left: 0; right: 0; top: calc(100% + 6px); margin: 0; padding: 4px;
+              list-style: none; max-height: 276px; overflow-y: auto; overscroll-behavior: contain;
+              background: var(--card); border: 1px solid var(--field-line); border-radius: 10px; box-shadow: var(--pop); }
+  .combo li { padding: 9px 12px; border-radius: 7px; cursor: pointer; font-size: 15px; }
+  .combo li.on { background: var(--hover); }
+  .combo li.picked { font-weight: 600; }
+  .combo li b { font-weight: 700; color: var(--red); }
+  .combo li.other-opt { color: var(--muted); margin-top: 4px; border-top: 1px solid var(--line); border-radius: 0 0 7px 7px; }
+  .combo li.none { color: var(--muted); cursor: default; font-size: 14px; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .row .field { margin-top: 14px; }
+
+  .amount { position: relative; }
+  .amount span { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 26px;
+                 font-weight: 600; color: var(--muted); pointer-events: none; }
+  .amount input { font-size: 28px; font-weight: 700; padding: 14px 16px 14px 38px; letter-spacing: -.01em; }
+
+  .switch { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 16px;
+            padding: 12px 14px; border-radius: 8px; background: var(--brand-soft); border: 0; cursor: pointer; }
+  .switch b { font-weight: 600; font-size: 15px; } .switch small { display: block; color: var(--muted); font-size: 13px; }
+  .switch input { width: 46px; height: 28px; flex: none; border-radius: 99px; padding: 0; position: relative;
+                  background: var(--field-line); border: 0; cursor: pointer; transition: background .15s; }
+  .switch input::after { content: ""; position: absolute; top: 3px; left: 3px; width: 22px; height: 22px; border-radius: 50%;
+                         background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.25); transition: transform .15s; }
+  .switch input:checked { background: var(--red); } .switch input:checked::after { transform: translateX(18px); }
+
+  .drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center;
+          padding: 22px 16px; border: 1.5px dashed var(--field-line); border-radius: 10px; background: var(--brand-soft);
+          cursor: pointer; transition: border-color .15s, background .15s; }
+  .drop:hover, .drop.over { border-color: var(--red); background: var(--red-soft); }
+  .drop svg { color: var(--red); } .drop b { font-size: 15px; } .drop small { color: var(--muted); font-size: 13px; }
+  .drop input { display: none; }
+  .thumbs { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 10px; margin-top: 12px; }
+  .thumb { position: relative; aspect-ratio: 1; border-radius: 8px; overflow: hidden; background: var(--field);
+           border: 1px solid var(--line); display: grid; place-items: center; font-size: 12px; color: var(--muted); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; }
+  .thumb .pdf { font-weight: 700; color: var(--err); font-size: 14px; }
+  .thumb button { position: absolute; top: 4px; right: 4px; width: 24px; height: 24px; border-radius: 50%; border: 0;
+                  background: rgba(0,0,0,.6); color: #fff; font-size: 15px; line-height: 24px; padding: 0; cursor: pointer; }
+  .thumb.done::after { content: "✓"; position: absolute; inset: 0; display: grid; place-items: center; font-size: 28px;
+                       color: #fff; background: rgba(21, 128, 61, .55); }
+
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+         background: linear-gradient(to top, var(--bg) 70%, transparent); }
+  .bar > div { max-width: 560px; margin: 0 auto; }
+  .btn { width: 100%; font: inherit; font-weight: 600; font-size: 16px; border: 0; border-radius: 9999px; padding: 14px 18px;
+         cursor: pointer; background: var(--brand); color: var(--brand-ink); box-shadow: var(--btn-shadow);
+         transition: transform .05s, opacity .15s; }
+  .btn:active { transform: scale(.99); } .btn:disabled { opacity: .6; cursor: default; }
+  .btn.ghost { background: transparent; color: var(--brand); box-shadow: none; border: 1.5px solid var(--brand); }
+
+  .msg { border-radius: 12px; padding: 12px 14px; font-size: 14px; margin-bottom: 14px; }
+  .msg.err { background: var(--err-soft); color: var(--err); }
+  .msg.warn { background: var(--warn-soft); }
+  .progress { height: 6px; border-radius: 99px; background: var(--line); overflow: hidden; margin: 4px 0 8px; }
+  .progress i { display: block; height: 100%; width: 0; background: var(--red); transition: width .3s; }
+  #status { font-size: 14px; color: var(--muted); }
+
+  .done { text-align: center; padding: 36px 18px 26px; }
+  .done .check { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 14px; display: grid; place-items: center;
+                 background: var(--ok-soft); color: var(--ok); }
+  .done h2 { font-size: 22px; text-transform: none; letter-spacing: -.01em; color: var(--text); margin: 0 0 6px; font-weight: 700; }
+  .done p { color: var(--muted); margin: 0 0 4px; }
+  .done .summary { margin: 18px 0 22px; text-align: left; background: var(--field); border-radius: 12px; padding: 12px 14px; font-size: 14px; }
+  .done .summary div { display: flex; justify-content: space-between; gap: 12px; padding: 3px 0; }
+  .done .summary span { color: var(--muted); white-space: nowrap; } .done .summary b { font-weight: 600; text-align: right; overflow-wrap: anywhere; }
+
+  .hidden { display: none !important; }
+  @media (max-width: 380px) { .row { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <img class="logo" alt="Valta" width="109" height="30" src="data:image/png;base64,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">
+    <div class="title">
+      <h1>Valta Expense Form</h1>
+      <p>Receipts &amp; guest fees</p>
+    </div>
+  </header>
+
+  <? if (error) { ?><div class="msg err">The form could not load its lists: <?= error ?> Please try again in a minute.</div><? } ?>
+
+  <form id="form" novalidate>
+    <div class="seg" role="radiogroup" aria-label="What are you sending?">
+      <label><input type="radio" name="kind" value="expense" checked>Expense</label>
+      <label><input type="radio" name="kind" value="deposit">Guest fee</label>
+    </div>
+
+    <section class="card">
+      <h2 id="main-title">Purchase</h2>
+      <div class="field">
+        <label for="amount">Amount</label>
+        <div class="amount"><span>$</span><input id="amount" inputmode="decimal" placeholder="0.00" autocomplete="off"></div>
+      </div>
+      <div class="row">
+        <div class="field"><label for="txn_date" id="date-label">Purchase date</label><input id="txn_date" type="date"></div>
+        <div class="field"><label for="submitter">Your name</label><select id="submitter"></select></div>
+      </div>
+      <input id="submitter_other" class="hidden other" placeholder="Type your name" maxlength="60">
+      <div class="field">
+        <label for="property_code">Property</label><select id="property_code"></select>
+        <input id="property_code_other" class="hidden other" placeholder="Type the property" maxlength="60">
+      </div>
+      <div class="field">
+        <label for="description" id="description-label">Store and what you bought</label>
+        <textarea id="description" placeholder="Home Depot_baseboard moulding and nails"></textarea>
+        <p class="hint" id="description-hint">Store, an underscore, then what you bought: <b>Costco_paper towels</b></p>
+      </div>
+    </section>
+
+    <section class="card" id="expense-fields">
+      <h2>Payment</h2>
+      <div class="field">
+        <label for="category">Category</label><select id="category"></select>
+        <input id="category_other" class="hidden other" placeholder="Type the category" maxlength="60">
+      </div>
+      <div class="field"><label for="money_account">Paid with</label><select id="money_account"></select></div>
+      <div class="field" id="reimburse-row">
+        <label for="reimburse_to">Reimburse to</label><select id="reimburse_to"></select>
+        <input id="reimburse_to_other" class="hidden other" placeholder="Type the name" maxlength="60">
+        <p class="hint">Reimbursed by Zelle once a week, after the office approves it.</p>
+      </div>
+      <label class="switch" for="owner_billable">
+        <span><b>Bill the owner</b><small>Charge this to the property owner</small></span>
+        <input type="checkbox" id="owner_billable">
+      </label>
+    </section>
+
+    <section class="card hidden" id="deposit-fields">
+      <h2>Guest fee</h2>
+      <div class="row">
+        <div class="field"><label for="deposit_type">Fee</label><select id="deposit_type"></select>
+          <input id="deposit_type_other" class="hidden other" placeholder="What is the fee for?" maxlength="60"></div>
+        <div class="field"><label for="collection_method">Paid by</label><select id="collection_method"></select>
+          <input id="collection_method_other" class="hidden other" placeholder="How did the guest pay?" maxlength="60"></div>
+      </div>
+      <p class="hint hidden" id="platform-hint">Paid through the platform: recorded only. The money comes with the platform's payout.</p>
+      <div class="field"><label for="payer_name">Guest name</label><input id="payer_name" autocomplete="off"></div>
+      <div class="row" id="reservation-fields">
+        <div class="field"><label for="reservation_code">Confirmation code</label><input id="reservation_code" autocapitalize="characters" autocomplete="off"></div>
+        <div class="field"><label for="check_in_date">Check-in date</label><input id="check_in_date" type="date"></div>
+      </div>
+      <div class="field"><label for="payment_reference">Payment reference <span style="color:var(--muted);font-weight:400">(optional)</span></label><input id="payment_reference" autocomplete="off"></div>
+    </section>
+
+    <section class="card">
+      <h2 id="files-title">Receipt</h2>
+      <label class="drop" id="drop">
+        <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg>
+        <b>Take a photo or choose files</b>
+        <small>Photos or PDF · up to 10 files</small>
+        <input id="files" type="file" accept="image/*,application/pdf" multiple>
+      </label>
+      <div class="thumbs" id="thumbs"></div>
+    </section>
+
+    <div id="error" class="msg err hidden"></div>
+    <div id="sending" class="hidden">
+      <div class="progress"><i id="progress"></i></div>
+      <div id="status"></div>
+    </div>
+  </form>
+
+  <section class="card done hidden" id="done">
+    <div class="check"><svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h2>Sent — thank you!</h2>
+    <p id="done-text">The office will review it on Friday.</p>
+    <div class="summary" id="summary"></div>
+    <button class="btn" type="button" id="another">Send another</button>
+  </section>
+</main>
+
+<div class="bar" id="bar"><div><button class="btn" id="send" type="submit" form="form">Send</button></div></div>
+
+<script>
+(function () {
+  var cfg = <?!= cfgJson ?>;
+  var $ = function (id) { return document.getElementById(id); };
+  var OTHER = '__other__', OTHER_LISTS = ['property_code', 'submitter', 'category', 'reimburse_to', 'deposit_type', 'collection_method'];
+  var files = [];                                          // [{file, url}]
+  var today = function () { return new Date().toLocaleDateString('en-CA'); };
+  var store = {                                            // remembered per device: your name and card
+    get: function (k) { try { return localStorage.getItem('vef_' + k) || ''; } catch (e) { return ''; } },
+    set: function (k, v) { try { localStorage.setItem('vef_' + k, v); } catch (e) {} }
+  };
+
+  // ---- talking to the server (google.script.run; a transport failure is retried, the server is idempotent)
+  function call(action, body) {
+    return new Promise(function (res, rej) {
+      google.script.run.withSuccessHandler(res).withFailureHandler(rej).formApi(action, body);
+    });
+  }
+  async function api(action, body) {
+    var last;
+    for (var i = 1; i <= 4; i++) {
+      try { return await call(action, body); }
+      catch (e) {
+        last = e;
+        if (i < 4) { status('Connection hiccup — trying again…'); await new Promise(function (r) { setTimeout(r, 1500 * i); }); }
+      }
+    }
+    throw new Error('Could not reach the server (' + (last && last.message || last) + '). Nothing was lost — press Send again.');
+  }
+  function newRef() {
+    var a = new Uint8Array(12); crypto.getRandomValues(a);
+    return Array.from(a, function (b) { return b.toString(16).padStart(2, '0'); }).join('');
+  }
+  var clientRef = newRef();
+
+  // ---- lists
+  function fill(sel, items, value, label) {
+    sel.innerHTML = '';
+    items.forEach(function (it) {
+      var o = document.createElement('option'); o.value = value(it); o.textContent = label(it); sel.appendChild(o);
+    });
+  }
+  function init() {
+    if (!cfg) { $('send').disabled = true; return; }
+    var self = function (x) { return x; };
+    fill($('property_code'), [{ code: '', name: 'Choose a property…' }].concat(cfg.properties),
+         function (p) { return p.code; }, function (p) { return p.name; });
+    fill($('submitter'), [''].concat(cfg.people), self, function (x) { return x || 'Choose…'; });
+    fill($('reimburse_to'), [''].concat(cfg.people), self, function (x) { return x || 'Choose…'; });
+    [$('submitter'), $('property_code')].forEach(function (s) { s.options[0].disabled = true; });
+    fill($('category'), cfg.expense_categories, function (x) { return x.code; }, function (x) { return x.label; });
+    fill($('money_account'), cfg.payment_accounts, function (x) { return x.code; }, function (x) { return x.label; });
+    fill($('deposit_type'), cfg.deposit_types, function (x) { return x.code; }, function (x) { return x.label; });
+    fill($('collection_method'), cfg.collection_methods, function (x) { return x.code; }, function (x) { return x.label; });
+    OTHER_LISTS.forEach(function (id) {
+      var o = document.createElement('option'); o.value = OTHER;
+      o.textContent = /^(deposit_type|collection_method)$/.test(id) ? 'Other — specify' : 'Other — type it';
+      $(id).appendChild(o);
+    });
+    $('money_account').value = cfg.default_payment_account || '';
+    var me = store.get('submitter'), acct = store.get('money_account');
+    if (me && cfg.people.indexOf(me) >= 0) { $('submitter').value = me; $('reimburse_to').value = me; }
+    if (acct && cfg.payment_accounts.some(function (a) { return a.code === acct; })) $('money_account').value = acct;
+    if (!$('money_account').value && cfg.payment_accounts.length) $('money_account').selectedIndex = 0;
+    combo('property_code', 'Type to search properties…');
+    combo('submitter', 'Type your name…');
+    combo('reimburse_to', 'Type a name…');
+    $('txn_date').value = today();
+    syncKind(); syncCategory(); syncAccount(); syncDepositType(); syncMethod();
+  }
+
+  // ---- type-to-search lists. The <select> stays (hidden) and keeps the value, so everything else reads and
+  // sets it as before; setting .value / .selectedIndex in code updates the search box too.
+  function norm(t) { return String(t).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+  function combo(id, placeholder) {
+    var sel = $(id), wrap = document.createElement('div'), box = document.createElement('input'),
+        ul = document.createElement('ul'), shown = [], at = -1;
+    wrap.className = 'combo'; ul.className = 'hidden'; ul.id = id + '_list'; ul.setAttribute('role', 'listbox');
+    box.id = id + '_search'; box.placeholder = placeholder; box.autocomplete = 'off'; box.spellcheck = false;
+    box.setAttribute('role', 'combobox'); box.setAttribute('aria-autocomplete', 'list');
+    box.setAttribute('aria-controls', ul.id); box.setAttribute('aria-expanded', 'false');
+    sel.parentNode.insertBefore(wrap, sel); wrap.appendChild(box); wrap.appendChild(ul); sel.classList.add('hidden');
+    var lab = document.querySelector('label[for="' + id + '"]'); if (lab) lab.htmlFor = box.id;
+
+    var proto = HTMLSelectElement.prototype;
+    ['value', 'selectedIndex'].forEach(function (k) {
+      var d = Object.getOwnPropertyDescriptor(proto, k);
+      Object.defineProperty(sel, k, { get: function () { return d.get.call(sel); },
+                                      set: function (v) { d.set.call(sel, v); show(); } });
+    });
+    function current() { var o = sel.selectedOptions[0]; return o && o.value ? o.textContent : ''; }
+    function show() { box.value = current(); }
+    function mark(li, text, words) {                   // bold the letters that matched
+      var n = norm(text), hit = new Array(text.length).fill(false);
+      words.forEach(function (w) { var i = n.indexOf(w); if (i >= 0) for (var j = i; j < i + w.length; j++) hit[j] = true; });
+      for (var i = 0; i < text.length;) {
+        var j = i; while (j < text.length && hit[j] === hit[i]) j++;
+        var part = text.slice(i, j);
+        if (hit[i]) { var b = document.createElement('b'); b.textContent = part; li.appendChild(b); }
+        else li.appendChild(document.createTextNode(part));
+        i = j;
+      }
+    }
+    function render(q) {
+      var words = norm(q).split(/\s+/).filter(Boolean);
+      shown = Array.from(sel.options).filter(function (o) {
+        return o.value === OTHER || (o.value && words.every(function (w) { return norm(o.textContent).indexOf(w) >= 0; }));
+      });
+      ul.innerHTML = '';
+      if (words.length && shown.length === 1) {
+        var none = document.createElement('li'); none.className = 'none'; none.textContent = 'No match'; ul.appendChild(none);
+      }
+      shown.forEach(function (o, i) {
+        var li = document.createElement('li'); li.setAttribute('role', 'option');
+        if (o.value === OTHER) { li.className = 'other-opt'; li.textContent = q.trim() ? 'Other — use “' + q.trim() + '”' : o.textContent; }
+        else { mark(li, o.textContent, words); if (o.value === sel.value) li.classList.add('picked'); }
+        li.onmousedown = function (e) { e.preventDefault(); choose(o); };
+        ul.appendChild(li);
+      });
+      at = words.length && shown.length > 1 ? 0 : -1; light();
+    }
+    function light() {
+      Array.from(ul.querySelectorAll('li[role=option]')).forEach(function (li, i) {
+        li.classList.toggle('on', i === at); if (i === at) li.scrollIntoView({ block: 'nearest' });
+      });
+    }
+    function open(q) { render(q); ul.classList.remove('hidden'); box.setAttribute('aria-expanded', 'true'); }
+    function close() { ul.classList.add('hidden'); box.setAttribute('aria-expanded', 'false'); at = -1; }
+    function choose(o) {
+      var typed = box.value.trim(), was = current();
+      sel.value = o.value; close();
+      sel.dispatchEvent(new Event('change'));
+      if (o.value === OTHER) {
+        var other = $(id + '_other');
+        if (typed && typed !== was && typed !== o.textContent) other.value = typed;
+        box.value = o.textContent; setTimeout(function () { other.focus(); }, 0);
+      }
+    }
+    box.addEventListener('focus', function () {
+      box.select(); open('');
+      if (window.innerWidth < 700) setTimeout(function () { box.scrollIntoView({ block: 'start', behavior: 'smooth' }); }, 250);
+    });
+    box.addEventListener('input', function () { open(box.value); });
+    box.addEventListener('keydown', function (e) {
+      var isOpen = !ul.classList.contains('hidden');
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+        e.preventDefault(); if (!isOpen) return open('');
+        at = Math.max(0, Math.min(shown.length - 1, at + (e.key === 'ArrowDown' ? 1 : -1))); light();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();                                // never submits the form from here
+        if (isOpen && at >= 0) choose(shown[at]);
+      } else if (e.key === 'Escape') { close(); show(); }
+    });
+    box.addEventListener('blur', function () {         // exact text -> that entry; anything else -> back to the choice
+      var q = norm(box.value.trim()), hit = q && shown.filter(function (o) { return o.value !== OTHER && norm(o.textContent) === q; })[0];
+      close();
+      if (hit && hit.value !== sel.value) choose(hit); else show();
+    });
+    show();
+  }
+
+  function syncOther(id) { $(id + '_other').classList.toggle('hidden', $(id).value !== OTHER); }
+  OTHER_LISTS.forEach(function (id) { $(id).addEventListener('change', function () { syncOther(id); }); });
+  function pick(d, field, id) {
+    if ($(id).value === OTHER) { d[field] = ''; d[field + '_other'] = $(id + '_other').value; }
+    else d[field] = $(id).value;
+  }
+  function kind() { return document.querySelector('input[name=kind]:checked').value; }
+  function syncKind() {
+    var exp = kind() === 'expense';
+    $('expense-fields').classList.toggle('hidden', !exp);
+    $('deposit-fields').classList.toggle('hidden', exp);
+    $('description-hint').classList.toggle('hidden', !exp);
+    $('main-title').textContent = exp ? 'Purchase' : 'Payment received';
+    $('date-label').textContent = exp ? 'Purchase date' : 'Date received';
+    $('description-label').textContent = exp ? 'Store and what you bought' : 'Note';
+    $('description').placeholder = exp ? 'Home Depot_baseboard moulding and nails' : 'e.g. pet fee for 2 dogs';
+    $('files-title').textContent = exp ? 'Receipt' : 'Payment screenshot';
+  }
+  function syncCategory() {
+    var c = cfg && cfg.expense_categories.find(function (x) { return x.code === $('category').value; });
+    if (c) $('owner_billable').checked = !!c.owner_billable_default;
+  }
+  function syncAccount() {
+    var a = cfg && cfg.payment_accounts.find(function (x) { return x.code === $('money_account').value; });
+    var personal = !!(a && a.kind === 'personal');
+    $('reimburse-row').classList.toggle('hidden', !personal);
+    if (personal && !$('reimburse_to').value) $('reimburse_to').value = $('submitter').value;
+  }
+  function syncDepositType() {                    // a fee typed under "Other" shows the reservation fields, optional
+    var v = $('deposit_type').value, d = cfg && cfg.deposit_types.find(function (x) { return x.code === v; });
+    $('reservation-fields').classList.toggle('hidden', !(v === OTHER || (d && d.per_reservation)));
+  }
+  function syncMethod() { $('platform-hint').classList.toggle('hidden', $('collection_method').value !== 'platform'); }
+  document.querySelectorAll('input[name=kind]').forEach(function (r) { r.onchange = syncKind; });
+  $('category').onchange = syncCategory;
+  $('money_account').onchange = syncAccount;
+  $('deposit_type').onchange = syncDepositType;
+  $('collection_method').onchange = syncMethod;
+  $('submitter').onchange = function () {
+    $('reimburse_to').value = $('submitter').value;
+    $('reimburse_to_other').value = $('submitter_other').value;
+    syncOther('submitter'); syncOther('reimburse_to'); syncAccount();
+  };
+  $('submitter_other').oninput = function () {
+    if ($('reimburse_to').value === OTHER) $('reimburse_to_other').value = $('submitter_other').value;
+  };
+  $('reservation_code').oninput = function () { this.value = this.value.toUpperCase().replace(/\s+/g, ''); };
+
+  // ---- files: thumbnails, remove, drag and drop
+  function addFiles(list) {
+    Array.from(list).forEach(function (f) {
+      if (files.length >= 10) return;
+      files.push({ file: f, url: /^image\//.test(f.type) ? URL.createObjectURL(f) : '' });
+    });
+    renderThumbs();
+  }
+  function renderThumbs() {
+    $('thumbs').innerHTML = '';
+    files.forEach(function (it, i) {
+      var d = document.createElement('div'); d.className = 'thumb' + (it.sent ? ' done' : '');
+      if (it.url) { var img = document.createElement('img'); img.src = it.url; img.alt = ''; d.appendChild(img); }
+      else { var s = document.createElement('span'); s.className = 'pdf'; s.textContent = (it.file.name.split('.').pop() || 'file').toUpperCase(); d.appendChild(s); }
+      var x = document.createElement('button'); x.type = 'button'; x.textContent = '×'; x.setAttribute('aria-label', 'Remove');
+      x.onclick = function (ev) { ev.preventDefault(); if (it.url) URL.revokeObjectURL(it.url); files.splice(i, 1); renderThumbs(); };
+      d.appendChild(x);
+      $('thumbs').appendChild(d);
+    });
+  }
+  $('files').onchange = function () { addFiles(this.files); this.value = ''; };
+  ['dragenter', 'dragover'].forEach(function (t) { $('drop').addEventListener(t, function (e) { e.preventDefault(); $('drop').classList.add('over'); }); });
+  ['dragleave', 'drop'].forEach(function (t) { $('drop').addEventListener(t, function (e) { e.preventDefault(); $('drop').classList.remove('over'); }); });
+  $('drop').addEventListener('drop', function (e) { addFiles(e.dataTransfer.files); });
+
+  // Photos -> JPEG, longest side 1600 px. Anything the browser can't draw (PDF, HEIC) goes as-is.
+  async function prepare(file) {
+    if (/^image\/(jpeg|png|webp)$/.test(file.type)) {
+      try {
+        var bmp = await createImageBitmap(file);
+        var scale = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+        var c = document.createElement('canvas');
+        c.width = Math.round(bmp.width * scale); c.height = Math.round(bmp.height * scale);
+        c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+        var blob = await new Promise(function (r) { c.toBlob(r, 'image/jpeg', 0.85); });
+        if (blob) return { blob: blob, type: 'image/jpeg' };
+      } catch (e) {}
+    }
+    return { blob: file, type: file.type || 'application/octet-stream' };
+  }
+  function toBase64(blob) {
+    return new Promise(function (res, rej) {
+      var fr = new FileReader();
+      fr.onload = function () { res(String(fr.result).split(',')[1] || ''); };
+      fr.onerror = function () { rej(fr.error); };
+      fr.readAsDataURL(blob);
+    });
+  }
+
+  // ---- sending
+  function status(t) { $('status').textContent = t; }
+  function progress(p) { $('progress').style.width = Math.round(p * 100) + '%'; }
+  function fail(t) { $('error').textContent = t; $('error').classList.remove('hidden'); $('error').scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+  function payload() {
+    var d = { kind: kind(), txn_date: $('txn_date').value, amount: $('amount').value.replace(/[$,\s]/g, ''),
+              description: $('description').value };
+    pick(d, 'property_code', 'property_code'); d.property_other = d.property_code_other; delete d.property_code_other;
+    pick(d, 'submitter', 'submitter');
+    if (d.kind === 'expense') {
+      pick(d, 'category', 'category');
+      d.money_account = $('money_account').value; d.owner_billable = $('owner_billable').checked;
+      if (!$('reimburse-row').classList.contains('hidden')) pick(d, 'reimburse_to', 'reimburse_to');
+    } else {
+      pick(d, 'deposit_type', 'deposit_type'); pick(d, 'collection_method', 'collection_method');
+      d.payer_name = $('payer_name').value; d.payment_reference = $('payment_reference').value;
+      if (!$('reservation-fields').classList.contains('hidden')) {
+        d.reservation_code = $('reservation_code').value; d.check_in_date = $('check_in_date').value;
+      }
+    }
+    return d;
+  }
+  function label(sel) { var o = $(sel).selectedOptions[0]; return $(sel).value === OTHER ? $(sel + '_other').value : (o ? o.textContent : ''); }
+  function showDone(id) {
+    var exp = kind() === 'expense', rows = [
+      ['Submission', '#' + id], ['Amount', '$' + Number(payload().amount || 0).toFixed(2)],
+      ['Property', label('property_code')], [exp ? 'Paid with' : 'Fee', exp ? label('money_account') : label('deposit_type')],
+      ['Files', String(files.length)]];
+    $('summary').innerHTML = '';
+    rows.forEach(function (r) {
+      var d = document.createElement('div'), s = document.createElement('span'), b = document.createElement('b');
+      s.textContent = r[0]; b.textContent = r[1]; d.appendChild(s); d.appendChild(b); $('summary').appendChild(d);
+    });
+    var a = cfg.payment_accounts.find(function (x) { return x.code === $('money_account').value; });
+    $('done-text').textContent = exp && a && a.kind === 'personal'
+      ? 'The office reviews it on Friday, then reimburses you by Zelle.' : 'The office will review it on Friday.';
+    $('form').classList.add('hidden'); $('bar').classList.add('hidden'); $('done').classList.remove('hidden');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  $('form').onsubmit = async function (ev) {
+    ev.preventDefault();
+    $('error').classList.add('hidden');
+    if (!files.length) return fail(kind() === 'expense' ? 'Add a photo of the receipt.' : 'Add a screenshot of the payment.');
+    $('send').disabled = true; $('send').textContent = 'Sending…';
+    $('sending').classList.remove('hidden'); progress(0.05); status('Saving…');
+    try {
+      var data = payload(); data.client_ref = clientRef;
+      var s = await api('submit', { client: navigator.userAgent, data: data });
+      if (!s.ok) throw new Error(s.error);
+      store.set('submitter', $('submitter').value === OTHER ? '' : $('submitter').value);
+      if (kind() === 'expense') store.set('money_account', $('money_account').value);
+      if (s.already_complete) return showDone(s.id);
+      var f;
+      for (var i = 0; i < files.length; i++) {
+        status('Uploading ' + (files.length > 1 ? (i + 1) + ' of ' + files.length : 'the file') + '…');
+        progress(0.1 + 0.85 * i / files.length);
+        var p = await prepare(files[i].file);
+        f = await api('file', { data: { id: s.id, upload_token: s.upload_token, mime_type: p.type,
+                                        base64: await toBase64(p.blob), last: i === files.length - 1 } });
+        if (!f.ok) throw new Error(files[i].file.name + ': ' + f.error);
+        files[i].sent = true; renderThumbs();
+      }
+      if (!f.completed) {
+        var c = await api('complete', { data: { id: s.id, upload_token: s.upload_token } });
+        if (!c.ok) throw new Error(c.error);
+      }
+      progress(1);
+      showDone(s.id);
+    } catch (e) {
+      fail(e.message || String(e));
+      $('sending').classList.add('hidden');
+    } finally {
+      $('send').disabled = false; $('send').textContent = 'Send';
+    }
+  };
+
+  $('another').onclick = function () {
+    clientRef = newRef();
+    ['amount', 'description', 'payer_name', 'reservation_code', 'check_in_date', 'payment_reference',
+     'property_code_other', 'category_other', 'deposit_type_other', 'collection_method_other'].forEach(function (id) { $(id).value = ''; });
+    files.forEach(function (it) { if (it.url) URL.revokeObjectURL(it.url); }); files = []; renderThumbs();
+    $('txn_date').value = today();
+    $('property_code').selectedIndex = 0; syncOther('property_code');
+    $('category').selectedIndex = 0; syncOther('category'); syncCategory();
+    $('sending').classList.add('hidden'); progress(0);
+    $('done').classList.add('hidden'); $('form').classList.remove('hidden'); $('bar').classList.remove('hidden');
+    window.scrollTo(0, 0); $('amount').focus();
+  };
+
+  init();
+})();
+</script>
+</body>
+</html>

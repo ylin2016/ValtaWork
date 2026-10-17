@@ -20,6 +20,7 @@ bellevue_14507_unit_1,Bellevue 14507 Unit 1,2100000000001640666,Listings:Bellevu
 bellevue_14507_unit_2,Bellevue 14507 Unit 2,2100000000001640667,Listings:Bellevue 14507:Bellevue 14507 Unit 2,LTR,TRUE
 bellevue_14507_unit_3,Bellevue 14507 Unit 3,2100000000001640668,Listings:Bellevue 14507:Bellevue 14507 Unit 3,LTR,TRUE
 bellevue_14507_unit_4,Bellevue 14507 Unit 4,2100000000001640669,Listings:Bellevue 14507:Bellevue 14507 Unit 4,LTR,TRUE
+bellevue_15746,Bellevue 15746,1000000039,Listings:Bellevue 15746,STR,TRUE
 bellevue_1621,Bellevue 1621,2100000000001492197,Listings:Bellevue 1621,STR,TRUE
 bellevue_2243,Bellevue 2243,510199,Listings:Bellevue 2243,STR,TRUE
 bellevue_2323,Bellevue 2323,1000000011,Listings:Bellevue 2323,STR,TRUE
@@ -46,6 +47,10 @@ elektra_809,Elektra 809,2100000000001492201,Listings:Elektra 809,STR,TRUE
 hoodsport_26060,Hoodsport 26060,2100000000001492203,Listings:Hoodsport 26060,STR,TRUE
 issaquah_2642,Issaquah 2642,2100000000001492163,Listings:Issaquah 2642,,TRUE
 keaau_15_1542,Keaau 15-1542,2100000000001767130,Listings:Keaau 15-1542,STR,TRUE
+kirkland_10925,Kirkland 10925,1000000042,Listings:Kirkland 10925,STR,TRUE
+kirkland_10925_adu,Kirkland 10925 ADU,1000000045,Listings:Kirkland 10925:Kirkland 10925 ADU,STR,TRUE
+kirkland_10925_lower,Kirkland 10925 Lower,1000000044,Listings:Kirkland 10925:Kirkland 10925 Lower,LTR,TRUE
+kirkland_10925_main,Kirkland 10925 Main,1000000043,Listings:Kirkland 10925:Kirkland 10925 Main,STR,TRUE
 kirkland_11321,Kirkland 11321,2100000000001701500,Listings:Kirkland 11321,STR,TRUE
 kirkland_13070,Kirkland 13070,1000000010,Listings:Kirkland 13070,STR,TRUE
 kirkland_8017,Kirkland 8017,588892,Listings:Kirkland 8017,STR,TRUE
@@ -128,5 +133,6 @@ yacinde_e1,Yacinde E1,1000000031,Listings:Yacinde E1,STR,TRUE
 yacinde_e3,Yacinde E3,1000000017,Listings:Yacinde E3,STR,TRUE
 yacinde_f1,Yacinde F1,1000000032,Listings:Yacinde F1,STR,TRUE
 yacinde_f5,Yacinde F5,1000000033,Listings:Yacinde F5,STR,TRUE
+yacinde_hoa,Yacinde HOA,1000000041,Yacinde HOA,,TRUE
 yacinde_holdings,Yacinde Holdings,1000000035,Listings:Yacinde Holdings,STR,TRUE
 yacinde_nugrowth,Yacinde NuGrowth,1000000034,Listings:Yacinde NuGrowth,STR,TRUE

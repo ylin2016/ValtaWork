@@ -85,11 +85,11 @@ def write_csv(path: Path, rows: list[dict]):
         w.writerows(rows)
 
 
-def sub(id_, code, amount, dtype="Pet-Fee", bank="1", method="zelle", status="approved", typed=""):
+def sub(id_, code, amount, dtype="Pet-Fee", bank="1", method="zelle", status="approved", typed="", acct="chase-9967"):
     return {"id": id_, "kind": "deposit", "status": status, "txn_date": "2026-09-14", "property_code": "renton_18823",
             "property_name": "Renton 18823", "amount": amount, "deposit_type": dtype, "collection_method": method,
             "payer_name": "Guest", "reservation_code": code, "check_in_date": "2026-09-12",
-            "bank_deposit_id": bank, "typed_in": typed, "qbo_payment_id": ""}
+            "bank_deposit_id": bank, "typed_in": typed, "qbo_payment_id": "", "money_account": acct}
 
 
 class GuestFees(unittest.TestCase):
@@ -122,6 +122,22 @@ class GuestFees(unittest.TestCase):
         self.assertEqual(rows[0]["InvoiceId"], "5001")
         self.assertTrue(any("cash" in w and "no bank deposit" in w for w in warns))
         self.assertFalse(any("submission 6" in w for w in warns), "pending rows are simply not built")
+
+    def test_platform_paid_is_recorded_only_and_unmapped_fee_type_errors(self):
+        write_csv(self.exports / "config" / "money_accounts.csv", [
+            {"code": "chase-9967", "label": "Chase 9967", "in_qbo": "TRUE"},
+            {"code": "platform", "label": "Paid through the platform", "in_qbo": "FALSE"}])
+        write_csv(self.exports / "config" / "deposit_types.csv", [
+            {"code": "Pet-Fee", "label_en": "Pet fee", "qbo_item": "Pet Fee (Owner)", "per_reservation": "TRUE"},
+            {"code": "Extra-Night", "label_en": "Extra night", "qbo_item": "", "per_reservation": "TRUE"}])
+        rows, warns = self.run_build(
+            [sub("1", "HMABC123", "60.00", method="platform", bank="", acct="platform"),
+             sub("2", "HMABC123", "120.00", dtype="Extra-Night", method="ach", bank="2")],
+            [{"id": "2", "bank_date": "2026-09-15", "total": "120.00"}])
+        self.assertEqual([r["SubmissionId"] for r in rows], ["2"], "the platform-paid fee is not drafted")
+        self.assertTrue(any("submission 1" in w and "recorded only" in w for w in warns))
+        self.assertEqual(rows[0]["Treatment"], "ERROR")
+        self.assertIn("for fee type 'Extra-Night' not found", rows[0]["Note"])
 
     def test_post_dry_run_then_confirm_then_rerun_is_idempotent(self):
         rows, _ = self.run_build([sub("1", "HMABC123", "150.00"), sub("3", "HMNEW777", "40.00", dtype="Parking-Fee")],

@@ -69,12 +69,29 @@ function expense2qboRows_() {
   return [EXPENSE2QBO_COLS].concat(rows);
 }
 
-/** Rewrite dir/fileName in place (create it the first time). */
+/** Rewrite dir/fileName in place (create it the first time). Returns the file. */
 function writeCsv_(dir, fileName, rows) {
   var text = '﻿' + rows.map(function (r) { return r.map(csvCell_).join(','); }).join('\r\n') + '\r\n';
   var f = liveFile_(dir, fileName);
   if (f) f.setContent(text);
-  else dir.createFile(fileName, text, 'text/csv');
+  else f = dir.createFile(fileName, text, 'text/csv');
+  return f;
+}
+
+/** zelle_payouts.csv + zelle_expense2qbo.csv right away, for the reimbursement click. Returns the
+ *  zelle_expense2qbo file, or null if writing failed (the scheduled export then retries). */
+function writeReimbursementCsvs_() {
+  try {
+    var dir = childFolder_(processingFolder_(), 'exports');
+    var cols = TABS.zelle_payouts.filter(function (c) { return !EXPORT_OMIT[c]; });
+    writeCsv_(dir, 'zelle_payouts.csv', [cols].concat(Ledger.all('zelle_payouts').map(function (r) {
+      return cols.map(function (c) { return r[c]; });
+    })));
+    return writeCsv_(dir, 'zelle_expense2qbo.csv', expense2qboRows_());
+  } catch (e) {
+    console.error('reimbursement CSVs not written now (the scheduled export retries): ' + (e && e.stack || e));
+    return null;
+  }
 }
 
 function csvCell_(v) {

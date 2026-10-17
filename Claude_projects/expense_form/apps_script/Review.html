@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; margin: 0; padding: 16px;
+           color: #1f2328; background: #fff; max-width: 640px; }
+    h1 { font-size: 20px; margin: 0 0 12px; }
+    table { border-collapse: collapse; width: 100%; font-size: 15px; }
+    td { padding: 6px 0; vertical-align: top; border-bottom: 1px solid #eee; }
+    td:first-child { color: #656d76; width: 40%; padding-right: 12px; }
+    ul { padding-left: 18px; }
+    textarea { width: 100%; box-sizing: border-box; min-height: 60px; font: inherit; margin: 8px 0; }
+    button { font: inherit; font-weight: 600; color: #fff; border: 0; border-radius: 6px; padding: 12px 20px; margin-right: 8px; }
+    .approve { background: #1a7f37; } .reject { background: #b42318; }
+    button:disabled { opacity: .5; }
+    .msg { padding: 12px; border-radius: 6px; margin: 12px 0; }
+    .ok { background: #dafbe1; } .err { background: #ffebe9; }
+    .preset { outline: 3px solid #0969da; outline-offset: 2px; }
+  </style>
+</head>
+<body>
+<? if (error) { ?>
+  <div class="msg err"><?= error ?></div>
+<? } else { ?>
+  <h1>Submission #<?= ctx.sub.id ?> · <?= ctx.sub.kind ?></h1>
+  <table>
+    <? var labels = {txn_date: ctx.sub.kind === 'expense' ? 'Purchase date' : 'Date', property_name:'Property', amount:'Amount', submitter:'Submitted by',
+         category:'Category', vendor:'Store', money_account:'Account', owner_billable:'Owner billable',
+         reimburse_to:'Reimburse to', deposit_type:'Fee', payer_name:'Guest', reservation_code:'Confirmation code',
+         check_in_date:'Check-in', collection_method:'Paid by', payment_reference:'Payment ref', description:'Description'};
+       for (var k in labels) { if (ctx.sub[k] !== undefined) { ?>
+      <tr><td><?= labels[k] ?></td><td><?= k === 'amount' ? '$' + Number(ctx.sub[k]).toFixed(2) : ctx.sub[k] ?></td></tr>
+    <? } } ?>
+  </table>
+  <p>Files:</p>
+  <ul><? for (var i = 0; i < ctx.files.length; i++) { ?>
+    <li><a href="<?= ctx.files[i].url ?>" target="_blank" rel="noopener"><?= ctx.files[i].name ?></a></li>
+  <? } ?></ul>
+
+  <? if (ctx.decided) { ?>
+    <div class="msg ok">Already <?= ctx.status ?> by <?= ctx.reviewed_by ?>.</div>
+  <? } else { ?>
+    <label for="note">Note (optional)</label>
+    <textarea id="note"></textarea>
+    <button id="approve" class="approve <?= preset === 'approve' ? 'preset' : '' ?>" onclick="decide('approve')">Approve</button>
+    <button id="reject" class="reject <?= preset === 'reject' ? 'preset' : '' ?>" onclick="decide('reject')">Reject</button>
+    <div id="result"></div>
+  <? } ?>
+<? } ?>
+<script>
+  var TOKEN = <?!= JSON.stringify(token).replace(/</g, '\\u003c') ?>;
+  function decide(action) {
+    document.getElementById('approve').disabled = true;
+    document.getElementById('reject').disabled = true;
+    google.script.run
+      .withSuccessHandler(function (r) { show('ok', 'Done: ' + r.status + '.'); })
+      .withFailureHandler(function (e) {
+        show('err', e.message || String(e));
+        document.getElementById('approve').disabled = false;
+        document.getElementById('reject').disabled = false;
+      })
+      .decideReview(TOKEN, action, document.getElementById('note').value);
+  }
+  function show(cls, text) {
+    var el = document.getElementById('result');
+    el.className = 'msg ' + cls;
+    el.textContent = text;
+  }
+</script>
+</body>
+</html>

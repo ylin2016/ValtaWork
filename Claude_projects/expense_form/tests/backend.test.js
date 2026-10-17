@@ -26,6 +26,8 @@ function submitWithFile(g, data, b64 = PNG) {
   assert.ok(f.ok, JSON.stringify(f));
   return { s, f };
 }
+// rows in the generated property list (it grows as listings are added; never hard-code it)
+const N_PROPS = require('fs').readFileSync(require('path').join(__dirname, '..', 'config', 'properties.csv'), 'utf8').trim().split('\n').length - 1;
 const plain = (x) => JSON.parse(JSON.stringify(x));      // values made inside the vm sandbox -> host objects
 // The Friday summary: send it, then pull the queue token out of the reviewer's email.
 function digestToken(g, to = 'billing@valtarealty.com') {
@@ -58,12 +60,14 @@ test('config for the form: active lists only, nothing sensitive', () => {
   const g = fresh();
   const c = JSON.parse(g.get({ action: 'config' }).content);
   assert.ok(c.ok);
-  assert.strictEqual(c.properties.length, 131);
+  assert.strictEqual(c.properties.length, N_PROPS);
   assert.ok(c.properties.some((p) => p.name === 'Renton 18823'));
   assert.ok(!c.properties.some((p) => p.name === 'Seattle 906'));          // excluded by the user
   assert.ok(c.people.includes('Jing Li'));
   assert.ok(!JSON.stringify(c).includes('@'), 'no emails leak to the public form');
-  assert.deepStrictEqual(c.deposit_types.map((d) => d.code).sort(), ['Parking-Fee', 'Pet-Fee']);
+  assert.deepStrictEqual(c.deposit_types.map((d) => d.code).sort(), ['Extra-Night', 'Extra-Person', 'Parking-Fee', 'Pet-Fee']);
+  assert.deepStrictEqual(c.collection_methods.map((m) => m.code), ['zelle', 'cashapp', 'cash', 'ach', 'check', 'platform']);
+  assert.ok(!c.payment_accounts.some((a) => a.code === 'platform'), 'the platform is not a "Paid with" choice');
   assert.strictEqual(c.default_payment_account, 'personal', 'Paid personally is the default');
   assert.strictEqual(c.payment_accounts[0].code, 'personal', 'and listed first');
 });
@@ -195,6 +199,9 @@ test('weekly reimbursement: per-person Zelle totals, receipts renamed to the pay
   assert.throws(() => g.ctx.processReimbursements(key, '2099-01-01'), /future/);
 
   const r = g.ctx.processReimbursements(key, '2026-09-14');
+  const now = g.csvAt('zelle_expense2qbo.csv');
+  assert.ok(now && now.length === 4, 'zelle_expense2qbo.csv is written by the Mark paid click itself');
+  assert.ok(g.csvAt('zelle_payouts.csv').length === 3 && r.csv_name === 'zelle_expense2qbo.csv');
   assert.deepStrictEqual(plain(r.payouts.map((p) => [p.person, p.total, p.count])),
                          [['Griselda Ramirez', '150.00', 1], ['Jing Li', '312.74', 2]]);
   assert.deepStrictEqual(g.filesUnder('2026/').sort(), [
@@ -468,7 +475,7 @@ test('Expense Config sheet: seeded once from the CSVs, then the sheet is the sou
   for (const t of ['properties', 'people', 'expense_categories', 'deposit_types', 'money_accounts',
                    'collection_methods', 'reviewers', 'year_roots', 'settings']) assert.ok(tabs.includes(t), t);
   assert.ok(!tabs.includes('Sheet1'));
-  assert.strictEqual(ss.getSheetByName('properties').getLastRow(), 132, 'header + 131');
+  assert.strictEqual(ss.getSheetByName('properties').getLastRow(), N_PROPS + 1, 'header + every property');
   assert.deepStrictEqual([...ss.getSheetByName('year_roots').getDataRange().getDisplayValues()[1]],
                          ['2026', '1Hz-76uPBm6fEvggje8ekdYcDfKisj_Ju']);
 
@@ -493,7 +500,7 @@ test('a newer properties.csv in Drive replaces the properties tab; older or empt
   file.text = 'code,name,qbo_class_id,qbo_class_name,term,active\nnew_one,New One 1,99,Listings:New One 1,STR,TRUE\n';
   g.clearCache();
   g.get({ action: 'config' });
-  assert.strictEqual(tab().getLastRow(), 132, 'same timestamp: not imported');
+  assert.strictEqual(tab().getLastRow(), N_PROPS + 1, 'same timestamp: not imported');
   file.updated = Date.now();
   g.clearCache();
   const c = JSON.parse(g.get({ action: 'config' }).content);
@@ -620,7 +627,7 @@ test('an anonymous visitor cannot run hand-run or trigger functions through goog
   g.session.active = '';                                    // a web-app visitor
   for (const fn of ['clearTestData', 'showReimbursementLink', 'reimbursementLink', 'sendReviewSummaryNow',
                     'sendWeeklyDigest', 'exportCsvNow', 'exportLedger', 'exportLedgerSoon', 'runSetup', 'setup',
-                    'applyConfigUpdates', 'fixConfig20260923', 'fixConfig20260924', 'fixConfig20260924b']) {
+                    'applyConfigUpdates', 'fixConfig20260923', 'fixConfig20260924', 'fixConfig20260924b', 'fixConfig20261009']) {
     assert.throws(() => g.ctx[fn]({ triggerUid: 'guess' }), /Only the script owner/, fn);
   }
   assert.strictEqual(typeof g.ctx.loadConfig, 'undefined', 'loadConfig (reviewer emails) is private');
@@ -636,4 +643,51 @@ test('manifest grants every scope the code needs (ownerOnly_ reads Session email
   const code = fs.readdirSync(dir).filter(f => f.endsWith('.gs')).map(f => fs.readFileSync(path.join(dir, f), 'utf8')).join('\n');
   if (/Session\.get(Active|Effective)User\(\)\.getEmail/.test(code))
     assert.ok(scopes.includes('https://www.googleapis.com/auth/userinfo.email'), 'userinfo.email scope missing');
+});
+
+
+test('guest fee options (2026-10-09): extra night/person, ACH / check / platform, and "Other — specify"', () => {
+  const g = fresh();
+  const one = (data) => { const { s } = submitWithFile(g, data, Buffer.from(JSON.stringify(data)).toString('base64'));
+                          complete(g, s); return g.tab('submissions').find((r) => r.id === String(s.id)); };
+  const night = one({ ...DEPOSIT, deposit_type: 'Extra-Night', collection_method: 'ach' });
+  assert.deepStrictEqual([night.deposit_type, night.money_account, night.typed_in], ['Extra-Night', 'chase-9967', '']);
+  const plat = one({ ...DEPOSIT, deposit_type: 'Extra-Person', collection_method: 'platform', amount: '60' });
+  assert.strictEqual(plat.money_account, 'platform');
+  assert.ok(g.filesUnder('2026/').some((f) => f.includes('/Platform fees/') && f.includes('_Extra person_')), 'filed apart from 9967');
+  const typed = one({ ...DEPOSIT, deposit_type: '__other__', deposit_type_other: 'Early check-in',
+                      collection_method: '__other__', collection_method_other: 'PayPal', reservation_code: '', check_in_date: '' });
+  assert.deepStrictEqual([typed.deposit_type, typed.collection_method, typed.money_account, typed.typed_in],
+                         ['Early check-in', 'PayPal', 'chase-9967', 'deposit_type,collection_method']);
+  const snapped = one({ ...DEPOSIT, collection_method: '__other__', collection_method_other: 'ach' });
+  assert.deepStrictEqual([snapped.collection_method, snapped.typed_in], ['ach', '']);
+
+  // approval: ACH is its own bank line; platform and a typed method get no bank deposit
+  const t = digestToken(g);
+  g.ctx.decideFromQueue(t, [night.id, plat.id, typed.id], 'approve', '');
+  const after = Object.fromEntries(g.tab('submissions').map((r) => [r.id, r.bank_deposit_id]));
+  assert.ok(after[night.id], 'ACH: deposit on approval');
+  assert.ok(!after[plat.id] && !after[typed.id], 'platform / typed method: no bank deposit');
+});
+
+test('fixConfig20261009 adds the guest fee options to a live config seeded before them; idempotent', () => {
+  const g = fresh({ configOverrides: {
+    'deposit_types.csv': 'code,label_en,label_zh,qbo_item,per_reservation\nPet-Fee,Pet fee,宠物费,Pet Fee (Owner),TRUE\n',
+    'collection_methods.csv': 'code,label,lands_in,one_per_bank_line\nzelle,Zelle,chase-9967,TRUE\n',
+    'money_accounts.csv': 'code,label,qb_account,kind,drive_folder,in_qbo,drive_path\nchase-9967,Chase 9967,,bank,9967,TRUE,\npersonal,Paid personally,,personal,9967,TRUE,\n' } });
+  assert.strictEqual(plain(g.ctx.fixConfig20261009()).length, 6);
+  assert.deepStrictEqual(plain(g.ctx.fixConfig20261009()), [], 'second run changes nothing');
+  const c = JSON.parse(g.get({ action: 'config' }).content);
+  assert.deepStrictEqual(c.collection_methods.map((m) => m.code), ['zelle', 'ach', 'check', 'platform']);
+  assert.ok(c.deposit_types.some((d) => d.code === 'Extra-Night' && d.per_reservation));
+});
+
+test('clearTestData refuses once anyone has been reimbursed (it trashed real receipts on 2026-10-09)', () => {
+  const g = fresh();
+  const { s } = submitWithFile(g, { ...EXPENSE, money_account: 'personal' });
+  complete(g, s);
+  approve(g, [String(s.id)]);
+  g.ctx.processReimbursements(g.ctx.adminKey_(), '2026-09-22');
+  assert.throws(() => g.ctx.clearTestData(), /real reimbursements/);
+  assert.strictEqual(g.tab('submissions').length, 1, 'nothing was cleared');
 });

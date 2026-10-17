@@ -132,6 +132,9 @@ function processReimbursements(key, paidDate) {
       return { person: g.person, payee: g.payee, total: total, count: g.items.length, reference: reference };
     });
   });
+  // The QBO input is written now, inside the click (user, 2026-10-09: "the file should be ready when I mark
+  // paid"); two small files, a second or two. The rest of the export still follows about a minute later.
+  var csv = writeReimbursementCsvs_();
   scheduleExport_();
-  return { ok: true, payouts: payouts };
+  return { ok: true, payouts: payouts, csv_name: 'zelle_expense2qbo.csv', csv_url: csv ? csv.getUrl() : '' };
 }

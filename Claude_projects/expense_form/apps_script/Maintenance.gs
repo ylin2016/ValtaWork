@@ -118,3 +118,46 @@ function fixConfig20260924b() {
   console.log(done.length ? done.join('\n') : 'Nothing to fix — already done.');
   return done;
 }
+
+/**
+ * 2026-10-09 (user): guest fees can be an extra night or an extra person, and be paid by ACH, check or
+ * through the platform. Adds the rows to the live Expense Config sheet where missing; never edits a row.
+ *   deposit_types   Extra-Night, Extra-Person (per reservation; qbo_item left blank until the user names
+ *                   the QBO items -- build_guest_fees holds them with an error until then)
+ *   collection_methods  ach (9967, own bank line), check (9967, batched like cash),
+ *                   platform (paid inside the platform payout: recorded and filed only)
+ *   money_accounts  platform (kind platform, in_qbo FALSE, folder "Platform fees"; not a "Paid with" choice)
+ */
+var CONFIG_ROWS_20261009 = {
+  deposit_types: [
+    { code: 'Extra-Night', label_en: 'Extra night', label_zh: '加晚费', qbo_item: '', per_reservation: 'TRUE' },
+    { code: 'Extra-Person', label_en: 'Extra person', label_zh: '加人费', qbo_item: '', per_reservation: 'TRUE' }],
+  money_accounts: [
+    { code: 'platform', label: 'Paid through the platform', qb_account: '', kind: 'platform',
+      drive_folder: 'Platform fees', in_qbo: 'FALSE', drive_path: '' }],
+  collection_methods: [
+    { code: 'ach', label: 'ACH', lands_in: 'chase-9967', one_per_bank_line: 'TRUE' },
+    { code: 'check', label: 'Check', lands_in: 'chase-9967', one_per_bank_line: 'FALSE' },
+    { code: 'platform', label: 'Platform (Airbnb, VRBO, Booking)', lands_in: 'platform', one_per_bank_line: 'FALSE' }]
+};
+
+function fixConfig20261009() {
+  ownerOnly_();
+  var ss = configSheet_(), done = [];
+  ['deposit_types', 'money_accounts', 'collection_methods'].forEach(function (tab) {   // accounts before methods
+    var sh = ss.getSheetByName(tab);
+    var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0]
+      .map(function (h) { return String(h).trim().toLowerCase().replace(/\s+/g, '_'); });
+    var codes = sh.getDataRange().getDisplayValues().map(function (r) { return r[0]; });
+    CONFIG_ROWS_20261009[tab].forEach(function (row) {
+      if (codes.indexOf(row.code) >= 0) return;
+      var r = sh.getLastRow() + 1;
+      sh.getRange(r, 1, 1, head.length).setNumberFormat('@')
+        .setValues([head.map(function (h) { return row[h] || ''; })]);
+      done.push(tab + ': added ' + row.code + ' (row ' + r + ')');
+    });
+  });
+  CacheService.getScriptCache().remove(CONFIG_CACHE_KEY);
+  console.log(done.length ? done.join('\n') : 'Nothing to fix — already done.');
+  return done;
+}

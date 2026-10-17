@@ -1,6 +1,6 @@
 """Build the QuickBooks drafts for guest pet / parking fees recorded on the expense form.
 
-The form (../expense_form) records each fee a guest paid by Zelle, Cash App or cash, with the
+The form (../expense_form) records each fee a guest paid by Zelle, Cash App, ACH, check or cash, with the
 reservation's confirmation code, and after review writes CSV copies to billing@'s Drive:
 
     Expense_processing/exports/submissions.csv        kind=deposit, status=approved rows
@@ -27,8 +27,9 @@ feed matches.  A Payment is never deposited straight to 9967 (the $55,972.41 dou
     python -m src.deposits.build_guest_fees --exports "<Drive>/Expense_processing/exports"
         -> review/guest_fees.csv   (read it, then post_guest_fees --confirm)
 
-Only approved rows with a bank deposit are built.  Cash waits until it is batched into a bank
-deposit on the form (not built yet), and a row the form flagged `typed_in` waits until the
+Only approved rows with a bank deposit are built.  Fees paid through the platform (money account
+with in_qbo FALSE) are recorded only: the platform payout carries them.  Cash and checks wait until
+batched into a bank deposit on the form (not built yet), and a row the form flagged `typed_in` waits until the
 reviewer maps it.
 """
 from __future__ import annotations
@@ -53,6 +54,10 @@ FIELDS = ["BankDepositId", "BankDate", "BankTotal", "SubmissionId", "TxnDate", "
 def read_csv(path: Path) -> list[dict]:
     with open(path, encoding="utf-8-sig", newline="") as fh:
         return [r for r in csv.DictReader(fh) if any((v or "").strip() for v in r.values())]
+
+
+def truthy(v) -> bool:
+    return str(v or "").strip().upper() in ("TRUE", "YES", "1")
 
 
 def load_exports(exports: Path) -> tuple[list[dict], dict, dict, dict]:
@@ -122,6 +127,8 @@ def treat(sub: dict, qbo, res: Resolver, items: dict, props: dict) -> dict:
 
 def build(exports: Path, qbo) -> tuple[list[dict], list[str]]:
     subs, banks, items, props = load_exports(exports)
+    acc_csv = exports / "config" / "money_accounts.csv"
+    accounts = {a["code"]: a for a in read_csv(acc_csv)} if acc_csv.exists() else {}
     res = Resolver(qbo)
     rows, warnings = [], []
     for s in subs:
@@ -129,6 +136,13 @@ def build(exports: Path, qbo) -> tuple[list[dict], list[str]]:
             continue
         if s.get("qbo_payment_id") or s.get("qbo_posted_at"):
             continue                                        # already written back as posted
+        acct = accounts.get(s.get("money_account") or "")
+        if acct is not None and not truthy(acct.get("in_qbo")):
+            # paid through the platform (2026-10-09): it arrives inside the platform payout, which the
+            # reservation bookkeeping books -- drafting it here would count it twice
+            warnings.append(f"submission {s['id']}: {s['collection_method']} ${s['amount']} paid via "
+                            f"{acct.get('label') or s['money_account']} -- recorded only, not drafted")
+            continue
         if not s.get("bank_deposit_id"):
             warnings.append(f"submission {s['id']}: {s['collection_method']} ${s['amount']} has no bank "
                             f"deposit yet (cash is batched when it is taken to the bank) -- skipped")

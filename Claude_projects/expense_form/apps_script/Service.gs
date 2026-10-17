@@ -54,6 +54,8 @@ function submitExpense(data, clientInfo) {
   return again || { ok: true, id: rec.id, upload_token: token };
 }
 
+var TYPED_METHOD_LANDS_IN = 'chase-9967';                     // where a typed-in "Paid by" is filed
+
 function validateSubmission_(d, L) {
   function need(v, what) {
     if (v === undefined || v === null || String(v).trim() === '') throw new UserError(what + ' is required');
@@ -96,18 +98,20 @@ function validateSubmission_(d, L) {
         : submitter;
     }
   } else {
-    var dt = L.depositTypes[need(d.deposit_type, 'Fee type')];
-    if (!dt) throw new UserError('Unknown fee type: ' + d.deposit_type);
-    var method = L.methods[need(d.collection_method, 'Paid by')];
-    if (!method) throw new UserError('Unknown payment method: ' + d.collection_method);
-    if (!L.accounts[method.lands_in]) throw new Error('collection_methods.csv: ' + method.code +
-                                                      ' lands in unknown account ' + method.lands_in);
-    rec.deposit_type = dt.code;
-    rec.collection_method = method.code;
-    rec.money_account = method.lands_in;                      // decided by the method, not the submitter
+    // Fee and Paid by also take "Other — specify" (user, 2026-10-09). A typed method is filed as landing in
+    // 9967 and gets no automatic bank deposit; typed_in keeps both out of QBO until the reviewer maps them.
+    var dt = pickOrTyped_(d.deposit_type, d.deposit_type_other, L.depositTypes, ['code', 'label_en'], 'Fee type', typed, 'deposit_type');
+    var method = pickOrTyped_(d.collection_method, d.collection_method_other, L.methods, ['code', 'label'], 'Paid by', typed, 'collection_method');
+    var landsIn = method.code ? method.lands_in : TYPED_METHOD_LANDS_IN;
+    if (!L.accounts[landsIn]) throw new Error('collection_methods: ' + (method.code || method.name) +
+                                              ' lands in unknown account ' + landsIn);
+    rec.deposit_type = dt.code || dt.name;
+    rec.collection_method = method.code || method.name;
+    rec.money_account = landsIn;                              // decided by the method, not the submitter
     rec.payer_name = need(d.payer_name, 'Guest name').slice(0, 100);
     rec.payment_reference = String(d.payment_reference || '').trim().slice(0, 100);
-    if (truthy_(dt.per_reservation)) {
+    var reservationGiven = String(d.reservation_code || '').trim() !== '';
+    if (truthy_(dt.per_reservation) || (!dt.code && reservationGiven)) {   // a typed fee: only if given
       var code = normalizeReservationCode(need(d.reservation_code, 'Confirmation code'));
       if (!/^[A-Z0-9-]+$/.test(code)) throw new UserError('Confirmation code can only have letters, digits and -');
       var checkIn = need(d.check_in_date, 'Check-in date');
@@ -129,7 +133,7 @@ function pickOrTyped_(value, other, map, matchCols, what, typed, field) {
   if (!text) {
     var v = String(value == null ? '' : value).trim();
     if (!v) throw new UserError(what + ' is required');
-    var noun = { 'Your name': 'name', 'Reimburse to': 'person to reimburse' }[what] || what.toLowerCase();
+    var noun = { 'Your name': 'name', 'Reimburse to': 'person to reimburse', 'Paid by': 'payment method' }[what] || what.toLowerCase();
     if (!map[v]) throw new UserError('Unknown ' + noun + ': ' + v + ' — choose "Other" to type it');
     return map[v];
   }

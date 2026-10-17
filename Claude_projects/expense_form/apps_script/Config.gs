@@ -219,6 +219,7 @@ function publicConfig() {
     // Paid personally first: it is the form's default (user, 2026-09-23), so a cleaner who paid out of
     // pocket is never filed as paid from 9967 by leaving the choice untouched.
     payment_accounts: vals(L.accounts, function (r) { return { code: r.code, label: r.label, kind: r.kind }; })
+      .filter(function (a) { return a.kind !== 'platform'; })      // guest fees only (collection_methods)
       .sort(function (a, b) { return (b.kind === 'personal') - (a.kind === 'personal'); }),
     default_payment_account: (vals(L.accounts, function (r) { return r; })
       .filter(function (r) { return r.kind === 'personal'; })[0] || {}).code || ''

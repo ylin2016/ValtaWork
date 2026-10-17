@@ -7,8 +7,8 @@
  *   sendReviewSummaryNow    email the Friday review summary now (each reviewer, only if something waits)
  *   exportCsvNow            rewrite exports/*.csv now (otherwise ~1 min after a review, and nightly)
  *   runSetup                after a code change that adds columns or tabs; also re-installs the triggers
- *   applyConfigUpdates      one-time Expense Config sheet updates (reviewer, Valta Homes, ...); skips what is done
- *   clearTestData           BEFORE GO-LIVE ONLY: empty the ledger and trash the test receipts
+ *   applyConfigUpdates      one-time Expense Config sheet updates (reviewer, Valta Homes, guest fee options, ...); skips what is done
+ *   clearTestData           BEFORE GO-LIVE ONLY: empty the ledger and trash the test receipts (refuses once anyone was reimbursed)
  */
 
 /**
@@ -46,7 +46,7 @@ function runSetup() {
 }
 
 function applyConfigUpdates() {
-  var done = fixConfig20260923().concat(fixConfig20260924(), fixConfig20260924b());
+  var done = fixConfig20260923().concat(fixConfig20260924(), fixConfig20260924b(), fixConfig20261009());
   console.log(done.length ? done.join('\n') : 'Expense Config is up to date.');
   return done;
 }
@@ -61,6 +61,10 @@ function clearTestData() {
   var subs = Ledger.all('submissions');
   if (subs.length > 30) throw new Error('Refused: ' + subs.length + ' submissions — this looks like real data');
   if (subs.some(function (s) { return s.qbo_txn_id || s.qbo_posted_at; })) throw new Error('Refused: some rows are already in QuickBooks');
+  // 2026-10-09: it was run after a real Zelle run and trashed real receipts (all recovered from Drive's
+  // Trash). Money that has really been paid out means the ledger is live: refuse.
+  if (subs.some(function (s) { return s.payout_id; }) || Ledger.all('zelle_payouts').length)
+    throw new Error('Refused: the ledger has real reimbursements (Zelle payouts). Delete test rows by hand instead.');
   var layout = lookups_(loadConfig_()).layout, trashed = 0, skipped = [];
   withLock_(function () {
     Ledger.all('attachments').forEach(function (a) {
